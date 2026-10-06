@@ -49,12 +49,12 @@ func setup(new_layout: FloorLayout, slot_colors: Array[Color], new_legend: Array
 	map_texture = ImageTexture.create_from_image(_map_image)
 	_fog.texture = _fog_texture
 	_fog.centered = false
-	_fog.scale = Vector2(TileAtlas.TILE_SIZE, TileAtlas.TILE_SIZE)
+	_fog.scale = Vector2(GameScale.TILE_SIZE, GameScale.TILE_SIZE)
 	_last_cell = Vector2i(-99999, -99999)
 
 
 func world_to_cell(world_position: Vector2) -> Vector2i:
-	return Vector2i((world_position / TileAtlas.TILE_SIZE).floor())
+	return Vector2i((world_position / GameScale.TILE_SIZE).floor())
 
 
 ## Call every frame with the player position; work happens only when the player changes tile.

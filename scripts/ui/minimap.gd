@@ -22,7 +22,7 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND)
 	if exploration == null or exploration.map_texture == null or player == null:
 		return
-	var center: Vector2 = player.global_position / TileAtlas.TILE_SIZE
+	var center: Vector2 = player.global_position / GameScale.TILE_SIZE
 	var view_tiles: Vector2 = size / PIXELS_PER_TILE
 	var source := Rect2(center - view_tiles / 2.0, view_tiles)
 	draw_texture_rect_region(exploration.map_texture, Rect2(Vector2.ZERO, size), source)

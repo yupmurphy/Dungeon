@@ -2,6 +2,7 @@ extends Camera2D
 ## Smooth follow camera (child of the player) with trauma-based screen shake.
 ## GameFeel.shake() reaches it through the "game_camera" group.
 
+## Largest shake, in reference pixels (see GameScale).
 @export var max_offset: float = 6.0
 @export var trauma_decay: float = 2.5
 
@@ -14,7 +15,7 @@ func _ready() -> void:
 
 func add_trauma(amount: float) -> void:
 	# Callers pass "pixels of shake"; trauma is stored as 0..1 of max_offset.
-	_trauma = minf(_trauma + amount / max_offset, 1.0)
+	_trauma = minf(_trauma + amount / GameScale.world(max_offset), 1.0)
 
 
 func set_room_limits(rect: Rect2i) -> void:
@@ -29,5 +30,5 @@ func _process(delta: float) -> void:
 		offset = Vector2.ZERO
 		return
 	_trauma = maxf(_trauma - trauma_decay * delta, 0.0)
-	var power: float = _trauma * max_offset
+	var power: float = _trauma * GameScale.world(max_offset)
 	offset = Vector2(randf_range(-power, power), randf_range(-power, power))

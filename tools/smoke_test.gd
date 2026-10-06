@@ -29,7 +29,7 @@ func run(_options: Dictionary) -> void:
 	for anim in [&"idle", &"run", &"attack"]:
 		_check(player.sprite.sprite_frames.has_animation(anim), "player has animation '%s'" % anim)
 	var camera := player.get_node("Camera2D") as Camera2D
-	_check(camera.limit_right == 768 and camera.limit_bottom == 480, "camera limited to the room (768x480)")
+	_check(camera.limit_right == 48 * GameScale.TILE_SIZE and camera.limit_bottom == 30 * GameScale.TILE_SIZE, "camera limited to the room (48x30 tiles)")
 	var dungeon := room.get_node("Dungeon") as TileMapLayer
 	_check(dungeon.get_cell_tile_data(Vector2i(0, 0)).get_collision_polygons_count(0) > 0, "wall tiles have collision")
 	_check(dungeon.get_cell_tile_data(Vector2i(10, 10)).get_collision_polygons_count(0) == 0, "floor tiles have no collision")

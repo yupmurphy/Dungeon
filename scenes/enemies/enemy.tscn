@@ -23,6 +23,7 @@ resource_local_to_scene = true
 radius = 7.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
+resource_local_to_scene = true
 size = Vector2(20, 24)
 
 [node name="Enemy" type="CharacterBody2D" groups=["enemy"]]

@@ -32,7 +32,7 @@ func _draw() -> void:
 	draw_texture_rect(exploration.map_texture, map_rect, false)
 
 	if player != null and fmod(_blink, 0.8) < 0.55:
-		var dot: Vector2 = map_rect.position + player.global_position / TileAtlas.TILE_SIZE * scale_factor
+		var dot: Vector2 = map_rect.position + player.global_position / GameScale.TILE_SIZE * scale_factor
 		draw_circle(dot, 3.0, Color.WHITE)
 
 	draw_string(font, Vector2(16.0, 16.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE + 2)

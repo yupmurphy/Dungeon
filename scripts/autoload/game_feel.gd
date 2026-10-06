@@ -32,8 +32,9 @@ func hit_stop(duration: float) -> void:
 	Engine.time_scale = 0.05
 
 
+## `strength` in reference pixels (see GameScale).
 func shake(strength: float) -> void:
-	get_tree().call_group("game_camera", "add_trauma", strength)
+	get_tree().call_group("game_camera", "add_trauma", GameScale.world(strength))
 
 
 func spawn_damage_number(world_position: Vector2, amount: float, color: Color) -> void:
@@ -45,7 +46,7 @@ func spawn_damage_number(world_position: Vector2, amount: float, color: Color) -
 func spawn_burst(world_position: Vector2, color: Color, amount: int, speed: float) -> void:
 	var burst: ParticleBurst = PARTICLE_BURST_SCENE.instantiate()
 	_layer.add_child(burst)
-	burst.setup(world_position, color, amount, speed)
+	burst.setup(world_position, color, amount, GameScale.world(speed))
 
 
 ## Leaves a fading copy of the sprite's current frame (dodge trail).
@@ -55,6 +56,7 @@ func spawn_ghost(sprite: AnimatedSprite2D, tint: Color) -> void:
 	var ghost := Sprite2D.new()
 	ghost.texture = sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
 	ghost.flip_h = sprite.flip_h
+	ghost.scale = sprite.global_scale
 	ghost.global_position = sprite.global_position
 	ghost.rotation = sprite.global_rotation
 	ghost.modulate = tint

@@ -2,6 +2,7 @@ class_name Player
 extends CharacterBody2D
 ## Top-down player: 8-direction movement, mouse-aimed melee attack, dodge with i-frames.
 ## Attack and dodge both cost stamina. All numbers scale through Stats.
+## Sizes, distances and speeds are in reference pixels and converted with GameScale.
 
 signal died
 
@@ -18,6 +19,16 @@ const DAMAGE_TAKEN_COLOR: Color = Color(1.0, 0.35, 0.3)
 const HURT_SHAKE: float = 6.0
 
 @export var stats: Stats
+
+@export_group("Size")
+## How wide the character looks on screen.
+@export var visual_size: float = 16.0
+@export var body_radius: float = 6.0
+## Distance from the player's center to the center of the sword hitbox.
+@export var attack_reach: float = 18.0
+@export var attack_size: Vector2 = Vector2(22, 28)
+## Radius of the light the player carries.
+@export var light_radius: float = 100.0
 
 @export_group("Movement")
 @export var base_move_speed: float = 110.0
@@ -67,6 +78,7 @@ var _flash_tween: Tween
 func _ready() -> void:
 	if stats == null:
 		stats = Stats.new()
+	_apply_sizes()
 	health.setup(stats.get_max_health())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
@@ -74,12 +86,29 @@ func _ready() -> void:
 	hitbox.deactivated.connect(slash_visual.hide)
 
 
+## Builds collision shapes, weapon placement and light size from the exported sizes.
+func _apply_sizes() -> void:
+	animator.fit_to(visual_size)
+	($CollisionShape2D.shape as CircleShape2D).radius = GameScale.world(body_radius)
+	($Hurtbox/CollisionShape2D.shape as CircleShape2D).radius = GameScale.world(body_radius + 1.0)
+	hitbox.position.x = GameScale.world(attack_reach)
+	($AttackPivot/Hitbox/CollisionShape2D.shape as RectangleShape2D).size = GameScale.world_vector(attack_size)
+	# The slash polygon and sword are drawn for an 18 px reach; scale them with the actual reach.
+	var reach_factor: float = GameScale.world(attack_reach) / 18.0
+	slash_visual.scale = Vector2(reach_factor, reach_factor)
+	var sword := $AttackPivot/WeaponPivot/Sword as Sprite2D
+	sword.position.x = GameScale.world(attack_reach * 0.6)
+	sword.scale = GameScale.fit_scale(sword.texture.get_size(), visual_size)
+	var light := $Torch as PointLight2D
+	light.texture_scale = GameScale.world(light_radius) * 2.0 / light.texture.get_width()
+
+
 func _physics_process(delta: float) -> void:
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
 	_attack_slow_left = maxf(_attack_slow_left - delta, 0.0)
 	_swing_left = maxf(_swing_left - delta, 0.0)
 	_dodge_cooldown_left = maxf(_dodge_cooldown_left - delta, 0.0)
-	_knockback = _knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
+	_knockback = _knockback.move_toward(Vector2.ZERO, GameScale.world(KNOCKBACK_DECAY) * delta)
 
 	match state:
 		State.NORMAL:
@@ -100,7 +129,7 @@ func _physics_normal() -> void:
 	if _swing_left <= 0.0:
 		_aim_at_mouse()
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var speed: float = base_move_speed * stats.get_move_speed_multiplier()
+	var speed: float = GameScale.world(base_move_speed) * stats.get_move_speed_multiplier()
 	if _attack_slow_left > 0.0:
 		speed *= attack_move_factor
 	velocity = input_dir * speed + _knockback
@@ -112,7 +141,7 @@ func _physics_normal() -> void:
 
 
 func _physics_dodge(delta: float) -> void:
-	velocity = _dodge_dir * dodge_speed + _knockback
+	velocity = _dodge_dir * GameScale.world(dodge_speed) + _knockback
 	_dodge_time_left -= delta
 	_ghost_left -= delta
 	if _ghost_left <= 0.0:
@@ -142,7 +171,7 @@ func _try_attack() -> void:
 		return
 	_aim_at_mouse()
 	hitbox.damage = base_attack_damage * stats.get_damage_multiplier()
-	hitbox.knockback_force = attack_knockback
+	hitbox.knockback_force = GameScale.world(attack_knockback)
 	hitbox.activate(ATTACK_ACTIVE_TIME)
 	_swing_left = ATTACK_ACTIVE_TIME
 	_swing_side = -_swing_side

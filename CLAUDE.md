@@ -36,6 +36,11 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   otherwise they silently stay null.
 - Typed resource arrays in `.tres`: `Array[ExtResource("<script id>")]([ExtResource(...), ...])`, with the element
   class script listed as an ext_resource. Write `.tres` files with the Write tool (PowerShell mangles UTF-8).
+- **Sizes go through `GameScale`** (scripts/core/game_scale.gd). Distances, speeds, radii and offsets in scripts and
+  `.tres` are "reference pixels" (a 16 px tile world) and are converted with `GameScale.world()`; grid math uses
+  `GameScale.TILE_SIZE`; sprites are fitted to a `visual_size` with `SpriteAnimator.fit_to()`. Never hardcode 16.
+  Verified: with `TILE_SIZE = 32` both test suites still pass. `TileAtlas.TILE_SIZE` is only the art sheet's tile size.
+- Resolution: 480 x 270 base, `canvas_items` stretch with **integer** scale (pixel perfect; 1440x810 window = 3x).
 - Physics layers are named in `project.godot`: 1 world, 2 player_body, 3 enemy_body, 4 player_hurtbox,
   5 enemy_hurtbox, 6 player_hitbox, 7 enemy_hitbox. A hitbox's mask lists the hurtbox layer it can damage.
 

@@ -83,7 +83,7 @@ func _check_scene() -> void:
 	var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
 	var activator := floor_level.get_node("EnemyActivator") as EnemyActivator
 
-	_check(player.global_position.distance_to((Vector2(layout.start_cell) + Vector2(0.5, 0.5)) * 16.0) < 1.0,
+	_check(player.global_position.distance_to((Vector2(layout.start_cell) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE) < 1.0,
 		"player starts in the start room")
 	_check(floor_level.get_node("Tiles").get_child_count() == 5, "one tinted tile layer per zone (start, 3 regions, boss)")
 	var enemies: int = get_tree().get_nodes_in_group("enemy").size()

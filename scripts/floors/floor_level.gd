@@ -43,7 +43,7 @@ func _ready() -> void:
 	_spawn_contents()
 	_player.global_position = _cell_center(layout.start_cell)
 	_player.get_node("Camera2D").reset_smoothing()
-	get_tree().call_group("game_camera", "set_room_limits", Rect2i(Vector2i.ZERO, layout.size * TileAtlas.TILE_SIZE))
+	get_tree().call_group("game_camera", "set_room_limits", Rect2i(Vector2i.ZERO, layout.size * GameScale.TILE_SIZE))
 	_exploration.setup(layout, _slot_colors(), _legend())
 	_exploration.update_player(_player.global_position)
 	_activator.refresh()
@@ -219,4 +219,4 @@ func _random_free_cell(room: FloorLayout.Room, margin: int) -> Vector2i:
 
 
 func _cell_center(cell: Vector2i) -> Vector2:
-	return (Vector2(cell) + Vector2(0.5, 0.5)) * TileAtlas.TILE_SIZE
+	return (Vector2(cell) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE

@@ -3,7 +3,8 @@ extends Node
 ## Performance: enemies far from the player are paused (no AI, no physics process).
 ## Checked a few times per second instead of every frame.
 
-@export var active_radius: float = 480.0
+## In tiles, so it keeps working if the tile size changes.
+@export var active_radius_tiles: float = 30.0
 @export var check_interval: float = 0.25
 
 var _time_left: float = 0.0
@@ -21,7 +22,8 @@ func refresh() -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if player == null:
 		return
-	var radius_squared: float = active_radius * active_radius
+	var radius: float = GameScale.tiles_to_pixels(active_radius_tiles)
+	var radius_squared: float = radius * radius
 	for enemy: Node2D in get_tree().get_nodes_in_group("enemy"):
 		var near: bool = enemy.global_position.distance_squared_to(player.global_position) <= radius_squared
 		var wanted: ProcessMode = Node.PROCESS_MODE_INHERIT if near else Node.PROCESS_MODE_DISABLED

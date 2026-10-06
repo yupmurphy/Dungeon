@@ -46,18 +46,24 @@ func _ready() -> void:
 	if data.stats == null:
 		data.stats = Stats.new()
 
-	var radius: float = data.body_radius
+	# Sizes come from the data in reference pixels (see GameScale).
+	var radius: float = GameScale.world(data.body_radius)
 	(body_shape.shape as CircleShape2D).radius = radius
-	(hurtbox_shape.shape as CircleShape2D).radius = radius + 1.0
+	(hurtbox_shape.shape as CircleShape2D).radius = radius + GameScale.world(1.0)
 	if data.sprite_frames != null:
 		sprite.sprite_frames = data.sprite_frames
 		sprite.play(&"idle")
+	animator.fit_to(data.visual_size)
 	sprite.modulate = data.sprite_tint
 	animator.art_faces_right = data.art_faces_right
 	_shader = sprite.material as ShaderMaterial
-	hitbox.position.x = radius + 9.0
+	var attack_size: Vector2 = GameScale.world_vector(data.attack_size)
+	(hitbox.get_node("CollisionShape2D").shape as RectangleShape2D).size = attack_size
+	hitbox.position.x = radius + attack_size.x / 2.0 - GameScale.world(1.0)
+	# The slash polygon is drawn for a 20 px wide attack.
+	slash_visual.scale = Vector2.ONE * attack_size.x / 20.0
 	hitbox.damage = data.attack_damage * data.stats.get_damage_multiplier()
-	hitbox.knockback_force = data.attack_knockback
+	hitbox.knockback_force = GameScale.world(data.attack_knockback)
 
 	health.setup(data.stats.get_max_health())
 	health.died.connect(_on_died)
@@ -67,7 +73,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	_knockback = _knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
+	_knockback = _knockback.move_toward(Vector2.ZERO, GameScale.world(KNOCKBACK_DECAY) * delta)
 	_flash_left = maxf(_flash_left - delta, 0.0)
 	_state_left -= delta
 
@@ -81,7 +87,7 @@ func _physics_process(delta: float) -> void:
 			if _state_left <= 0.0:
 				_begin_attack()
 		State.ATTACK:
-			move = _attack_dir * data.lunge_speed
+			move = _attack_dir * GameScale.world(data.lunge_speed)
 			if _state_left <= 0.0:
 				_set_state(State.RECOVER, data.recovery_time / data.stats.get_attack_speed_multiplier())
 		State.RECOVER:
@@ -112,7 +118,7 @@ func _find_target() -> Player:
 
 func _tick_idle() -> void:
 	_target = _find_target()
-	if _target != null and global_position.distance_to(_target.global_position) <= data.detect_range:
+	if _target != null and global_position.distance_to(_target.global_position) <= GameScale.world(data.detect_range):
 		_set_state(State.CHASE, 0.0)
 
 
@@ -123,16 +129,16 @@ func _tick_chase() -> Vector2:
 		return Vector2.ZERO
 	var to_target: Vector2 = _target.global_position - global_position
 	var distance: float = to_target.length()
-	if distance > data.lose_range:
+	if distance > GameScale.world(data.lose_range):
 		_target = null
 		_set_state(State.IDLE, 0.0)
 		return Vector2.ZERO
-	if distance <= data.attack_range:
+	if distance <= GameScale.world(data.attack_range):
 		# Direction is locked now, so a player who moves away can dodge the attack.
 		_attack_dir = to_target.normalized()
 		_set_state(State.WINDUP, data.windup_time)
 		return Vector2.ZERO
-	return to_target.normalized() * data.move_speed * data.stats.get_move_speed_multiplier()
+	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier()
 
 
 func _begin_attack() -> void:

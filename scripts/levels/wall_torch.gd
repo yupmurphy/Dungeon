@@ -3,6 +3,8 @@ extends Node2D
 
 @export var base_energy: float = 0.9
 @export var flicker_amount: float = 0.2
+## Reach of the light, in reference pixels (see GameScale).
+@export var light_radius: float = 64.0
 
 var _time: float = 0.0
 
@@ -10,6 +12,10 @@ var _time: float = 0.0
 
 
 func _ready() -> void:
+	var sprite := $Sprite2D as Sprite2D
+	sprite.scale = Vector2.ONE * GameScale.TILE_SIZE / TileAtlas.TILE_SIZE
+	_light.position.y = GameScale.world(10.0)
+	_light.texture_scale = GameScale.world(light_radius) * 2.0 / _light.texture.get_width()
 	# Different start phase so torches don't flicker in sync.
 	_time = randf() * 10.0
 

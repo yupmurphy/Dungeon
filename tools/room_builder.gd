@@ -40,17 +40,17 @@ func run(_options: Dictionary) -> void:
 
 func _build_tile_set() -> TileSet:
 	var tile_set := TileSet.new()
-	tile_set.tile_size = Vector2i(TileAtlas.TILE_SIZE, TileAtlas.TILE_SIZE)
+	tile_set.tile_size = Vector2i(GameScale.TILE_SIZE, GameScale.TILE_SIZE)
 	tile_set.add_physics_layer()
 	tile_set.set_physics_layer_collision_layer(0, 1)
 	tile_set.set_physics_layer_collision_mask(0, 0)
 
 	var source := TileSetAtlasSource.new()
 	source.texture = load(TileAtlas.TEXTURE_PATH)
-	source.texture_region_size = tile_set.tile_size
+	source.texture_region_size = Vector2i(TileAtlas.TILE_SIZE, TileAtlas.TILE_SIZE)
 	tile_set.add_source(source, 0)
 
-	var half: float = TileAtlas.TILE_SIZE / 2.0
+	var half: float = GameScale.TILE_SIZE / 2.0
 	var square := PackedVector2Array([
 		Vector2(-half, -half), Vector2(half, -half), Vector2(half, half), Vector2(-half, half)])
 	for index in TERRAIN_TILE_COUNT:

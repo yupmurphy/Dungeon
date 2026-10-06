@@ -21,6 +21,8 @@ extends Resource
 @export var body_color: Color = Color(0.45, 0.75, 0.35)
 ## Sprite is tinted toward this color during the attack wind-up (the visual warning).
 @export var windup_color: Color = Color(1.0, 0.15, 0.1)
+## Sizes below are in reference pixels (see GameScale). How wide the monster looks on screen:
+@export var visual_size: float = 16.0
 @export var body_radius: float = 6.0
 
 @export_group("Movement")
@@ -35,6 +37,8 @@ extends Resource
 @export var attack_active_time: float = 0.15
 @export var lunge_speed: float = 170.0
 @export var recovery_time: float = 0.8
+## Width (reach) x height of the attack hitbox.
+@export var attack_size: Vector2 = Vector2(20, 24)
 @export var attack_damage: float = 15.0
 @export var attack_knockback: float = 200.0
 
