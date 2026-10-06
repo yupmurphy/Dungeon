@@ -45,16 +45,25 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   5 enemy_hurtbox, 6 player_hitbox, 7 enemy_hitbox. A hitbox's mask lists the hurtbox layer it can damage.
 
 ## Dungeon floors
-- `FloorGenerator` (pure code, seeded) -> `FloorLayout` (grid + halls + regions). 480 x 480 tiles cut into 6 x 6
-  sectors, one big hall per sector (sizes in `FloorData`), near the sector center. Start on the map edge, boss arena
-  in the farthest sector with exactly one entrance, portal at the far end of the arena; 3 regions grow by random
-  flood fill (each contiguous). Corridors: random spanning tree + few extra links. Region "slots": 0 start,
-  1..N regions, N+1 boss. `FloorPopulator` (seeded) then plans every monster/prop/torch as `FloorLayout.Spawn`
-  data, grouped by 32 x 32 chunk; densities per 100 floor tiles live in `RegionData`.
+- **"Ecological" floor generator, being rebuilt in stages** (1 structure DONE, 2 Goblin Galleries caves with
+  themed halls, 3 swamp = the model zone, 4 forest + desert, 5 spawners/territories/day-night + F7).
+- `FloorGenerator` (pure code, seeded) -> `FloorLayout` (rock/floor grid + a zone slot per cell, no empty space).
+  480 x 480 tiles. The first CLOSED `RegionData` (Goblin Galleries) is the hub: a wobbly disc in the middle with the
+  start at its center, sealed by a rock ring. The OPEN regions (Forest, Swamp, Desert) are angular sectors around
+  it; order, sizes and rotation change with the seed, borders meander (noise) and are walkable (natural transitions).
+  One gate per open zone through the ring. Boss arena = walled ellipse at the outer edge of a random open zone,
+  one entrance facing the middle, portal at the far end. Map edge = rock band. Accessibility: tiny pockets filled,
+  others joined to the start by the cheapest dug tunnel (never through the hub ring, arena walls or map edge).
+  Slots: 0..N-1 = `FloorData.regions`, N = boss arena. Cells marked "protected" (gates, arena entrance) never get
+  props. `FloorPopulator` (seeded) plans every monster/prop/torch as `FloorLayout.Spawn` data, grouped by 32 x 32
+  chunk; densities per 100 floor tiles live in `RegionData`; torches only in closed zones.
+- Generator rules are checked on 10 seeds by `--floor-test` (zones contiguous, hub sealed except gates, single
+  arena entrance, everything reachable, zones blend, determinism, variety, speed).
 - **Chunk streaming:** `ChunkManager` paints tiles and creates nodes only for chunks within 2 of the player's chunk,
   clears chunks farther than 3, max 1 chunk load per frame (~3 ms each). Killed monsters (by spawn id) stay dead;
   living monsters left in unloaded chunks go back to data and respawn at their spawn point. Tile variation uses a
-  per-cell hash, not a sequential RNG, so load order doesn't matter.
+  per-cell hash, not a sequential RNG, so load order doesn't matter. Every cell is drawn (deep rock and plain floor
+  take a fast path without autotiling, ~6 ms per chunk).
 - `FloorLevel` (scenes/floors/floor.tscn, the main scene) creates one tinted TileMapLayer per slot and the portal.
   `ExplorationMap` = fog of war + minimap texture (line-of-sight reveal). `EnemyActivator` pauses monsters farther
   than 30 tiles. Dying enemies leave the "enemy" group so they are never paused mid fade-out.
@@ -91,9 +100,9 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . --import                       # re-import, register classes
     <godot> --headless --path . --quit-after 300               # run the game briefly, catch script errors
     <godot> --headless --path . -- --smoke-test                # combat checks (test room), exit code 0 = pass
-    <godot> --headless --path . -- --floor-test                # generator (40 seeds) + floor scene + debug keys
+    <godot> --headless --path . -- --floor-test                # generator (10 seeds) + floor scene + streaming + debug keys
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless
-            # floor modes: idle, map, overview / test room modes: fight, dodge, room
+            # floor modes: idle, map, overview, gate, arena, start / test room modes: fight, dodge, room
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
 
 The user runs the game from the editor's embedded Game tab: if keys do nothing, the Game tab toolbar is

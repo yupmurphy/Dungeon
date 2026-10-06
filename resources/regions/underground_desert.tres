@@ -9,6 +9,7 @@
 script = ExtResource("1_region")
 id = &"underground_desert"
 display_name = "Underground Desert"
+kind = 1
 tile_tint = Color(1, 0.74, 0.5, 1)
 map_color = Color(0.95, 0.68, 0.3, 1)
 monsters = Array[ExtResource("2_monster")]([ExtResource("3_spider"), ExtResource("4_bat")])

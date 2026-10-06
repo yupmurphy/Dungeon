@@ -110,11 +110,23 @@ func _load(chunk: Vector2i) -> void:
 	var started: int = Time.get_ticks_usec()
 	var rect: Rect2i = layout.chunk_rect(chunk)
 	var is_wall: Callable = layout.is_wall
+	var cells: PackedByteArray = layout.cells_raw()
+	var slots: PackedByteArray = layout.slots_raw()
+	var w: int = layout.size.x
+	var deep_rock: Vector2i = TileAtlas.coords(WallTiler.WALL_FILL)
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
-			if layout.is_rendered(x, y):
+			var cell := Vector2i(x, y)
+			var layer: TileMapLayer = _layers[slots[y * w + x]]
+			if _is_deep_rock(cells, w, x, y):
+				# Fast path: rock with rock all around needs no autotiling.
+				layer.set_cell(cell, 0, deep_rock)
+			elif cells[y * w + x] == 1 and y > 0 and cells[(y - 1) * w + x] == 1:
+				# Fast path: floor with floor above it can't be under a wall face.
+				layer.set_cell(cell, 0, TileAtlas.coords(WallTiler.floor_tile(_cell_roll(x, y))))
+			else:
 				var index: int = WallTiler.tile_for(is_wall, x, y, _cell_roll(x, y))
-				_layers[layout.slot_at(x, y)].set_cell(Vector2i(x, y), 0, TileAtlas.coords(index))
+				layer.set_cell(cell, 0, TileAtlas.coords(index))
 
 	var nodes: Array[Node] = []
 	for spawn_id: int in layout.spawns_by_chunk.get(chunk, []):
@@ -142,10 +154,11 @@ func _load(chunk: Vector2i) -> void:
 
 func _unload(chunk: Vector2i) -> void:
 	var rect: Rect2i = layout.chunk_rect(chunk)
+	var slots: PackedByteArray = layout.slots_raw()
+	var w: int = layout.size.x
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
-			if layout.is_rendered(x, y):
-				_layers[layout.slot_at(x, y)].erase_cell(Vector2i(x, y))
+			_layers[slots[y * w + x]].erase_cell(Vector2i(x, y))
 	for node: Node in _loaded[chunk]:
 		if is_instance_valid(node):
 			node.queue_free()
@@ -180,6 +193,17 @@ func _despawn_stray_monsters() -> void:
 func _on_monster_died(_enemy: Enemy, spawn_id: int) -> void:
 	_dead[spawn_id] = true
 	_alive.erase(spawn_id)
+
+
+## True if the cell and everything WallTiler looks at around it (x-1..x+1, y-1..y+2) is rock.
+func _is_deep_rock(cells: PackedByteArray, w: int, x: int, y: int) -> bool:
+	if x < 1 or y < 1 or x >= w - 1 or y >= layout.size.y - 2:
+		return false
+	for dy in range(-1, 3):
+		var row: int = (y + dy) * w + x
+		if cells[row - 1] == 1 or cells[row] == 1 or cells[row + 1] == 1:
+			return false
+	return true
 
 
 ## Stable pseudo-random number in [0, 1) per cell, so tiles look the same in whatever order chunks load.

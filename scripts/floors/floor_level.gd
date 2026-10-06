@@ -48,9 +48,24 @@ func _ready() -> void:
 	_exploration.update_player(_player.global_position)
 	_activator.refresh()
 	_hud.setup_floor(floor_data.display_name, current_seed)
-	print("%s: seed %d, %dx%d tiles, generated in %d ms, first chunks in %d ms, %d monsters planned" % [
+	print("%s: seed %d, %dx%d tiles, generated in %d ms, first chunks in %d ms, %d monsters planned, %s" % [
 		floor_data.display_name, current_seed, layout.size.x, layout.size.y, generated - started,
-		Time.get_ticks_msec() - generated, layout.count_spawns(FloorLayout.SpawnKind.MONSTER)])
+		Time.get_ticks_msec() - generated, layout.count_spawns(FloorLayout.SpawnKind.MONSTER), describe()])
+
+
+## One line about the zone arrangement, e.g. for comparing seeds.
+func describe() -> String:
+	var around: Array[String] = []
+	for gate in layout.gates:
+		var direction: Vector2 = Vector2(gate.cell - layout.center)
+		around.append("%s %s" % [floor_data.regions[gate.slot].display_name, _compass(direction)])
+	return "around the galleries: %s; boss in %s (%s)" % [", ".join(around),
+		floor_data.regions[layout.boss_zone].display_name, _compass(Vector2(layout.boss_center - layout.center))]
+
+
+static func _compass(direction: Vector2) -> String:
+	const NAMES: Array[String] = ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]
+	return NAMES[posmod(roundi(direction.angle() / (TAU / 8.0)), 8)]
 
 
 func _physics_process(_delta: float) -> void:
@@ -105,24 +120,16 @@ func _create_layers() -> Array[TileMapLayer]:
 	return layers
 
 
-# --- Slots: 0 = start, 1..N = regions, N + 1 = boss arena ---
-
-func _region(slot: int) -> RegionData:
-	if slot >= 1 and slot <= floor_data.regions.size():
-		return floor_data.regions[slot - 1]
-	return null
-
+# --- Slots: 0..N-1 = FloorData.regions, N = boss arena ---
 
 func _slot_name(slot: int) -> String:
-	if slot == FloorLayout.START_SLOT:
-		return floor_data.start_name
 	if slot == layout.boss_slot:
 		return floor_data.boss_area_name
-	return _region(slot).display_name
+	return floor_data.regions[slot].display_name
 
 
 func _slot_tints() -> Array[Color]:
-	var tints: Array[Color] = [floor_data.start_tile_tint]
+	var tints: Array[Color] = []
 	for region in floor_data.regions:
 		tints.append(region.tile_tint)
 	tints.append(floor_data.boss_tile_tint)
@@ -130,7 +137,7 @@ func _slot_tints() -> Array[Color]:
 
 
 func _slot_colors() -> Array[Color]:
-	var colors: Array[Color] = [floor_data.start_map_color]
+	var colors: Array[Color] = []
 	for region in floor_data.regions:
 		colors.append(region.map_color)
 	colors.append(floor_data.boss_map_color)

@@ -2,7 +2,8 @@ extends Node
 ## Debug tool: saves one rendered frame, optionally with a staged situation.
 ## Run (NOT headless, it needs a GPU):
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
-## Modes on the dungeon floor: idle, map (whole map revealed, big map open), overview.
+## Modes on the dungeon floor: idle, map (whole map revealed, big map open), overview,
+## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
 ## Modes in the combat test room: fight, dodge, room.
 
 const SETTLE_FRAMES: int = 40
@@ -59,14 +60,15 @@ func run(options: Dictionary) -> void:
 				fog.visible = false
 			for i in 5:
 				await get_tree().process_frame
-		"hall":
-			# Biggest regular hall, zoomed out, without darkness: checks halls, pillars and decoration.
-			var floor_level := room as FloorLevel
-			var biggest: FloorLayout.Room = null
-			for hall in floor_level.layout.rooms:
-				if hall.kind == FloorLayout.RoomKind.NORMAL and (biggest == null or hall.area() > biggest.area()):
-					biggest = hall
-			player.global_position = (Vector2(biggest.center()) + Vector2(0.5, 3.5)) * GameScale.TILE_SIZE
+		"gate", "arena", "start":
+			# Zoomed out, without darkness: a gate of the closed zone, the boss arena entrance or the start.
+			var floor_layout: FloorLayout = (room as FloorLevel).layout
+			var target: Vector2i = floor_layout.start_cell
+			if mode == "gate":
+				target = floor_layout.gates[0].cell
+			elif mode == "arena":
+				target = floor_layout.boss_entrance
+			player.global_position = (Vector2(target) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
 			var camera := player.get_node("Camera2D") as Camera2D
 			camera.zoom = Vector2(0.5, 0.5)
 			camera.position_smoothing_enabled = false

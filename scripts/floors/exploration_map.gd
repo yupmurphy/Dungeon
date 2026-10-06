@@ -8,8 +8,10 @@ extends Node2D
 signal revealed
 
 const REVEAL_RADIUS: int = 9
-const WALL_MAP_COLOR: Color = Color(0.3, 0.28, 0.34)
+const ROCK_DARKEN: float = 0.72
 const PORTAL_MAP_COLOR: Color = Color(0.8, 0.4, 1.0)
+## Gates of the closed zone and the boss arena entrance.
+const GATE_MAP_COLOR: Color = Color(1.0, 0.95, 0.55)
 
 var layout: FloorLayout
 var map_texture: ImageTexture
@@ -120,14 +122,17 @@ func _mark(x: int, y: int) -> void:
 	_explored[index] = 1
 	_dirty = true
 	_fog_image.set_pixel(x, y, Color.TRANSPARENT)
+	var zone_color: Color = _slot_colors[layout.slot_at(x, y)]
 	if layout.is_floor(x, y):
 		_explored_floor += 1
-		var color: Color = _slot_colors[layout.slot_at(x, y)]
 		if Vector2i(x, y).distance_to(layout.portal_cell) <= 1.0:
-			color = PORTAL_MAP_COLOR
-		_map_image.set_pixel(x, y, color)
-	elif layout.is_rendered(x, y):
-		_map_image.set_pixel(x, y, WALL_MAP_COLOR)
+			zone_color = PORTAL_MAP_COLOR
+		elif layout.is_protected(x, y):
+			zone_color = GATE_MAP_COLOR
+		_map_image.set_pixel(x, y, zone_color)
+	else:
+		# Rock keeps a dark shade of its zone's color, so the zones read clearly on the map.
+		_map_image.set_pixel(x, y, zone_color.darkened(ROCK_DARKEN))
 
 
 func _commit() -> void:

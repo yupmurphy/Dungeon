@@ -3,11 +3,12 @@
 [ext_resource type="Script" path="res://scripts/resources/floor_data.gd" id="1_floor"]
 [ext_resource type="Script" path="res://scripts/resources/region_data.gd" id="2_region"]
 [ext_resource type="Resource" path="res://resources/regions/goblin_galleries.tres" id="3_galleries"]
-[ext_resource type="Resource" path="res://resources/regions/swamp.tres" id="4_swamp"]
-[ext_resource type="Resource" path="res://resources/regions/underground_desert.tres" id="5_desert"]
+[ext_resource type="Resource" path="res://resources/regions/forest.tres" id="4_forest"]
+[ext_resource type="Resource" path="res://resources/regions/swamp.tres" id="5_swamp"]
+[ext_resource type="Resource" path="res://resources/regions/underground_desert.tres" id="6_desert"]
 
 [resource]
 script = ExtResource("1_floor")
 floor_number = 1
 display_name = "Floor 1"
-regions = Array[ExtResource("2_region")]([ExtResource("3_galleries"), ExtResource("4_swamp"), ExtResource("5_desert")])
+regions = Array[ExtResource("2_region")]([ExtResource("3_galleries"), ExtResource("4_forest"), ExtResource("5_swamp"), ExtResource("6_desert")])

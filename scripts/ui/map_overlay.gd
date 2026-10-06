@@ -49,6 +49,9 @@ func _draw() -> void:
 		y += 15.0
 	draw_rect(Rect2(x, y - 7.0, 8.0, 8.0), ExplorationMap.PORTAL_MAP_COLOR)
 	draw_string(font, Vector2(x + 13.0, y), "Portal", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
+	y += 15.0
+	draw_rect(Rect2(x, y - 7.0, 8.0, 8.0), ExplorationMap.GATE_MAP_COLOR)
+	draw_string(font, Vector2(x + 13.0, y), "Gates", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 	y += 24.0
 	var explored: String = "Explored: %d%%" % roundi(exploration.explored_ratio() * 100.0)
 	draw_string(font, Vector2(x, y), explored, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)

@@ -3,7 +3,7 @@ extends Node
 ## Run:  <godot.exe> --headless --path . -- --floor-test     (exit code 0 = all passed)
 
 const FLOOR_DATA: FloorData = preload("res://resources/floors/floor_1.tres")
-const SEED_COUNT: int = 12
+const SEED_COUNT: int = 10
 
 var _failures: int = 0
 
@@ -15,74 +15,153 @@ func run(_options: Dictionary) -> void:
 	get_tree().quit(0 if _failures == 0 else 1)
 
 
+const GENERATOR_CHECKS: Array[String] = [
+	"map has the size from FloorData",
+	"every tile belongs to a zone (no empty space)",
+	"map edge is rock",
+	"start is floor, in the middle of the closed zone",
+	"every floor tile reachable from start",
+	"each zone is one connected block",
+	"one gate per open zone, each leads into its zone",
+	"closed zone is sealed except at its gates",
+	"open zones blend into each other (walkable borders)",
+	"portal is floor, inside the boss arena",
+	"boss arena has exactly one entrance",
+	"boss arena is at the outer edge of an open zone",
+	"same seed gives the same map",
+]
+
+
 func _check_generator() -> void:
 	print("--- generator (%d seeds)" % SEED_COUNT)
 	var problems: Dictionary = {}
 	var arrangements: Dictionary = {}
 	var total_ms: int = 0
-	var smallest_floor: int = 1 << 30
+	var smallest_share: float = 1.0
 	for seed_value in range(1, SEED_COUNT + 1):
 		var started: int = Time.get_ticks_msec()
 		var layout: FloorLayout = FloorGenerator.generate(FLOOR_DATA, seed_value)
 		total_ms += Time.get_ticks_msec() - started
-		smallest_floor = mini(smallest_floor, layout.floor_cell_count())
-
-		if layout.size != FLOOR_DATA.map_size:
-			problems["map has the size from FloorData"] = seed_value
-		if not layout.is_floor(layout.start_cell.x, layout.start_cell.y):
-			problems["start cell is floor"] = seed_value
-		if not layout.is_floor(layout.portal_cell.x, layout.portal_cell.y):
-			problems["portal cell is floor"] = seed_value
-		if not layout.boss_room.rect.has_point(layout.portal_cell):
-			problems["portal is inside the boss arena"] = seed_value
-		if _unreachable_floor(layout) > 0:
-			problems["every floor tile reachable from start"] = seed_value
-		var boss_links: int = 0
-		for link in layout.connections:
-			if link.has(layout.boss_sector):
-				boss_links += 1
-		if boss_links != 1:
-			problems["boss arena has exactly one entrance"] = seed_value
-		var start_sector: Vector2i = layout.sector_of(layout.start_cell)
-		var sector_distance: int = absi(start_sector.x - layout.boss_sector.x) + absi(start_sector.y - layout.boss_sector.y)
-		if sector_distance < 3:
-			problems["boss arena far from start"] = seed_value
-		for slot in range(1, layout.region_count + 1):
-			if not _region_contiguous(layout, slot):
-				problems["each region is one connected block"] = seed_value
+		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
+		for label in _generator_problems(layout):
+			if not problems.has(label):
+				problems[label] = seed_value
 		if FloorGenerator.generate(FLOOR_DATA, seed_value).fingerprint() != layout.fingerprint():
 			problems["same seed gives the same map"] = seed_value
+		arrangements[_arrangement(layout)] = true
 
-		var arrangement: Array = []
-		for sector in layout.all_sectors():
-			arrangement.append(layout.sector_slot(sector))
-		arrangements[str(arrangement)] = true
-
-	for label in ["map has the size from FloorData", "start cell is floor", "portal cell is floor",
-			"portal is inside the boss arena", "every floor tile reachable from start",
-			"boss arena has exactly one entrance", "boss arena far from start",
-			"each region is one connected block", "same seed gives the same map"]:
+	for label in GENERATOR_CHECKS:
 		_check(not problems.has(label), label + ("" if not problems.has(label) else " (seed %d)" % problems[label]))
-	_check(arrangements.size() >= SEED_COUNT * 0.8,
-		"regions land in different places (%d different layouts of %d)" % [arrangements.size(), SEED_COUNT])
-	_check(smallest_floor > 30000, "floors are big (smallest: %d floor tiles)" % smallest_floor)
+	_check(arrangements.size() >= SEED_COUNT * 0.6,
+		"zone order, rotation and boss zone change with the seed (%d different of %d)" % [arrangements.size(), SEED_COUNT])
+	_check(smallest_share > 0.4, "most of the map is walkable (smallest: %.0f%% floor)" % (smallest_share * 100.0))
 	var average: float = float(total_ms) / SEED_COUNT
 	_check(average < 3000.0, "generation is fast enough (%.0f ms average for %dx%d)" % [
 		average, FLOOR_DATA.map_size.x, FLOOR_DATA.map_size.y])
 	var sample: FloorLayout = FloorGenerator.generate(FLOOR_DATA, 1)
 	var monsters: int = sample.count_spawns(FloorLayout.SpawnKind.MONSTER)
 	var props: int = sample.count_spawns(FloorLayout.SpawnKind.PROP)
+	var torches: int = sample.count_spawns(FloorLayout.SpawnKind.TORCH)
 	_check(monsters >= 150, "floor holds many monsters (%d planned)" % monsters)
-	_check(props >= 300, "floor holds lots of decoration (%d props, %d torches)" % [
-		props, sample.count_spawns(FloorLayout.SpawnKind.TORCH)])
-	var hall_areas: Array = []
-	for room in sample.rooms:
-		if room.kind == FloorLayout.RoomKind.NORMAL:
-			hall_areas.append(room.area())
-	hall_areas.sort()
-	_check(hall_areas[hall_areas.size() >> 1] >= 900, "halls are big (median %d floor tiles)" % hall_areas[hall_areas.size() >> 1])
-	_check(sample.connections.size() <= sample.all_sectors().size() + 6,
-		"few corridors (%d for %d halls)" % [sample.connections.size(), sample.rooms.size()])
+	_check(props >= 300 and torches > 0, "floor holds lots of decoration (%d props, %d torches)" % [props, torches])
+
+
+## Labels (from GENERATOR_CHECKS) of every structural rule this layout breaks.
+func _generator_problems(layout: FloorLayout) -> Array[String]:
+	var problems: Array[String] = []
+	var w: int = layout.size.x
+	var h: int = layout.size.y
+	if layout.size != FLOOR_DATA.map_size:
+		problems.append("map has the size from FloorData")
+	var counts: PackedInt32Array = layout.slot_cell_counts()
+	var assigned: int = 0
+	for count in counts:
+		assigned += count
+	if assigned != w * h or counts.has(0):
+		problems.append("every tile belongs to a zone (no empty space)")
+	var edge_floor: bool = false
+	for y in h:
+		for x in w:
+			if mini(mini(x, y), mini(w - 1 - x, h - 1 - y)) < FLOOR_DATA.border_min and layout.is_floor(x, y):
+				edge_floor = true
+	if edge_floor:
+		problems.append("map edge is rock")
+	var start: Vector2i = layout.start_cell
+	if not layout.is_floor(start.x, start.y) or layout.slot_at(start.x, start.y) != layout.hub_slot \
+			or Vector2(start).distance_to(Vector2(layout.center)) > 2.0:
+		problems.append("start is floor, in the middle of the closed zone")
+	if _unreachable_floor(layout) > 0:
+		problems.append("every floor tile reachable from start")
+	for slot in layout.slot_count:
+		if not _zone_contiguous(layout, slot):
+			problems.append("each zone is one connected block")
+
+	var open_slots: Array[int] = []
+	for slot in FLOOR_DATA.regions.size():
+		if FLOOR_DATA.regions[slot].kind == RegionData.Kind.OPEN:
+			open_slots.append(slot)
+	var gate_slots: Array[int] = []
+	for gate in layout.gates:
+		gate_slots.append(gate.slot)
+		if not layout.is_floor(gate.cell.x, gate.cell.y) or not layout.is_floor(gate.outside.x, gate.outside.y) \
+				or layout.slot_at(gate.outside.x, gate.outside.y) != gate.slot:
+			problems.append("one gate per open zone, each leads into its zone")
+	gate_slots.sort()
+	if gate_slots != open_slots:
+		problems.append("one gate per open zone, each leads into its zone")
+
+	# Floor contacts between different zones.
+	var leaks: int = 0
+	var contacts: Dictionary = {}
+	var boss_exits: Array[Vector2i] = []
+	for y in h:
+		for x in w - 1:
+			for other: Vector2i in [Vector2i(x + 1, y), Vector2i(x, y + 1)]:
+				if not layout.is_floor(x, y) or not layout.is_floor(other.x, other.y):
+					continue
+				var a: int = layout.slot_at(x, y)
+				var b: int = layout.slot_at(other.x, other.y)
+				if a == b:
+					continue
+				var key: Vector2i = Vector2i(mini(a, b), maxi(a, b))
+				contacts[key] = contacts.get(key, 0) + 1
+				var cell := Vector2i(x, y)
+				if a == layout.hub_slot or b == layout.hub_slot:
+					var near_gate: bool = layout.gates.any(func(g: FloorLayout.Gate) -> bool:
+						return Vector2(g.cell).distance_to(Vector2(cell)) <= FLOOR_DATA.hub_ring + FLOOR_DATA.gate_width)
+					if not near_gate:
+						leaks += 1
+				if a == layout.boss_slot or b == layout.boss_slot:
+					boss_exits.append(cell)
+	if leaks > 0:
+		problems.append("closed zone is sealed except at its gates")
+	for i in open_slots.size():
+		for j in range(i + 1, open_slots.size()):
+			if contacts.get(Vector2i(open_slots[i], open_slots[j]), 0) < 20:
+				problems.append("open zones blend into each other (walkable borders)")
+
+	var portal: Vector2i = layout.portal_cell
+	if not layout.is_floor(portal.x, portal.y) or layout.slot_at(portal.x, portal.y) != layout.boss_slot:
+		problems.append("portal is floor, inside the boss arena")
+	var single_entrance: bool = not boss_exits.is_empty() and boss_exits.all(func(cell: Vector2i) -> bool:
+		return Vector2(cell).distance_to(Vector2(layout.boss_entrance)) <= FLOOR_DATA.boss_arena_wall + 4)
+	if not single_entrance:
+		problems.append("boss arena has exactly one entrance")
+	var half: float = minf(w, h) / 2.0
+	if Vector2(layout.boss_center).distance_to(Vector2(layout.center)) < half * 0.6 \
+			or not contacts.has(Vector2i(mini(layout.boss_zone, layout.boss_slot), maxi(layout.boss_zone, layout.boss_slot))):
+		problems.append("boss arena is at the outer edge of an open zone")
+	return problems
+
+
+## Zone order around the hub (starting from the east), plus the boss zone: should change with the seed.
+func _arrangement(layout: FloorLayout) -> String:
+	var gates: Array[FloorLayout.Gate] = layout.gates.duplicate()
+	gates.sort_custom(func(a: FloorLayout.Gate, b: FloorLayout.Gate) -> bool:
+		return fposmod(Vector2(a.cell - layout.center).angle(), TAU) < fposmod(Vector2(b.cell - layout.center).angle(), TAU))
+	var order: Array = gates.map(func(g: FloorLayout.Gate) -> int: return g.slot)
+	var first_angle: int = roundi(fposmod(Vector2(gates[0].cell - layout.center).angle(), TAU) / (TAU / 8.0))
+	return "%s/%d/%d" % [order, first_angle, layout.boss_zone]
 
 
 func _check_scene() -> void:
@@ -100,7 +179,8 @@ func _check_scene() -> void:
 
 	_check(player.global_position.distance_to((Vector2(layout.start_cell) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE) < 1.0,
 		"player starts in the start room")
-	_check(floor_level.get_node("Tiles").get_child_count() == 5, "one tinted tile layer per zone (start, 3 regions, boss)")
+	_check(floor_level.get_node("Tiles").get_child_count() == layout.slot_count,
+		"one tinted tile layer per zone (%d zones + boss arena)" % layout.region_count)
 	var chunks: ChunkManager = floor_level.chunks
 	var enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
 	var stream_reach: float = (chunks.unload_radius + 1) * layout.chunk_size * GameScale.TILE_SIZE
@@ -239,22 +319,28 @@ func _unreachable_floor(layout: FloorLayout) -> int:
 	return layout.floor_cell_count() - seen.size()
 
 
-func _region_contiguous(layout: FloorLayout, slot: int) -> bool:
-	var sectors: Array[Vector2i] = []
-	for sector in layout.all_sectors():
-		if layout.sector_slot(sector) == slot:
-			sectors.append(sector)
-	if sectors.is_empty():
+## All cells (floor and rock) of a zone form one 4-connected block.
+func _zone_contiguous(layout: FloorLayout, slot: int) -> bool:
+	var slots: PackedByteArray = layout.slots_raw()
+	var w: int = layout.size.x
+	var first: int = slots.find(slot)
+	if first < 0:
 		return false
-	var seen: Dictionary = {sectors[0]: true}
-	var queue: Array[Vector2i] = [sectors[0]]
-	while not queue.is_empty():
-		var sector: Vector2i = queue.pop_back()
-		for neighbor in layout.sector_neighbors(sector):
-			if not seen.has(neighbor) and layout.sector_slot(neighbor) == slot:
-				seen[neighbor] = true
-				queue.append(neighbor)
-	return seen.size() == sectors.size()
+	var seen := PackedByteArray()
+	seen.resize(slots.size())
+	seen[first] = 1
+	var stack := PackedInt32Array([first])
+	var found: int = 1
+	while not stack.is_empty():
+		var i: int = stack[stack.size() - 1]
+		stack.remove_at(stack.size() - 1)
+		var x: int = i % w
+		for j: int in [i - 1 if x > 0 else -1, i + 1 if x < w - 1 else -1, i - w, i + w]:
+			if j >= 0 and j < slots.size() and seen[j] == 0 and slots[j] == slot:
+				seen[j] = 1
+				found += 1
+				stack.append(j)
+	return found == slots.count(slot)
 
 
 func _check(condition: bool, label: String) -> void:
