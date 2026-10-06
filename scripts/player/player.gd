@@ -129,7 +129,9 @@ func _physics_normal() -> void:
 	if _swing_left <= 0.0:
 		_aim_at_mouse()
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var speed: float = GameScale.world(base_move_speed) * stats.get_move_speed_multiplier()
+	# Shallow water, reeds, quicksand... slow you down.
+	var speed: float = GameScale.world(base_move_speed) * stats.get_move_speed_multiplier() \
+		* FloorLayout.speed_factor_at(global_position)
 	if _attack_slow_left > 0.0:
 		speed *= attack_move_factor
 	velocity = input_dir * speed + _knockback

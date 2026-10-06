@@ -138,7 +138,8 @@ func _tick_chase() -> Vector2:
 		_attack_dir = to_target.normalized()
 		_set_state(State.WINDUP, data.windup_time)
 		return Vector2.ZERO
-	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier()
+	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
+		* FloorLayout.speed_factor_at(global_position)
 
 
 func _begin_attack() -> void:

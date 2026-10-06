@@ -25,16 +25,17 @@ const RING: Array[Vector2i] = [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1
 	Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0)]
 
 
-static func populate(layout: FloorLayout, data: FloorData) -> void:
+## Monsters everywhere; torches and the generic dungeon props (barrels, chests...) in closed zones only
+## (open zones get their own decoration from their ZoneBuilder). `used` holds cells already taken.
+static func populate(layout: FloorLayout, data: FloorData, used: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = layout.seed_value * 7919 + 13
 	var floors: Array[PackedInt32Array] = _floor_cells_by_slot(layout)
-	var used: Dictionary = {}
 	for slot in data.regions.size():
 		var region: RegionData = data.regions[slot]
 		if region.kind == RegionData.Kind.CLOSED:
 			_add_torches(layout, data, slot, floors[slot], rng)
-		_add_props(layout, region, slot, floors[slot], used, rng)
+			_add_props(layout, region, slot, floors[slot], used, rng)
 		_add_monsters(layout, data, region, slot, floors[slot], used, rng)
 
 
@@ -58,7 +59,7 @@ static func _add_torches(layout: FloorLayout, data: FloorData, slot: int, floors
 		var x: int = i % w
 		@warning_ignore("integer_division")
 		var y: int = i / w
-		if x % data.torch_spacing != 0 or not WallTiler.is_face(layout.is_wall, x, y - 1):
+		if x % data.torch_spacing != 0 or not WallTiler.is_face(layout.is_rock, x, y - 1):
 			continue
 		if rng.randf() >= TORCH_CHANCE:
 			continue
@@ -79,7 +80,8 @@ static func _add_monsters(layout: FloorLayout, data: FloorData, region: RegionDa
 		for attempt in 20:
 			var cell: Vector2i = _cell_of(layout, floors[rng.randi() % floors.size()])
 			if used.has(cell) or layout.is_protected(cell.x, cell.y) \
-					or Vector2(cell).distance_to(Vector2(layout.start_cell)) < safe:
+					or Vector2(cell).distance_to(Vector2(layout.start_cell)) < safe \
+					or Terrain.speed_factor(layout.terrain_at(cell.x, cell.y)) < 0.8:
 				continue
 			used[cell] = true
 			var spawn := FloorLayout.Spawn.new()

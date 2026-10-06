@@ -20,7 +20,11 @@ var layout: FloorLayout
 var load_time_total_usec: int = 0
 var loads_done: int = 0
 
+const NATURE_SOURCE: int = FloorTiles.NATURE_SOURCE
+
+## One tinted layer per zone for rock and cave floor (dungeon tiles); one untinted layer for nature.
 var _layers: Array[TileMapLayer] = []
+var _nature: TileMapLayer
 var _world: Node2D
 var _slot_tints: Array[Color] = []
 var _player_chunk: Vector2i = Vector2i(-99999, -99999)
@@ -33,10 +37,11 @@ var _alive: Dictionary = {}
 var _dead: Dictionary = {}
 
 
-func setup(new_layout: FloorLayout, layers: Array[TileMapLayer], world: Node2D,
+func setup(new_layout: FloorLayout, layers: Array[TileMapLayer], nature: TileMapLayer, world: Node2D,
 		slot_tints: Array[Color], player_position: Vector2) -> void:
 	layout = new_layout
 	_layers = layers
+	_nature = nature
 	_world = world
 	_slot_tints = slot_tints
 	update_player(player_position)
@@ -109,24 +114,32 @@ func _load(chunk: Vector2i) -> void:
 		return
 	var started: int = Time.get_ticks_usec()
 	var rect: Rect2i = layout.chunk_rect(chunk)
-	var is_wall: Callable = layout.is_wall
-	var cells: PackedByteArray = layout.cells_raw()
+	var is_rock: Callable = layout.is_rock
+	var terrain: PackedByteArray = layout.terrain_raw()
 	var slots: PackedByteArray = layout.slots_raw()
 	var w: int = layout.size.x
 	var deep_rock: Vector2i = TileAtlas.coords(WallTiler.WALL_FILL)
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var cell := Vector2i(x, y)
-			var layer: TileMapLayer = _layers[slots[y * w + x]]
-			if _is_deep_rock(cells, w, x, y):
-				# Fast path: rock with rock all around needs no autotiling.
-				layer.set_cell(cell, 0, deep_rock)
-			elif cells[y * w + x] == 1 and y > 0 and cells[(y - 1) * w + x] == 1:
-				# Fast path: floor with floor above it can't be under a wall face.
-				layer.set_cell(cell, 0, TileAtlas.coords(WallTiler.floor_tile(_cell_roll(x, y))))
+			var i: int = y * w + x
+			var type: int = terrain[i]
+			if type == Terrain.Type.ROCK:
+				# Rock: dungeon walls, tinted per zone (sandstone in the desert...).
+				var layer: TileMapLayer = _layers[slots[i]]
+				if _is_deep_rock(terrain, w, x, y):
+					layer.set_cell(cell, 0, deep_rock)  # fast path, no autotiling needed
+				else:
+					layer.set_cell(cell, 0, TileAtlas.coords(WallTiler.tile_for(is_rock, x, y, _cell_roll(x, y))))
+			elif type == Terrain.Type.CAVE:
+				var index: int = WallTiler.floor_tile(_cell_roll(x, y))
+				if y > 0 and terrain[i - w] == Terrain.Type.ROCK and WallTiler.is_face(is_rock, x, y - 1):
+					index = WallTiler.FLOOR_UNDER_WALL
+				_layers[slots[i]].set_cell(cell, 0, TileAtlas.coords(index))
 			else:
-				var index: int = WallTiler.tile_for(is_wall, x, y, _cell_roll(x, y))
-				layer.set_cell(cell, 0, TileAtlas.coords(index))
+				# Nature ground from the procedural atlas, not tinted.
+				var tile: int = Terrain.art_tile(type, _cell_roll(x, y))
+				_nature.set_cell(cell, NATURE_SOURCE, NatureArt.atlas_coords(tile))
 
 	var nodes: Array[Node] = []
 	for spawn_id: int in layout.spawns_by_chunk.get(chunk, []):
@@ -137,9 +150,15 @@ func _load(chunk: Vector2i) -> void:
 			FloorLayout.SpawnKind.PROP:
 				var prop: Prop = PROP_SCENE.instantiate()
 				prop.tile_index = spawn.tile_index
+				prop.art = spawn.art
 				prop.solid = spawn.solid
-				prop.modulate = _slot_tints[spawn.slot]
-				prop.position = _cell_center(spawn.cell)
+				var footprint := Vector2i.ONE
+				if spawn.art.is_empty():
+					prop.modulate = _slot_tints[spawn.slot]
+				else:
+					footprint = NatureArt.prop_info(spawn.art)["footprint"]
+				# Centered on its footprint (big props cover several tiles from their top-left cell).
+				prop.position = (Vector2(spawn.cell) + Vector2(footprint) / 2.0) * GameScale.TILE_SIZE
 				_world.add_child(prop)
 				nodes.append(prop)
 			FloorLayout.SpawnKind.TORCH:
@@ -159,6 +178,7 @@ func _unload(chunk: Vector2i) -> void:
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			_layers[slots[y * w + x]].erase_cell(Vector2i(x, y))
+			_nature.erase_cell(Vector2i(x, y))
 	for node: Node in _loaded[chunk]:
 		if is_instance_valid(node):
 			node.queue_free()
@@ -196,12 +216,13 @@ func _on_monster_died(_enemy: Enemy, spawn_id: int) -> void:
 
 
 ## True if the cell and everything WallTiler looks at around it (x-1..x+1, y-1..y+2) is rock.
-func _is_deep_rock(cells: PackedByteArray, w: int, x: int, y: int) -> bool:
+func _is_deep_rock(terrain: PackedByteArray, w: int, x: int, y: int) -> bool:
 	if x < 1 or y < 1 or x >= w - 1 or y >= layout.size.y - 2:
 		return false
+	const ROCK: int = Terrain.Type.ROCK
 	for dy in range(-1, 3):
 		var row: int = (y + dy) * w + x
-		if cells[row - 1] == 1 or cells[row] == 1 or cells[row + 1] == 1:
+		if terrain[row - 1] != ROCK or terrain[row] != ROCK or terrain[row + 1] != ROCK:
 			return false
 	return true
 

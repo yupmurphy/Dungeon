@@ -16,8 +16,17 @@ class Spawn:
 	var cell: Vector2i
 	var slot: int
 	var monster: MonsterData
+	## Prop art: a Tiny Dungeon tile (tile_index) or, if `art` is set, a NatureArt prop.
 	var tile_index: int
+	var art: String = ""
 	var solid: bool
+
+
+## A notable place: camp, mine, nest, oasis, bridge... (shown on the elements map, used by spawners later).
+class Feature:
+	var kind: StringName
+	var cell: Vector2i
+	var slot: int
 
 
 ## A passage through the rock ring around the closed zone, leading into one open zone.
@@ -47,12 +56,18 @@ var boss_zone: int
 ## Slot of the closed zone in the middle (the start zone).
 var hub_slot: int
 var gates: Array[Gate] = []
+var features: Array[Feature] = []
 var spawns: Array[Spawn] = []
 ## Vector2i chunk -> Array of spawn indices.
 var spawns_by_chunk: Dictionary = {}
 
-## 1 = floor, 0 = rock.
+## The floor the player is on, for gameplay code that asks about the ground (e.g. slowing terrain).
+static var active: FloorLayout
+
+## 1 = walkable, 0 = blocked. Always matches Terrain.walkable(_terrain) except under solid big props.
 var _cells: PackedByteArray
+## Terrain.Type per cell.
+var _terrain: PackedByteArray
 var _slots: PackedByteArray
 ## 1 = must stay as it is (gate passages, arena entrance): no props, no digging.
 var _protected: PackedByteArray
@@ -68,6 +83,8 @@ func setup(map_size: Vector2i, new_seed: int, regions: int) -> void:
 	var cells: int = size.x * size.y
 	_cells.resize(cells)
 	_cells.fill(0)
+	_terrain.resize(cells)
+	_terrain.fill(Terrain.Type.ROCK)
 	_slots.resize(cells)
 	_slots.fill(255)
 	_protected.resize(cells)
@@ -101,6 +118,57 @@ func set_floor(x: int, y: int, value: bool) -> void:
 	if in_bounds(x, y):
 		_cells[y * size.x + x] = 1 if value else 0
 		_floor_count = -1
+
+
+func terrain_at(x: int, y: int) -> int:
+	if not in_bounds(x, y):
+		return Terrain.Type.ROCK
+	return _terrain[y * size.x + x]
+
+
+## Sets the ground type; walkability follows the terrain table.
+func paint(x: int, y: int, type: int) -> void:
+	if in_bounds(x, y):
+		var i: int = y * size.x + x
+		_terrain[i] = type
+		_cells[i] = 1 if Terrain.walkable(type) else 0
+		_floor_count = -1
+
+
+## Rock (or outside the map): what WallTiler draws as walls.
+func is_rock(x: int, y: int) -> bool:
+	return terrain_at(x, y) == Terrain.Type.ROCK
+
+
+func blocks_sight(x: int, y: int) -> bool:
+	if not in_bounds(x, y):
+		return true
+	return Terrain.blocks_sight(_terrain[y * size.x + x]) or _cells[y * size.x + x] == 0 \
+		and _terrain[y * size.x + x] != Terrain.Type.WATER_DEEP
+
+
+## Movement multiplier of the ground at a world position (1.0 off the map or without an active floor).
+static func speed_factor_at(world_position: Vector2) -> float:
+	if active == null:
+		return 1.0
+	var cell := Vector2i((world_position / GameScale.TILE_SIZE).floor())
+	return Terrain.speed_factor(active.terrain_at(cell.x, cell.y))
+
+
+func add_feature(kind: StringName, cell: Vector2i, slot: int) -> void:
+	var feature := Feature.new()
+	feature.kind = kind
+	feature.cell = cell
+	feature.slot = slot
+	features.append(feature)
+
+
+func count_features(kind: StringName) -> int:
+	var count: int = 0
+	for feature in features:
+		if feature.kind == kind:
+			count += 1
+	return count
 
 
 ## The whole map is drawn: rock is part of its zone, there is no empty space.
@@ -156,6 +224,10 @@ func set_cells_raw(cells: PackedByteArray) -> void:
 	_floor_count = -1
 
 
+func terrain_raw() -> PackedByteArray:
+	return _terrain
+
+
 func slots_raw() -> PackedByteArray:
 	return _slots
 
@@ -197,4 +269,4 @@ func count_spawns(kind: int) -> int:
 
 ## Same seed must give the same map; this fingerprint makes that easy to check.
 func fingerprint() -> int:
-	return hash([_cells, _slots, portal_cell, start_cell, spawns.size()])
+	return hash([_cells, _terrain, _slots, portal_cell, start_cell, spawns.size(), features.size()])

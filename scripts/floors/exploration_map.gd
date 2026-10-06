@@ -103,7 +103,7 @@ func _has_line_of_sight(a: Vector2i, b: Vector2i) -> bool:
 	var error: int = dx + dy
 	var cell: Vector2i = a
 	while cell != b:
-		if cell != a and layout.is_wall(cell.x, cell.y):
+		if cell != a and layout.blocks_sight(cell.x, cell.y):
 			return false
 		var doubled: int = 2 * error
 		if doubled >= dy:

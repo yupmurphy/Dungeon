@@ -59,6 +59,22 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   Slots: 0..N-1 = `FloorData.regions`, N = boss arena. Cells marked "protected" (gates, arena entrance) never get
   props. `FloorPopulator` (seeded) plans every monster/prop/torch as `FloorLayout.Spawn` data, grouped by 32 x 32
   chunk; densities per 100 floor tiles live in `RegionData`; torches only in closed zones.
+- **Terrain / ecology (stage 2 of the rebuild).** Every cell has a `Terrain.Type` (scripts/floors/terrain.gd: walkable,
+  speed factor, blocks sight, map color, art tile). Each region has a `biome` and a `ZoneBuilder`
+  (scripts/floors/zones/): `GalleriesBuilder` (cave chambers + winding tunnels, camp / mine / chieftain halls),
+  `ForestBuilder` (river with bridges and fords, dense woods vs clearings, old trees, spider nests with webs),
+  `SwampBuilder` (lakes to puddles, deep vs shallow water, reeds, mud islands, dead trees, fog),
+  `DesertBuilder` (dunes, big mesas, quicksand patches, oasis with palms, giant bones). Builder phases:
+  plan -> paint (per cell; near borders the neighbor zone's builder may paint, so zones blend) -> shape ->
+  accessibility (cheapest passage: trees 1 < deep water 2 < rock 3; each zone decides what a passage looks
+  like) -> decorate (props; solid props must not cut a path). Notable places are `FloorLayout.features`
+  (camp, mine, nests, bridges, oasis, bones... used by the elements map and future spawners).
+  `FloorLayout.speed_factor_at()` slows player and monsters (shallow water, reeds, quicksand, webs).
+- Art for nature is procedural placeholder pixel art (`NatureArt`: one tile atlas + prop textures), added to
+  the floor TileSet as source 1 by `FloorTiles`; trees and deep water collide. Rock and cave floor still use
+  the Kenney tiles (tinted per zone); nature tiles go on an untinted "Nature" layer. `Prop` shows either a
+  Kenney tile (`tile_index`) or a NatureArt prop (`art`, multi-tile footprint, optional light).
+- `-- --terrain-map=<folder> --seeds=<first>:<n>` saves terrain pictures (headless) to eyeball generation.
 - Generator rules are checked on 10 seeds by `--floor-test` (zones contiguous, hub sealed except gates, single
   arena entrance, everything reachable, zones blend, determinism, variety, speed).
 - **Chunk streaming:** `ChunkManager` paints tiles and creates nodes only for chunks within 2 of the player's chunk,

@@ -6,23 +6,20 @@ extends RefCounted
 ##    closed by a rock ring. The OPEN regions share the rest as angular sectors around it; their order,
 ##    sizes and rotation change with the seed, and the borders between them meander (noise), so open
 ##    zones blend into each other without walls. Every cell belongs to a zone, there is no empty space.
-## 2. Terrain. The hub becomes organic caves (cellular automata). Open zones are open ground with
-##    clumps of rock (noise). The map's edge is a band of rock.
-## 3. Gates. One passage through the hub's ring per open zone, in the middle of that zone's sector.
-## 4. Boss arena. An enclosed ellipse at the outer edge of a random open zone, one entrance facing the
-##    middle of the map, the portal at the far (outer) end.
-## 5. Accessibility. Tiny pockets are filled; every other cave/pocket is joined to the start by digging
-##    the cheapest tunnel through rock (never through the hub ring, the arena walls or the map edge).
-## Then FloorPopulator decides what spawns where.
+## 2. Boss arena (planned first, so zones are cleaned up around it): an enclosed ellipse at the outer
+##    edge of a random open zone, one entrance facing the middle, the portal at the far end.
+## 3. Gates: 2-3 passages through the hub's ring into every open zone.
+## 4. Terrain. Every zone has its own builder (scripts/floors/zones/): caves and themed halls for the
+##    galleries, river and woods for the forest, lakes for the swamp, dunes and an oasis for the desert.
+##    Near zone borders the builders mix (a cell may be painted by the neighbor's builder), so the
+##    landscape changes gradually. The map's edge is a band of rock.
+## 5. Accessibility. Tiny pockets are filled; every other pocket is joined to the start by the cheapest
+##    passage (cutting trees < wading water < digging rock), never through the hub ring, the arena walls
+##    or the map edge. Each zone decides what a passage looks like (tunnel, ford, cleared path).
+## 6. Decoration: zone builders place their props and notable places, FloorPopulator the monsters.
 
-const CAVE_FILL: float = 0.45
-const CAVE_STEPS: int = 5
-const START_CAVE_RADIUS: float = 8.0
-## Floor pockets smaller than this become rock instead of getting a tunnel.
+## Floor pockets smaller than this are filled instead of getting a passage.
 const MIN_POCKET: int = 30
-const OPEN_ROCK_FREQUENCY: float = 0.03
-## Open ground is rock where the noise is above this (0..1).
-const OPEN_ROCK_THRESHOLD: float = 0.7
 const WOBBLE_FREQUENCY: float = 0.006
 const BORDER_FREQUENCY: float = 0.04
 ## How many angles the hub edge is sampled at.
@@ -45,8 +42,9 @@ const ZONE_BLOCK: int = 4
 const STRIP_PASSES: int = 6
 ## Max rounds of merging zone islands on the block grid.
 const ISLAND_ROUNDS: int = 4
-## Tunnels may be dug this far outside the hub ring and around the arena.
-const DIG_MARGIN: int = 40
+## Zone borders: a cell may be painted by the builder of the zone this far away (tiles), so zones blend.
+const BLEND_REACH: float = 9.0
+const BLEND_FREQUENCY: float = 0.07
 
 
 static func generate(data: FloorData, seed_value: int) -> FloorLayout:
@@ -65,6 +63,7 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 			hub_slot = slot
 	assert(hub_slot >= 0 and not open_slots.is_empty(), "A floor needs one CLOSED and at least one OPEN region")
 	layout.hub_slot = hub_slot
+	layout.start_cell = layout.center
 
 	var sectors: Array[Dictionary] = _plan_sectors(data, open_slots, rng)
 	var hub_edge: PackedFloat32Array = _hub_edge(data, layout, seed_value)
@@ -77,20 +76,44 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	var arena: Dictionary = _plan_boss_arena(data, layout, sectors, rng)
 	var near_walls := PackedByteArray()
 	var strip: PackedInt32Array = _assign_zones(data, layout, sectors, hub_edge, no_dig, seed_value, arena, near_walls)
-	_carve_boss_arena(data, layout, arena, no_dig)
-	_fix_strip(layout, no_dig, strip, near_walls)
+	_mark_boss_arena(data, layout, arena, no_dig)
+	_fix_strip(layout, strip, near_walls)
+	var gate_plan: Array[Dictionary] = []
+	for sector in sectors:
+		for angle in _gate_angles(data, layout, sector, hub_edge, rng):
+			gate_plan.append({"slot": sector["slot"], "angle": angle})
+	clock = _lap("zones", clock)
+
+	var builders: Array[ZoneBuilder] = []
+	for slot in data.regions.size():
+		var builder: ZoneBuilder = ZoneBuilder.create(data.regions[slot].biome)
+		var sector: Dictionary = {}
+		for s in sectors:
+			if s["slot"] == slot:
+				sector = s
+		builder.setup(layout, data, slot, seed_value, hub_edge, sector, gate_plan, arena)
+		builders.append(builder)
+	for builder in builders:
+		builder.plan()
+	clock = _lap("plan", clock)
+	_paint(data, layout, builders, no_dig, seed_value)
+	clock = _lap("paint", clock)
+
+	for gate in gate_plan:
+		_carve_gate(data, layout, builders, gate["slot"], gate["angle"], hub_edge)
+	_carve_boss_arena(data, layout, builders, arena)
 	var clearing: Vector2i = arena["clearing"]
 	layout.boss_zone = layout.slot_at(clearing.x, clearing.y)
-	clock = _lap("zones+arena", clock)
-	_carve_caves(data, layout, hub_edge, rng)
-	clock = _lap("caves", clock)
-	_carve_gates(data, layout, sectors, hub_edge, rng)
-	clock = _lap("gates", clock)
-	layout.start_cell = layout.center
-	_connect_everything(data, layout, no_dig, hub_edge)
+	for builder in builders:
+		builder.shape()
+	clock = _lap("gates+arena+shape", clock)
+	_connect_everything(layout, builders, no_dig)
 	clock = _lap("connect", clock)
-	FloorPopulator.populate(layout, data)
-	_lap("populate", clock)
+	var used: Dictionary = {}
+	for builder in builders:
+		builder.decorate(used)
+	FloorPopulator.populate(layout, data, used)
+	_lap("decorate", clock)
 	return layout
 
 
@@ -142,12 +165,14 @@ static func _hub_edge(data: FloorData, layout: FloorLayout, seed_value: int) -> 
 
 
 ## Interpolated between samples, so the ring has no notches.
-static func _hub_radius(hub_edge: PackedFloat32Array, angle: float) -> float:
+static func hub_radius(hub_edge: PackedFloat32Array, angle: float) -> float:
 	var position: float = fposmod(angle / TAU, 1.0) * HUB_EDGE_SAMPLES
 	var i: int = int(position) % HUB_EDGE_SAMPLES
 	return lerpf(hub_edge[i], hub_edge[(i + 1) % HUB_EDGE_SAMPLES], position - floorf(position))
 
 
+## Zone slot of every cell. The hub ring and the map-edge band are marked in `no_dig`.
+## Returns the "strip": open-zone cells in blocks touching the hub or the arena (checked by _fix_strip).
 @warning_ignore("integer_division")
 static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[Dictionary],
 		hub_edge: PackedFloat32Array, no_dig: PackedByteArray, seed_value: int, arena: Dictionary,
@@ -157,11 +182,8 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 	var bw: int = ceili(float(w) / ZONE_BLOCK)
 	var open_slots: PackedByteArray = _open_zone_blocks(data, layout, sectors, hub_edge, seed_value, arena,
 		near_walls)
-	var rocks: PackedByteArray = _noise_bytes(seed_value + 2, OPEN_ROCK_FREQUENCY, w, h)
-	var border: PackedByteArray = _noise_bytes(seed_value + 3, BORDER_FREQUENCY, w, h)
-	var cells: PackedByteArray = layout.cells_raw()
+	var border: PackedByteArray = noise_bytes(seed_value + 3, BORDER_FREQUENCY, w, h)
 	var slots: PackedByteArray = layout.slots_raw()
-	var rock_limit: int = roundi(OPEN_ROCK_THRESHOLD * 255.0)
 	var cx: float = layout.center.x + 0.5
 	var cy: float = layout.center.y + 0.5
 	var hub_min: float = Array(hub_edge).min()
@@ -171,7 +193,6 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 	var surely_outside: float = (hub_max + data.hub_ring) * (hub_max + data.hub_ring)
 	var border_reach: int = data.border_max
 	var hub_slot: int = layout.hub_slot
-	# Open-zone cells in blocks that touch the hub or the arena; their zone is checked cell by cell later.
 	var strip := PackedInt32Array()
 
 	for y in h:
@@ -186,7 +207,7 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 				continue
 			if distance_squared < surely_outside:
 				var distance: float = sqrt(distance_squared)
-				var hub_r: float = _hub_radius(hub_edge, atan2(dy, dx))
+				var hub_r: float = hub_radius(hub_edge, atan2(dy, dx))
 				if distance < hub_r + data.hub_ring:
 					slots[i] = hub_slot
 					if distance >= hub_r - 1.0:
@@ -199,21 +220,16 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 			var edge_distance: int = mini(mini(x, y), mini(w - 1 - x, h - 1 - y))
 			if edge_distance < border_reach and edge_distance < lerpf(data.border_min, data.border_max, border[i] / 255.0):
 				no_dig[i] = 1
-			elif rocks[i] < rock_limit:
-				cells[i] = 1
-	layout.set_cells_raw(cells)
 	return strip
 
 
 ## Blocks away from the hub and the arena are already clean (islands merged on the block grid, and whole
 ## blocks always connect to each other). Only the strip of cells in blocks that touch the hub ring or the
 ## arena can hold pieces cut off from their zone. Each strip piece must touch a clean cell of its own zone;
-## otherwise it joins the zone next to it (or, with no open zone next to it, becomes rock of the hub or
-## arena it touches). Repeated until nothing changes.
+## otherwise it joins the zone next to it (or, with no open zone next to it, the hub or arena it touches).
+## Repeated until nothing changes.
 @warning_ignore("integer_division")
-static func _fix_strip(layout: FloorLayout, no_dig: PackedByteArray, strip: PackedInt32Array,
-		near_walls: PackedByteArray) -> void:
-	var cells: PackedByteArray = layout.cells_raw()
+static func _fix_strip(layout: FloorLayout, strip: PackedInt32Array, near_walls: PackedByteArray) -> void:
 	var slots: PackedByteArray = layout.slots_raw()
 	var w: int = layout.size.x
 	var bw: int = ceili(float(w) / ZONE_BLOCK)
@@ -228,9 +244,8 @@ static func _fix_strip(layout: FloorLayout, no_dig: PackedByteArray, strip: Pack
 			if piece[first] >= 0 or slots[first] == hub_slot or slots[first] == boss_slot:
 				continue
 			var slot: int = slots[first]
-			var id: int = first
 			var members := PackedInt32Array([first])
-			piece[first] = id
+			piece[first] = first
 			var anchored: bool = false
 			var neighbor_slots: Dictionary = {}
 			var fixed_neighbor: int = hub_slot
@@ -249,7 +264,7 @@ static func _fix_strip(layout: FloorLayout, no_dig: PackedByteArray, strip: Pack
 						if clean:
 							anchored = true
 						elif piece[j] < 0:
-							piece[j] = id
+							piece[j] = first
 							members.append(j)
 					else:
 						neighbor_slots[slots[j]] = neighbor_slots.get(slots[j], 0) + 1
@@ -264,12 +279,8 @@ static func _fix_strip(layout: FloorLayout, no_dig: PackedByteArray, strip: Pack
 					best_count = neighbor_slots[other]
 			for i in members:
 				slots[i] = best
-				if best == hub_slot or best == boss_slot:
-					cells[i] = 0
-					no_dig[i] = 1
 		if not changed:
 			break
-	layout.set_cells_raw(cells)
 
 
 ## Open zone per ZONE_BLOCK x ZONE_BLOCK block: wobbled angle -> sector. Blocks are cheap to compute and
@@ -278,7 +289,7 @@ static func _open_zone_blocks(data: FloorData, layout: FloorLayout, sectors: Arr
 		hub_edge: PackedFloat32Array, seed_value: int, arena: Dictionary, near_walls: PackedByteArray) -> PackedByteArray:
 	var bw: int = ceili(float(layout.size.x) / ZONE_BLOCK)
 	var bh: int = ceili(float(layout.size.y) / ZONE_BLOCK)
-	var wobble: PackedByteArray = _noise_bytes(seed_value + 1, WOBBLE_FREQUENCY * ZONE_BLOCK, bw, bh)
+	var wobble: PackedByteArray = noise_bytes(seed_value + 1, WOBBLE_FREQUENCY * ZONE_BLOCK, bw, bh)
 	var ends := PackedFloat32Array()
 	var sector_slots := PackedByteArray()
 	for sector in sectors:
@@ -301,7 +312,7 @@ static func _open_zone_blocks(data: FloorData, layout: FloorLayout, sectors: Arr
 			var middle: Vector2 = (Vector2(bx, by) + Vector2(0.5, 0.5)) * ZONE_BLOCK
 			var offset: Vector2 = middle - center
 			var angle: float = offset.angle()
-			var near_hub: bool = offset.length() < _hub_radius(hub_edge, angle) + touch_margin
+			var near_hub: bool = offset.length() < hub_radius(hub_edge, angle) + touch_margin
 			var near_arena: bool = ((middle - arena_center) / arena_reach).length_squared() <= 1.0
 			near_walls[b] = 1 if near_hub or near_arena else 0
 			var bent: float = angle + (wobble[b] / 127.5 - 1.0) * data.open_zone_wobble
@@ -373,10 +384,12 @@ static func _neighbors(i: int, w: int, total: int) -> PackedInt32Array:
 		i - w, i + w if i + w < total else -1])
 
 
-## FastNoiseLite as a byte per cell (0..255 for -1..1); much faster than sampling cell by cell.
-static func _noise_bytes(noise_seed: int, frequency: float, w: int, h: int) -> PackedByteArray:
+## FastNoiseLite as a byte per cell (0..255, normalized over the image); much faster than sampling
+## cell by cell.
+static func noise_bytes(noise_seed: int, frequency: float, w: int, h: int,
+		type: FastNoiseLite.NoiseType = FastNoiseLite.TYPE_SIMPLEX_SMOOTH) -> PackedByteArray:
 	var noise := FastNoiseLite.new()
-	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.noise_type = type
 	noise.seed = noise_seed
 	noise.frequency = frequency
 	var image: Image = noise.get_image(w, h, false, false, true)
@@ -384,54 +397,52 @@ static func _noise_bytes(noise_seed: int, frequency: float, w: int, h: int) -> P
 	return image.get_data()
 
 
-# --- 2. Hub caves ---
+# --- 2. Terrain ---
 
-static func _carve_caves(data: FloorData, layout: FloorLayout, hub_edge: PackedFloat32Array,
-		rng: RandomNumberGenerator) -> void:
+## Every cell gets its ground from a zone builder. Near zone borders the builder is the one of the zone at
+## a slightly shifted position (smooth noise), so forest thins into swamp, swamp into desert, and so on.
+## The hub and the arena never blend (they are walled), the map-edge band is rock.
+@warning_ignore("integer_division")
+static func _paint(data: FloorData, layout: FloorLayout, builders: Array[ZoneBuilder], no_dig: PackedByteArray,
+		seed_value: int) -> void:
 	var w: int = layout.size.x
+	var h: int = layout.size.y
+	var slots: PackedByteArray = layout.slots_raw()
+	var terrain: PackedByteArray = layout.terrain_raw()
 	var cells: PackedByteArray = layout.cells_raw()
-	var center := Vector2(layout.center) + Vector2(0.5, 0.5)
-	var reach: int = 0
-	for radius in hub_edge:
-		reach = maxi(reach, ceili(radius) + 2)
-	var area := Rect2i(layout.center - Vector2i(reach, reach), Vector2i(reach, reach) * 2).intersection(
-		Rect2i(Vector2i(1, 1), layout.size - Vector2i(2, 2)))
-
-	# Cells inside the hub (not the ring) start as random rock/floor.
-	var inside := PackedByteArray()
-	inside.resize(cells.size())
-	inside.fill(0)
-	for y in range(area.position.y, area.end.y):
-		for x in range(area.position.x, area.end.x):
-			var offset := Vector2(x + 0.5, y + 0.5) - center
-			if offset.length() < _hub_radius(hub_edge, offset.angle()) - 1.0:
-				var i: int = y * w + x
-				inside[i] = 1
-				cells[i] = 1 if rng.randf() >= CAVE_FILL else 0
-
-	# Smooth: a cell becomes rock with 5+ rock neighbors, floor with 3 or fewer.
-	for step in CAVE_STEPS:
-		var next: PackedByteArray = cells.duplicate()
-		for y in range(area.position.y, area.end.y):
-			for x in range(area.position.x, area.end.x):
-				var i: int = y * w + x
-				if inside[i] == 0:
-					continue
-				var floors: int = cells[i - w - 1] + cells[i - w] + cells[i - w + 1] + cells[i - 1] \
-					+ cells[i + 1] + cells[i + w - 1] + cells[i + w] + cells[i + w + 1]
-				if floors <= 3:
-					next[i] = 0
-				elif floors >= 5:
-					next[i] = 1
-		cells = next
-
-	# A guaranteed open cave around the start.
-	_carve_disc(layout, cells, center, START_CAVE_RADIUS)
+	var shift_x: PackedByteArray = noise_bytes(seed_value + 11, BLEND_FREQUENCY, w, h)
+	var shift_y: PackedByteArray = noise_bytes(seed_value + 12, BLEND_FREQUENCY, w, h)
+	var hub_slot: int = layout.hub_slot
+	var boss_slot: int = layout.boss_slot
+	var walkable := PackedByteArray()
+	for type in Terrain.Type.size():
+		walkable.append(1 if Terrain.walkable(type) else 0)
+	for y in h:
+		for x in w:
+			var i: int = y * w + x
+			var slot: int = slots[i]
+			if slot == boss_slot:
+				continue
+			var type: int = Terrain.Type.ROCK
+			if no_dig[i] == 1 and slot != hub_slot:
+				type = Terrain.Type.ROCK  # map edge
+			elif slot == hub_slot:
+				type = builders[slot].paint(x, y, i)
+			else:
+				var sx: int = clampi(x + int((shift_x[i] / 255.0 - 0.5) * 2.0 * BLEND_REACH), 0, w - 1)
+				var sy: int = clampi(y + int((shift_y[i] / 255.0 - 0.5) * 2.0 * BLEND_REACH), 0, h - 1)
+				var painter: int = slots[sy * w + sx]
+				if painter == hub_slot or painter == boss_slot:
+					painter = slot
+				type = builders[painter].paint(x, y, i)
+			terrain[i] = type
+			cells[i] = walkable[type]
 	layout.set_cells_raw(cells)
 
 
-static func _carve_disc(layout: FloorLayout, cells: PackedByteArray, at: Vector2, radius: float,
-		protect: bool = false) -> void:
+## Paints a disc of terrain (walkability follows the terrain). `protect` keeps props and digging away.
+static func paint_disc(layout: FloorLayout, at: Vector2, radius: float, type: int, protect: bool = false,
+		only_slot: int = -1) -> void:
 	var r: int = ceili(radius)
 	var base := Vector2i(at.floor())
 	for dy in range(-r, r + 1):
@@ -439,21 +450,14 @@ static func _carve_disc(layout: FloorLayout, cells: PackedByteArray, at: Vector2
 			var cell: Vector2i = base + Vector2i(dx, dy)
 			if not layout.in_bounds(cell.x, cell.y) or (Vector2(cell) + Vector2(0.5, 0.5)).distance_to(at) > radius:
 				continue
-			cells[cell.y * layout.size.x + cell.x] = 1
+			if only_slot >= 0 and layout.slot_at(cell.x, cell.y) != only_slot:
+				continue
+			layout.paint(cell.x, cell.y, type)
 			if protect:
 				layout.protect(cell.x, cell.y)
 
 
 # --- 3. Gates ---
-
-static func _carve_gates(data: FloorData, layout: FloorLayout, sectors: Array[Dictionary],
-		hub_edge: PackedFloat32Array, rng: RandomNumberGenerator) -> void:
-	var cells: PackedByteArray = layout.cells_raw()
-	for sector in sectors:
-		for angle in _gate_angles(data, layout, sector, hub_edge, rng):
-			_carve_gate(data, layout, cells, sector["slot"], angle, hub_edge)
-	layout.set_cells_raw(cells)
-
 
 ## 2-3 angles (FloorData.gates_per_zone) spread over the part of the hub's edge that really faces the zone
 ## (the zone borders meander, so the sector's nominal angles are not enough), at least gate_spacing apart.
@@ -467,7 +471,7 @@ static func _gate_angles(data: FloorData, layout: FloorLayout, sector: Dictionar
 	var run_from: float = -1.0
 	var angle: float = sector["from"]
 	while angle <= sector["to"] + GATE_SCAN_STEP:
-		var outer: float = _hub_radius(hub_edge, angle) + data.hub_ring
+		var outer: float = hub_radius(hub_edge, angle) + data.hub_ring
 		var ok: bool = angle <= sector["to"]
 		for depth: float in [CLEARING_RADIUS, GATE_ZONE_CHECK_DEPTH]:
 			var probe := Vector2i((center + Vector2.from_angle(angle) * (outer + depth)).floor())
@@ -480,7 +484,7 @@ static func _gate_angles(data: FloorData, layout: FloorLayout, sector: Dictionar
 				best_from = run_from
 			run_from = -1.0
 		angle += GATE_SCAN_STEP
-	var radius: float = _hub_radius(hub_edge, best_from + best_span / 2.0)
+	var radius: float = hub_radius(hub_edge, best_from + best_span / 2.0)
 	var count: int = rng.randi_range(data.gates_per_zone.x, data.gates_per_zone.y)
 	# Fewer gates if the shared edge is too short to keep them apart.
 	# (Neighbors end up at least 0.8 slice apart because of the jitter below.)
@@ -493,24 +497,29 @@ static func _gate_angles(data: FloorData, layout: FloorLayout, sector: Dictionar
 	return angles
 
 
-static func _carve_gate(data: FloorData, layout: FloorLayout, cells: PackedByteArray, slot: int,
+static func _carve_gate(data: FloorData, layout: FloorLayout, builders: Array[ZoneBuilder], slot: int,
 		angle: float, hub_edge: PackedFloat32Array) -> void:
 	var center := Vector2(layout.center) + Vector2(0.5, 0.5)
 	var direction := Vector2.from_angle(angle)
-	var hub_r: float = _hub_radius(hub_edge, angle)
+	var hub_r: float = hub_radius(hub_edge, angle)
 	var outer: float = hub_r + data.hub_ring
 	var distance: float = hub_r - GATE_INNER_DEPTH
+	var ground: int = builders[slot].ground()
 	while distance <= outer + 2.0:
-		# Protected from the ring on, so no prop or tunnel ever blocks the passage.
-		_carve_disc(layout, cells, center + direction * distance, data.gate_width / 2.0, distance >= hub_r - 3.0)
+		var at: Vector2 = center + direction * distance
+		# Cave floor inside the ring, the zone's own ground outside. Protected from the ring on, so no prop
+		# or passage ever blocks it.
+		var type: int = Terrain.Type.CAVE if distance < outer else ground
+		paint_disc(layout, at, data.gate_width / 2.0, type, distance >= hub_r - 3.0)
 		distance += 1.0
 	var outside: Vector2 = center + direction * (outer + CLEARING_RADIUS)
-	_carve_disc(layout, cells, outside, CLEARING_RADIUS)
+	paint_disc(layout, outside, CLEARING_RADIUS, ground)
 	var gate := FloorLayout.Gate.new()
 	gate.cell = Vector2i((center + direction * (hub_r + data.hub_ring / 2.0)).floor())
 	gate.outside = Vector2i(outside.floor())
 	gate.slot = slot
 	layout.gates.append(gate)
+	layout.add_feature(&"gate", gate.cell, slot)
 
 
 # --- 4. Boss arena ---
@@ -534,15 +543,11 @@ static func _plan_boss_arena(data: FloorData, layout: FloorLayout, sectors: Arra
 	return {"center": arena_center, "direction": direction}
 
 
-static func _carve_boss_arena(data: FloorData, layout: FloorLayout, arena: Dictionary,
-		no_dig: PackedByteArray) -> void:
+## The arena's cells (walls included) belong to the boss slot; its walls are never dug.
+static func _mark_boss_arena(data: FloorData, layout: FloorLayout, arena: Dictionary, no_dig: PackedByteArray) -> void:
 	var arena_center: Vector2 = arena["center"]
-	var direction: Vector2 = arena["direction"]
 	var radii := Vector2(data.boss_arena_radii)
-	var wall: float = data.boss_arena_wall
-	var outer_radii: Vector2 = radii + Vector2(wall, wall)
-
-	var cells: PackedByteArray = layout.cells_raw()
+	var outer_radii: Vector2 = radii + Vector2(data.boss_arena_wall, data.boss_arena_wall)
 	var slots: PackedByteArray = layout.slots_raw()
 	var w: int = layout.size.x
 	var box := Rect2i(Vector2i((arena_center - outer_radii).floor()), Vector2i((outer_radii * 2.0).ceil()) + Vector2i.ONE)
@@ -554,63 +559,87 @@ static func _carve_boss_arena(data: FloorData, layout: FloorLayout, arena: Dicti
 				continue
 			var i: int = y * w + x
 			slots[i] = layout.boss_slot
-			if (offset / radii).length_squared() <= 1.0:
-				cells[i] = 1
-			else:
-				cells[i] = 0
+			if (offset / radii).length_squared() > 1.0:
 				no_dig[i] = 1
+
+
+static func _carve_boss_arena(data: FloorData, layout: FloorLayout, builders: Array[ZoneBuilder],
+		arena: Dictionary) -> void:
+	var arena_center: Vector2 = arena["center"]
+	var direction: Vector2 = arena["direction"]
+	var radii := Vector2(data.boss_arena_radii)
+	var wall: float = data.boss_arena_wall
+	var outer_radii: Vector2 = radii + Vector2(wall, wall)
+	var box: Rect2i = layout.boss_rect
+	for y in range(box.position.y, box.end.y):
+		for x in range(box.position.x, box.end.x):
+			if layout.slot_at(x, y) != layout.boss_slot:
+				continue
+			var offset := Vector2(x + 0.5, y + 0.5) - arena_center
+			layout.paint(x, y, Terrain.Type.CAVE if (offset / radii).length_squared() <= 1.0 else Terrain.Type.ROCK)
 
 	# One entrance, facing the middle of the map; the portal at the opposite (outer) end.
 	var inward: Vector2 = -direction
 	var inner_reach: float = 1.0 / (inward / radii).length()
 	var outer_reach: float = 1.0 / (inward / outer_radii).length()
+	var clearing: Vector2 = arena_center + inward * (outer_reach + CLEARING_RADIUS)
+	var zone: int = layout.slot_at(int(clearing.x), int(clearing.y))
+	var ground: int = builders[zone].ground() if zone < builders.size() else Terrain.Type.CAVE
 	var distance: float = inner_reach - 2.0
 	while distance <= outer_reach + 1.0:
 		var at: Vector2 = arena_center + inward * distance
 		for side in range(-ENTRANCE_HALF_WIDTH, ENTRANCE_HALF_WIDTH + 1):
 			var cell := Vector2i((at + inward.orthogonal() * side).floor())
 			if layout.in_bounds(cell.x, cell.y):
-				cells[cell.y * w + cell.x] = 1
+				var inside: bool = layout.slot_at(cell.x, cell.y) == layout.boss_slot
+				layout.paint(cell.x, cell.y, Terrain.Type.CAVE if inside else ground)
 				layout.protect(cell.x, cell.y)
 		distance += 0.5
 	layout.boss_entrance = Vector2i((arena_center + inward * (inner_reach + wall / 2.0)).floor())
-	var clearing: Vector2 = arena_center + inward * (outer_reach + CLEARING_RADIUS)
-	_carve_disc(layout, cells, clearing, CLEARING_RADIUS)
+	paint_disc(layout, clearing, CLEARING_RADIUS, ground)
 	arena["clearing"] = Vector2i(clearing.floor())
 	layout.portal_cell = Vector2i((arena_center + direction * (inner_reach - PORTAL_WALL_DISTANCE)).floor())
-	layout.set_cells_raw(cells)
+	layout.add_feature(&"boss_arena", layout.boss_center, layout.boss_slot)
 
 
 # --- 5. Accessibility ---
 
-## Fills tiny pockets, then joins every other floor pocket near the hub or the arena to the start with the
-## cheapest tunnel (fewest rock cells dug); pockets elsewhere that can't be reached become rock.
-## Cells marked in `no_dig` (hub ring, arena walls, map edge) are never dug, so the hub stays closed except
-## for its gates and the arena keeps a single entrance.
-static func _connect_everything(data: FloorData, layout: FloorLayout, no_dig: PackedByteArray,
-		hub_edge: PackedFloat32Array) -> void:
+## Fills tiny pockets, then joins every other floor pocket to the start with the cheapest passage
+## (Terrain cost from the zone builders: trees are cheap, water more, rock most). Cells marked in `no_dig`
+## (hub ring, arena walls, map edge) are never opened, so the hub stays closed except for its gates and
+## the arena keeps a single entrance. Pockets that can't be reached are filled.
+@warning_ignore("integer_division")
+static func _connect_everything(layout: FloorLayout, builders: Array[ZoneBuilder], no_dig: PackedByteArray) -> void:
 	var w: int = layout.size.x
+	var h: int = layout.size.y
 	var cells: PackedByteArray = layout.cells_raw()
+	var terrain: PackedByteArray = layout.terrain_raw()
+	var slots: PackedByteArray = layout.slots_raw()
 	var protected: PackedByteArray = layout.protected_raw()
 	var start: int = layout.start_cell.y * w + layout.start_cell.x
 
 	var pockets := Pockets.new(cells, w)
 	var start_root: int = pockets.root_of(start)
+	# Filled pockets are rock/water/trees now; passages may run through them later, so they are never
+	# filled a second time.
+	var filled: Dictionary = {}
 	for root: int in pockets.sizes:
 		if root != start_root and pockets.sizes[root] < MIN_POCKET and not pockets.touches(root, protected):
-			pockets.fill(root, cells)
+			_fill_pocket(layout, builders, pockets, root)
+			filled[root] = true
 
-	# Digging region: the hub plus a band around it, and the arena's surroundings.
-	var hub_max: float = 0.0
-	for radius in hub_edge:
-		hub_max = maxf(hub_max, radius)
-	var reach: float = hub_max + data.hub_ring + DIG_MARGIN
-	var reach_squared: float = reach * reach
-	var arena_area: Rect2i = layout.boss_rect.grow(DIG_MARGIN)
-	var cx: float = layout.center.x + 0.5
-	var cy: float = layout.center.y + 0.5
+	# Cost of opening each terrain type, per zone (0 = can't be opened).
+	var open_cost: Array[PackedInt32Array] = []
+	for builder in builders:
+		var costs := PackedInt32Array()
+		for type in Terrain.Type.size():
+			costs.append(builder.open_cost(type))
+		open_cost.append(costs)
+	var boss_costs := PackedInt32Array()
+	boss_costs.resize(Terrain.Type.size())
+	open_cost.append(boss_costs)
 
-	# Dial's algorithm: walking on floor is free, digging one rock cell costs 1.
+	# Dial's algorithm: walking is free, opening a blocked cell costs its open cost.
 	var cost := PackedInt32Array()
 	cost.resize(cells.size())
 	cost.fill(UNREACHED)
@@ -631,15 +660,13 @@ static func _connect_everything(data: FloorData, layout: FloorLayout, no_dig: Pa
 			if cost[i] != level:
 				continue
 			var x: int = i % w
-			@warning_ignore("integer_division")
 			var y: int = i / w
 			if cells[i] == 1 and parent[i] >= 0 and cells[parent[i]] == 0:
-				# Entered a floor pocket from rock: the first time is the cheapest way in.
+				# Entered a floor pocket from a blocked cell: the first time is the cheapest way in.
 				var root: int = pockets.root_of(i)
 				if not entries.has(root):
 					entries[root] = i
 			for side in 4:
-				var j: int
 				var nx: int = x
 				var ny: int = y
 				match side:
@@ -647,22 +674,22 @@ static func _connect_everything(data: FloorData, layout: FloorLayout, no_dig: Pa
 					1: nx = x + 1
 					2: ny = y - 1
 					3: ny = y + 1
-				if nx < 0 or ny < 0 or nx >= w or ny >= layout.size.y:
+				if nx < 0 or ny < 0 or nx >= w or ny >= h:
 					continue
-				j = ny * w + nx
-				var floor_cell: bool = cells[j] == 1
-				if not floor_cell and no_dig[j] == 1:
-					continue
-				var fx: float = nx + 0.5 - cx
-				var fy: float = ny + 0.5 - cy
-				if fx * fx + fy * fy > reach_squared and not arena_area.has_point(Vector2i(nx, ny)):
-					continue
-				var next_cost: int = level + (0 if floor_cell else 1)
+				var j: int = ny * w + nx
+				var step: int = 0
+				if cells[j] == 0:
+					if no_dig[j] == 1:
+						continue
+					step = open_cost[slots[j]][terrain[j]]
+					if step == 0:
+						continue
+				var next_cost: int = level + step
 				if next_cost >= cost[j]:
 					continue
 				cost[j] = next_cost
 				parent[j] = i
-				if next_cost == level:
+				if step == 0:
 					bucket.append(j)
 				else:
 					while buckets.size() <= next_cost:
@@ -670,28 +697,48 @@ static func _connect_everything(data: FloorData, layout: FloorLayout, no_dig: Pa
 					buckets[next_cost].append(j)
 		level += 1
 
-	# Dig back from every pocket's entry to the start.
+	# Open the way back from every pocket's entry to the start.
 	for root: int in entries:
 		var i: int = entries[root]
 		while i >= 0:
 			if cells[i] == 0:
-				_dig(layout, cells, no_dig, i)
+				_open(layout, builders, no_dig, i)
 			i = parent[i]
-	# Pockets the search never entered can't be reached: they become rock.
+	# Pockets the search never entered can't be reached: they are filled.
 	for root: int in pockets.sizes:
-		if not entries.has(root):
-			pockets.fill(root, cells)
-	layout.set_cells_raw(cells)
+		if not entries.has(root) and not filled.has(root):
+			_fill_pocket(layout, builders, pockets, root)
 
 
-## Digs one tunnel cell, widened to its 4 neighbors so tunnels are 3 tiles wide.
-static func _dig(layout: FloorLayout, cells: PackedByteArray, no_dig: PackedByteArray, i: int) -> void:
+## Opens one cell (and its 4 neighbors, so passages are 3 wide) the way its zone does it.
+@warning_ignore("integer_division")
+static func _open(layout: FloorLayout, builders: Array[ZoneBuilder], no_dig: PackedByteArray, i: int) -> void:
 	var w: int = layout.size.x
-	cells[i] = 1
 	var x: int = i % w
-	for j: int in [i - 1 if x > 0 else -1, i + 1 if x < w - 1 else -1, i - w, i + w]:
-		if j >= 0 and j < cells.size() and no_dig[j] == 0:
-			cells[j] = 1
+	var y: int = i / w
+	for cell: Vector2i in [Vector2i(x, y), Vector2i(x - 1, y), Vector2i(x + 1, y), Vector2i(x, y - 1), Vector2i(x, y + 1)]:
+		if not layout.in_bounds(cell.x, cell.y) or layout.is_floor(cell.x, cell.y):
+			continue
+		if cell != Vector2i(x, y) and no_dig[cell.y * w + cell.x] == 1:
+			continue
+		var slot: int = layout.slot_at(cell.x, cell.y)
+		var old: int = layout.terrain_at(cell.x, cell.y)
+		if slot >= builders.size() or builders[slot].open_cost(old) == 0:
+			continue
+		layout.paint(cell.x, cell.y, builders[slot].passage(old))
+
+
+static func _fill_pocket(layout: FloorLayout, builders: Array[ZoneBuilder], pockets: Pockets, root: int) -> void:
+	var w: int = layout.size.x
+	for run: int in pockets.members[root]:
+		for i in range(pockets.run_from[run], pockets.run_to[run]):
+			var x: int = i % w
+			@warning_ignore("integer_division")
+			var y: int = i / w
+			var slot: int = layout.slot_at(x, y)
+			var filler: int = builders[slot].filler(layout.terrain_at(x, y)) if slot < builders.size() \
+				else Terrain.Type.ROCK
+			layout.paint(x, y, filler)
 
 
 ## Connected floor pockets (4-neighborhood), found row by row as horizontal runs joined with union-find.
@@ -760,11 +807,6 @@ class Pockets:
 					return true
 		return false
 
-	func fill(root: int, cells: PackedByteArray) -> void:
-		for run: int in members[root]:
-			for i in range(run_from[run], run_to[run]):
-				cells[i] = 0
-
 	func _find(run: int) -> int:
 		while link[run] != run:
 			link[run] = link[link[run]]
@@ -779,9 +821,13 @@ class Pockets:
 
 
 ## Seeded Fisher-Yates (Array.shuffle() would use the global, unseeded RNG).
-static func _shuffle(items: Array, rng: RandomNumberGenerator) -> void:
+static func shuffle(items: Array, rng: RandomNumberGenerator) -> void:
 	for i in range(items.size() - 1, 0, -1):
 		var j: int = rng.randi_range(0, i)
 		var temp: Variant = items[i]
 		items[i] = items[j]
 		items[j] = temp
+
+
+static func _shuffle(items: Array, rng: RandomNumberGenerator) -> void:
+	shuffle(items, rng)

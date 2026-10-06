@@ -8,6 +8,8 @@ enum Kind { CLOSED, OPEN }
 @export var id: StringName = &"region"
 @export var display_name: String = "Region"
 @export var kind: Kind = Kind.OPEN
+## Which terrain generator builds this zone (scripts/floors/zones/).
+@export var biome: ZoneBuilder.Biome = ZoneBuilder.Biome.CAVES
 ## Multiplied over the zone's tiles and props until it has a dedicated tileset.
 @export var tile_tint: Color = Color.WHITE
 ## Color of explored floor on the minimap and the big map (rock uses a darker shade).

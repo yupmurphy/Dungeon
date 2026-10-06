@@ -3,7 +3,6 @@ extends Node2D
 ## One dungeon floor: generates the whole layout from FloorData + seed (as data), lets ChunkManager
 ## stream tiles and nodes around the player, and handles the floor-level keys (R restart, F1-F4 debug).
 
-const TILESET: TileSet = preload("res://resources/tilesets/dungeon_tileset.tres")
 const PORTAL_SCENE: PackedScene = preload("res://scenes/floors/portal.tscn")
 const MAX_SEED: int = 1000000
 
@@ -34,12 +33,17 @@ func _ready() -> void:
 	next_seed = current_seed
 	var started: int = Time.get_ticks_msec()
 	layout = FloorGenerator.generate(floor_data, current_seed)
+	FloorLayout.active = layout
 	var generated: int = Time.get_ticks_msec()
 
 	_player.global_position = _cell_center(layout.start_cell)
 	_player.get_node("Camera2D").reset_smoothing()
 	get_tree().call_group("game_camera", "set_room_limits", Rect2i(Vector2i.ZERO, layout.size * GameScale.TILE_SIZE))
-	chunks.setup(layout, _create_layers(), _world, _slot_tints(), _player.global_position)
+	var nature := TileMapLayer.new()
+	nature.name = "Nature"
+	nature.tile_set = FloorTiles.tile_set()
+	_tiles.add_child(nature)
+	chunks.setup(layout, _create_layers(), nature, _world, _slot_tints(), _player.global_position)
 	portal = PORTAL_SCENE.instantiate()
 	portal.position = _cell_center(layout.portal_cell)
 	_world.add_child(portal)
@@ -53,14 +57,27 @@ func _ready() -> void:
 		Time.get_ticks_msec() - generated, layout.count_spawns(FloorLayout.SpawnKind.MONSTER), describe()])
 
 
-## One line about the zone arrangement, e.g. for comparing seeds.
+func _exit_tree() -> void:
+	if FloorLayout.active == layout:
+		FloorLayout.active = null
+
+
+## One line about the zone arrangement and notable places, e.g. for comparing seeds.
 func describe() -> String:
 	var around: Array[String] = []
 	for gate in layout.gates:
 		var direction: Vector2 = Vector2(gate.cell - layout.center)
 		around.append("%s %s" % [floor_data.regions[gate.slot].display_name, _compass(direction)])
-	return "around the galleries: %s; boss in %s (%s)" % [", ".join(around),
-		floor_data.regions[layout.boss_zone].display_name, _compass(Vector2(layout.boss_center - layout.center))]
+	var places: Dictionary = {}
+	for feature in layout.features:
+		if feature.kind != &"gate":
+			places[feature.kind] = places.get(feature.kind, 0) + 1
+	var place_list: Array[String] = []
+	for kind: StringName in places:
+		place_list.append("%d %s" % [places[kind], kind])
+	return "gates: %s; boss in %s (%s); places: %s" % [", ".join(around),
+		floor_data.regions[layout.boss_zone].display_name, _compass(Vector2(layout.boss_center - layout.center)),
+		", ".join(place_list)]
 
 
 static func _compass(direction: Vector2) -> String:
@@ -113,7 +130,7 @@ func _create_layers() -> Array[TileMapLayer]:
 	for slot in layout.slot_count:
 		var layer := TileMapLayer.new()
 		layer.name = "Region%d" % slot
-		layer.tile_set = TILESET
+		layer.tile_set = FloorTiles.tile_set()
 		layer.modulate = tints[slot]
 		_tiles.add_child(layer)
 		layers.append(layer)

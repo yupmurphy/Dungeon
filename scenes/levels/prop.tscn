@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" path="res://assets/Tilemap/tilemap_packed.png" id="2_sheet"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_prop"]
+resource_local_to_scene = true
 size = Vector2(12, 8)
 
 [node name="Prop" type="StaticBody2D"]

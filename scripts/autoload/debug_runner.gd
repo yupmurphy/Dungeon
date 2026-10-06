@@ -5,6 +5,7 @@ extends Node
 ##   -- --seed=<number>                               (read by FloorLevel) start the floor with this seed
 ##   -- --screenshot=<file.png> [--mode=idle|fight|dodge]   save one rendered frame (not headless)
 ##   -- --build-room                                  regenerate tileset + test room tiles
+##   -- --terrain-map=<folder> [--seeds=<first>:<n>]  save floor terrain pictures (works headless)
 ## Tools run inside the real game (with autoloads), which a plain `--script` run does not provide.
 
 const TOOLS: Dictionary = {
@@ -12,6 +13,7 @@ const TOOLS: Dictionary = {
 	"--floor-test": "res://tools/floor_test.gd",
 	"--screenshot": "res://tools/screenshot.gd",
 	"--build-room": "res://tools/room_builder.gd",
+	"--terrain-map": "res://tools/terrain_map.gd",
 }
 
 

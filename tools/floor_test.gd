@@ -39,6 +39,11 @@ const GENERATOR_CHECKS: Array[String] = [
 	"boss arena has exactly one entrance",
 	"boss arena is at the outer edge of an open zone",
 	"same seed gives the same map",
+	"walkable cells always have walkable ground",
+	"galleries: caves, goblin camp, mine and chieftain hall",
+	"forest: a river with 2+ crossings, thick woods and clearings, old trees, 3+ spider nests",
+	"swamp: deep and shallow water, reeds, mud ground",
+	"desert: dunes, rock formations, quicksand, an oasis, 3+ giant bones",
 ]
 
 
@@ -59,9 +64,12 @@ func _check_generator() -> void:
 		if sample == null:
 			sample = layout
 		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
-		for label in _generator_problems(layout):
+		var shares: Dictionary = _terrain_shares(layout)
+		for label in _generator_problems(layout) + _ecology_problems(layout, shares):
 			if not problems.has(label):
 				problems[label] = seed_value
+		if seed_value == _first_seed:
+			_print_ecology(layout, shares)
 		if seed_value < _first_seed + DETERMINISM_SEEDS and FloorGenerator.generate(FLOOR_DATA, seed_value).fingerprint() != layout.fingerprint():
 			problems["same seed gives the same map"] = seed_value
 		arrangements[_arrangement(layout)] = true
@@ -77,13 +85,83 @@ func _check_generator() -> void:
 	_check(smallest_share > 0.4, "most of the map is walkable (smallest: %.0f%% floor)" % (smallest_share * 100.0))
 	var average: float = float(total_ms) / _seed_count
 	# Generous on purpose: a loading screen will hide generation time later.
-	_check(average < 6000.0, "generation is fast enough (%.0f ms average for %dx%d)" % [
+	_check(average < 10000.0, "generation is fast enough (%.0f ms average for %dx%d)" % [
 		average, FLOOR_DATA.map_size.x, FLOOR_DATA.map_size.y])
 	var monsters: int = sample.count_spawns(FloorLayout.SpawnKind.MONSTER)
 	var props: int = sample.count_spawns(FloorLayout.SpawnKind.PROP)
 	var torches: int = sample.count_spawns(FloorLayout.SpawnKind.TORCH)
 	_check(monsters >= 150, "floor holds many monsters (%d planned)" % monsters)
 	_check(props >= 300 and torches > 0, "floor holds lots of decoration (%d props, %d torches)" % [props, torches])
+
+
+## {slot: {terrain type: share of the zone's cells}}.
+func _terrain_shares(layout: FloorLayout) -> Dictionary:
+	var counts: Array[PackedInt32Array] = []
+	for slot in layout.slot_count:
+		var row := PackedInt32Array()
+		row.resize(Terrain.Type.size())
+		counts.append(row)
+	var terrain: PackedByteArray = layout.terrain_raw()
+	var slots: PackedByteArray = layout.slots_raw()
+	for i in terrain.size():
+		counts[slots[i]][terrain[i]] += 1
+	var shares: Dictionary = {}
+	for slot in layout.slot_count:
+		var total: int = 0
+		for count in counts[slot]:
+			total += count
+		var zone: Dictionary = {}
+		for type in Terrain.Type.size():
+			zone[type] = float(counts[slot][type]) / maxf(total, 1.0)
+		shares[slot] = zone
+	return shares
+
+
+## Labels of the ecology rules (each zone has its own elements) this layout breaks.
+func _ecology_problems(layout: FloorLayout, shares: Dictionary) -> Array[String]:
+	var problems: Array[String] = []
+	var cells: PackedByteArray = layout.cells_raw()
+	var terrain: PackedByteArray = layout.terrain_raw()
+	var i: int = cells.find(1)
+	while i >= 0:
+		if not Terrain.walkable(terrain[i]):
+			problems.append("walkable cells always have walkable ground")
+			break
+		i = cells.find(1, i + 1)
+	var places: Dictionary = {}
+	for feature in layout.features:
+		places[feature.kind] = places.get(feature.kind, 0) + 1
+	for slot in FLOOR_DATA.regions.size():
+		var zone: Dictionary = shares[slot]
+		match FLOOR_DATA.regions[slot].biome:
+			ZoneBuilder.Biome.CAVES:
+				if zone[Terrain.Type.CAVE] < 0.2 or places.get(&"goblin_camp", 0) != 1 or places.get(&"mine", 0) != 1 \
+						or places.get(&"chieftain_hall", 0) != 1:
+					problems.append("galleries: caves, goblin camp, mine and chieftain hall")
+			ZoneBuilder.Biome.FOREST:
+				if zone[Terrain.Type.WATER_DEEP] < 0.003 or places.get(&"bridge", 0) + places.get(&"ford", 0) < 2 \
+						or zone[Terrain.Type.TREE] < 0.15 or zone[Terrain.Type.GRASS] < 0.05 \
+						or places.get(&"old_tree", 0) < 3 or places.get(&"spider_nest", 0) < 3:
+					problems.append("forest: a river with 2+ crossings, thick woods and clearings, old trees, 3+ spider nests")
+			ZoneBuilder.Biome.SWAMP:
+				if zone[Terrain.Type.WATER_DEEP] < 0.05 or zone[Terrain.Type.WATER_SHALLOW] < 0.05 \
+						or zone[Terrain.Type.REEDS] < 0.01 or zone[Terrain.Type.MUD] < 0.25:
+					problems.append("swamp: deep and shallow water, reeds, mud ground")
+			ZoneBuilder.Biome.DESERT:
+				if zone[Terrain.Type.DUNE] < 0.05 or places.get(&"quicksand", 0) < 3 or zone[Terrain.Type.QUICKSAND] <= 0.0 \
+						or zone[Terrain.Type.ROCK] < 0.04 or places.get(&"oasis", 0) != 1 \
+						or places.get(&"giant_bones", 0) < 3:
+					problems.append("desert: dunes, rock formations, quicksand, an oasis, 3+ giant bones")
+	return problems
+
+
+func _print_ecology(layout: FloorLayout, shares: Dictionary) -> void:
+	for slot in FLOOR_DATA.regions.size():
+		var parts: Array[String] = []
+		for type in Terrain.Type.size():
+			if shares[slot][type] >= 0.005:
+				parts.append("%s %.0f%%" % [Terrain.Type.keys()[type].to_lower(), shares[slot][type] * 100.0])
+		print("  %s: %s" % [FLOOR_DATA.regions[slot].display_name, ", ".join(parts)])
 
 
 ## Labels (from GENERATOR_CHECKS) of every structural rule this layout breaks.
@@ -206,8 +284,16 @@ func _check_scene() -> void:
 
 	_check(player.global_position.distance_to((Vector2(layout.start_cell) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE) < 1.0,
 		"player starts in the start room")
-	_check(floor_level.get_node("Tiles").get_child_count() == layout.slot_count,
-		"one tinted tile layer per zone (%d zones + boss arena)" % layout.region_count)
+	_check(floor_level.get_node("Tiles").get_child_count() == layout.slot_count + 1,
+		"one tinted tile layer per zone (%d zones + boss arena) and one nature layer" % layout.region_count)
+	var shallow: int = layout.terrain_raw().find(Terrain.Type.WATER_SHALLOW)
+	var quicksand: int = layout.terrain_raw().find(Terrain.Type.QUICKSAND)
+	var w: int = layout.size.x
+	var shallow_at: Vector2 = (Vector2(shallow % w, shallow / w) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
+	var quicksand_at: Vector2 = (Vector2(quicksand % w, quicksand / w) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
+	_check(FloorLayout.speed_factor_at(shallow_at) < 1.0 and FloorLayout.speed_factor_at(quicksand_at) < 0.5
+		and FloorLayout.speed_factor_at(player.global_position) == 1.0,
+		"shallow water and quicksand slow movement, cave floor doesn't")
 	var chunks: ChunkManager = floor_level.chunks
 	var enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
 	var stream_reach: float = (chunks.unload_radius + 1) * layout.chunk_size * GameScale.TILE_SIZE
@@ -334,16 +420,40 @@ func _press(key: Key) -> void:
 
 
 func _unreachable_floor(layout: FloorLayout) -> int:
-	var seen: Dictionary = {layout.start_cell: true}
-	var queue: Array[Vector2i] = [layout.start_cell]
-	while not queue.is_empty():
-		var cell: Vector2i = queue.pop_back()
-		for offset: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
-			var next: Vector2i = cell + offset
-			if not seen.has(next) and layout.is_floor(next.x, next.y):
-				seen[next] = true
-				queue.append(next)
-	return layout.floor_cell_count() - seen.size()
+	var w: int = layout.size.x
+	var pockets := FloorGenerator.Pockets.new(layout.cells_raw(), w)
+	var start_root: int = pockets.root_of(layout.start_cell.y * w + layout.start_cell.x)
+	var unreachable: int = 0
+	for root: int in pockets.sizes:
+		if root == start_root:
+			continue
+		unreachable += pockets.sizes[root]
+		var i: int = pockets.run_from[root]
+		var cell := Vector2i(i % w, i / w)
+		print("    unreachable pocket of %d cells at %s (terrain %s, zone %d)" % [pockets.sizes[root], cell,
+			Terrain.Type.keys()[layout.terrain_at(cell.x, cell.y)], layout.slot_at(cell.x, cell.y)])
+		if unreachable == pockets.sizes[root]:
+			_dump_area(layout, cell)
+	return unreachable
+
+
+## Text picture around a cell: # rock, T tree, ~ deep water, P blocked by a prop, . walkable.
+func _dump_area(layout: FloorLayout, around: Vector2i) -> void:
+	for y in range(around.y - 8, around.y + 9):
+		var line: String = "      "
+		for x in range(around.x - 12, around.x + 13):
+			var type: int = layout.terrain_at(x, y)
+			var symbol: String = "."
+			if type == Terrain.Type.ROCK:
+				symbol = "#"
+			elif type == Terrain.Type.TREE:
+				symbol = "T"
+			elif type == Terrain.Type.WATER_DEEP:
+				symbol = "~"
+			elif not layout.is_floor(x, y):
+				symbol = "P"
+			line += symbol
+		print(line)
 
 
 ## All cells (floor and rock) of a zone form one 4-connected block.

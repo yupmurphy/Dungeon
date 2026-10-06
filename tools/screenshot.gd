@@ -60,19 +60,26 @@ func run(options: Dictionary) -> void:
 				fog.visible = false
 			for i in 5:
 				await get_tree().process_frame
-		"gate", "arena", "start":
-			# Zoomed out, without darkness: a gate of the closed zone, the boss arena entrance or the start.
+		"gate", "arena", "start", "place":
+			# Zoomed out, without darkness: a gate of the closed zone, the boss arena entrance, the start,
+			# or a notable place (--place=<kind>, e.g. goblin_camp, mine, oasis, spider_nest, bridge).
 			var floor_layout: FloorLayout = (room as FloorLevel).layout
 			var target: Vector2i = floor_layout.start_cell
 			if mode == "gate":
 				target = floor_layout.gates[0].cell
 			elif mode == "arena":
 				target = floor_layout.boss_entrance
+			elif mode == "place":
+				var kind := StringName(options.get("--place", "goblin_camp"))
+				for feature in floor_layout.features:
+					if feature.kind == kind:
+						target = feature.cell
+						break
 			player.global_position = (Vector2(target) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
 			var camera := player.get_node("Camera2D") as Camera2D
-			camera.zoom = Vector2(0.5, 0.5)
+			camera.zoom = Vector2.ONE * float(options.get("--zoom", "0.5"))
 			camera.position_smoothing_enabled = false
-			(room.get_node("Darkness") as CanvasModulate).visible = false
+			(room.get_node("Darkness") as CanvasModulate).visible = options.has("--dark")
 			(room.get_node("Exploration/Fog") as CanvasItem).visible = false
 			for i in 60:
 				await get_tree().physics_frame
