@@ -1,0 +1,70 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Resource" path="res://resources/enemies/grunt.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="3_health"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="4_hurtbox"]
+[ext_resource type="Script" path="res://scripts/components/hitbox.gd" id="5_hitbox"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+resource_local_to_scene = true
+radius = 7.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
+resource_local_to_scene = true
+radius = 8.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
+size = Vector2(20, 24)
+
+[node name="Enemy" type="CharacterBody2D" groups=["enemy"]]
+collision_layer = 4
+collision_mask = 7
+motion_mode = 1
+script = ExtResource("1_enemy")
+data = ExtResource("2_data")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Body" type="ColorRect" parent="Visual"]
+offset_left = -7.0
+offset_top = -7.0
+offset_right = 7.0
+offset_bottom = 7.0
+mouse_filter = 2
+color = Color(0.45, 0.75, 0.35, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+
+[node name="Hurtbox" type="Area2D" parent="." node_paths=PackedStringArray("health")]
+collision_layer = 16
+collision_mask = 0
+monitoring = false
+script = ExtResource("4_hurtbox")
+health = NodePath("../HealthComponent")
+invulnerable_after_hit = 0.1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("CircleShape2D_hurt")
+
+[node name="AttackPivot" type="Node2D" parent="."]
+
+[node name="Hitbox" type="Area2D" parent="AttackPivot"]
+position = Vector2(16, 0)
+collision_layer = 64
+collision_mask = 8
+monitoring = false
+monitorable = false
+script = ExtResource("5_hitbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackPivot/Hitbox"]
+shape = SubResource("RectangleShape2D_hit")
+
+[node name="SwingVisual" type="Polygon2D" parent="AttackPivot/Hitbox"]
+visible = false
+color = Color(1, 0.3, 0.2, 0.5)
+polygon = PackedVector2Array(-10, -12, 10, -12, 10, 12, -10, 12)

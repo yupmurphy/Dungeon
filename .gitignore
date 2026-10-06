@@ -1,0 +1,7 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Secrets / misc
+export_credentials.cfg
+*.tmp

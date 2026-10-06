@@ -1,0 +1,53 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/levels/test_room.gd" id="1_room"]
+[ext_resource type="PackedScene" path="res://scenes/levels/wall.tscn" id="2_wall"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="4_enemy"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
+
+[node name="TestRoom" type="Node2D"]
+script = ExtResource("1_room")
+
+[node name="Floor" type="ColorRect" parent="."]
+offset_right = 640.0
+offset_bottom = 360.0
+mouse_filter = 2
+color = Color(0.13, 0.12, 0.16, 1)
+
+[node name="WallTop" parent="." instance=ExtResource("2_wall")]
+size = Vector2(640, 16)
+
+[node name="WallBottom" parent="." instance=ExtResource("2_wall")]
+position = Vector2(0, 344)
+size = Vector2(640, 16)
+
+[node name="WallLeft" parent="." instance=ExtResource("2_wall")]
+position = Vector2(0, 16)
+size = Vector2(16, 328)
+
+[node name="WallRight" parent="." instance=ExtResource("2_wall")]
+position = Vector2(624, 16)
+size = Vector2(16, 328)
+
+[node name="PillarA" parent="." instance=ExtResource("2_wall")]
+position = Vector2(150, 150)
+size = Vector2(24, 24)
+
+[node name="PillarB" parent="." instance=ExtResource("2_wall")]
+position = Vector2(460, 190)
+size = Vector2(24, 24)
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+position = Vector2(320, 190)
+
+[node name="Enemy1" parent="." instance=ExtResource("4_enemy")]
+position = Vector2(110, 70)
+
+[node name="Enemy2" parent="." instance=ExtResource("4_enemy")]
+position = Vector2(540, 80)
+
+[node name="Enemy3" parent="." instance=ExtResource("4_enemy")]
+position = Vector2(500, 290)
+
+[node name="HUD" parent="." instance=ExtResource("5_hud")]
