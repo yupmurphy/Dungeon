@@ -1,14 +1,10 @@
 class_name FloorLevel
 extends Node2D
-## One dungeon floor: generates the layout from FloorData + seed, paints it, spawns everything
-## and handles the floor-level keys (R restart, F1-F4 debug).
+## One dungeon floor: generates the whole layout from FloorData + seed (as data), lets ChunkManager
+## stream tiles and nodes around the player, and handles the floor-level keys (R restart, F1-F4 debug).
 
 const TILESET: TileSet = preload("res://resources/tilesets/dungeon_tileset.tres")
-const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy.tscn")
-const TORCH_SCENE: PackedScene = preload("res://scenes/levels/wall_torch.tscn")
-const PROP_SCENE: PackedScene = preload("res://scenes/levels/prop.tscn")
 const PORTAL_SCENE: PackedScene = preload("res://scenes/floors/portal.tscn")
-const PROP_TILES: Array[int] = [66, 66, 65, 89]  # barrel (twice as likely), tombstone, chest
 const MAX_SEED: int = 1000000
 
 ## Seed for the next load. Survives scene reloads: R keeps the same layout, F1 picks a new one.
@@ -20,9 +16,9 @@ static var _command_line_seed_used: bool = false
 var layout: FloorLayout
 var current_seed: int
 var portal: Portal
+var chunks: ChunkManager
 
 var _current_slot: int = -1
-var _rng := RandomNumberGenerator.new()
 
 @onready var _tiles: Node2D = $Tiles
 @onready var _world: Node2D = $World
@@ -33,27 +29,32 @@ var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	chunks = $ChunkManager
 	current_seed = _pick_seed()
 	next_seed = current_seed
 	var started: int = Time.get_ticks_msec()
 	layout = FloorGenerator.generate(floor_data, current_seed)
 	var generated: int = Time.get_ticks_msec()
-	_rng.seed = current_seed
-	_paint()
-	_spawn_contents()
+
 	_player.global_position = _cell_center(layout.start_cell)
 	_player.get_node("Camera2D").reset_smoothing()
 	get_tree().call_group("game_camera", "set_room_limits", Rect2i(Vector2i.ZERO, layout.size * GameScale.TILE_SIZE))
+	chunks.setup(layout, _create_layers(), _world, _slot_tints(), _player.global_position)
+	portal = PORTAL_SCENE.instantiate()
+	portal.position = _cell_center(layout.portal_cell)
+	_world.add_child(portal)
+
 	_exploration.setup(layout, _slot_colors(), _legend())
 	_exploration.update_player(_player.global_position)
 	_activator.refresh()
 	_hud.setup_floor(floor_data.display_name, current_seed)
-	print("%s: seed %d, generated in %d ms, built in %d ms, %d enemies" % [
-		floor_data.display_name, current_seed, generated - started, Time.get_ticks_msec() - generated,
-		get_tree().get_nodes_in_group("enemy").size()])
+	print("%s: seed %d, %dx%d tiles, generated in %d ms, first chunks in %d ms, %d monsters planned" % [
+		floor_data.display_name, current_seed, layout.size.x, layout.size.y, generated - started,
+		Time.get_ticks_msec() - generated, layout.count_spawns(FloorLayout.SpawnKind.MONSTER)])
 
 
 func _physics_process(_delta: float) -> void:
+	chunks.update_player(_player.global_position)
 	_exploration.update_player(_player.global_position)
 	var cell: Vector2i = _exploration.world_to_cell(_player.global_position)
 	var slot: int = layout.slot_at(cell.x, cell.y)
@@ -90,6 +91,20 @@ func _pick_seed() -> int:
 	return randi() % MAX_SEED
 
 
+## One TileMapLayer per zone, tinted with the zone's color. ChunkManager fills them.
+func _create_layers() -> Array[TileMapLayer]:
+	var layers: Array[TileMapLayer] = []
+	var tints: Array[Color] = _slot_tints()
+	for slot in layout.slot_count:
+		var layer := TileMapLayer.new()
+		layer.name = "Region%d" % slot
+		layer.tile_set = TILESET
+		layer.modulate = tints[slot]
+		_tiles.add_child(layer)
+		layers.append(layer)
+	return layers
+
+
 # --- Slots: 0 = start, 1..N = regions, N + 1 = boss arena ---
 
 func _region(slot: int) -> RegionData:
@@ -106,12 +121,12 @@ func _slot_name(slot: int) -> String:
 	return _region(slot).display_name
 
 
-func _slot_tint(slot: int) -> Color:
-	if slot == FloorLayout.START_SLOT:
-		return floor_data.start_tile_tint
-	if slot == layout.boss_slot:
-		return floor_data.boss_tile_tint
-	return _region(slot).tile_tint
+func _slot_tints() -> Array[Color]:
+	var tints: Array[Color] = [floor_data.start_tile_tint]
+	for region in floor_data.regions:
+		tints.append(region.tile_tint)
+	tints.append(floor_data.boss_tile_tint)
+	return tints
 
 
 func _slot_colors() -> Array[Color]:
@@ -128,94 +143,6 @@ func _legend() -> Array[Dictionary]:
 	for slot in layout.slot_count:
 		entries.append({"name": _slot_name(slot), "color": colors[slot]})
 	return entries
-
-
-# --- Building ---
-
-## One TileMapLayer per region, tinted with the region's color.
-func _paint() -> void:
-	var layers: Array[TileMapLayer] = []
-	for slot in layout.slot_count:
-		var layer := TileMapLayer.new()
-		layer.name = "Region%d" % slot
-		layer.tile_set = TILESET
-		layer.modulate = _slot_tint(slot)
-		_tiles.add_child(layer)
-		layers.append(layer)
-	var is_wall: Callable = layout.is_wall
-	for y in layout.size.y:
-		for x in layout.size.x:
-			if layout.is_rendered(x, y):
-				var index: int = WallTiler.tile_for(is_wall, x, y, _rng.randf())
-				layers[layout.slot_at(x, y)].set_cell(Vector2i(x, y), 0, TileAtlas.coords(index))
-
-
-func _spawn_contents() -> void:
-	for room in layout.rooms:
-		_spawn_torches(room)
-		match room.kind:
-			FloorLayout.RoomKind.NORMAL:
-				_spawn_monsters(room)
-				_spawn_props(room)
-			FloorLayout.RoomKind.BOSS:
-				portal = PORTAL_SCENE.instantiate()
-				portal.position = _cell_center(layout.portal_cell)
-				_world.add_child(portal)
-
-
-## Torches on the brick face above the room's top edge.
-func _spawn_torches(room: FloorLayout.Room) -> void:
-	var count: int = 4 if room.kind == FloorLayout.RoomKind.BOSS else _rng.randi_range(1, 2)
-	var y: int = room.rect.position.y - 1
-	@warning_ignore("integer_division")
-	var spacing: int = room.rect.size.x / (count + 1)
-	for i in count:
-		var x: int = room.rect.position.x + spacing * (i + 1)
-		if WallTiler.is_face(layout.is_wall, x, y):
-			var torch: Node2D = TORCH_SCENE.instantiate()
-			torch.position = _cell_center(Vector2i(x, y))
-			_world.add_child(torch)
-
-
-func _spawn_monsters(room: FloorLayout.Room) -> void:
-	var region: RegionData = _region(room.slot)
-	if region == null or region.monsters.is_empty():
-		return
-	var count: int = _rng.randi_range(region.min_monsters_per_room, region.max_monsters_per_room)
-	for i in count:
-		var cell: Vector2i = _random_free_cell(room, 2)
-		if cell.x < 0:
-			continue
-		var enemy: Enemy = ENEMY_SCENE.instantiate()
-		enemy.data = region.monsters[_rng.randi() % region.monsters.size()]
-		enemy.position = _cell_center(cell)
-		_world.add_child(enemy)
-
-
-## A few props tucked into the room corners.
-func _spawn_props(room: FloorLayout.Room) -> void:
-	var rect: Rect2i = room.rect
-	var corners: Array[Vector2i] = [
-		rect.position + Vector2i(1, 1), Vector2i(rect.end.x - 2, rect.position.y + 1),
-		Vector2i(rect.position.x + 1, rect.end.y - 2), rect.end - Vector2i(2, 2)]
-	for corner in corners:
-		if _rng.randf() < 0.4 and layout.is_floor(corner.x, corner.y) and not layout.is_corridor(corner.x, corner.y):
-			var prop: Prop = PROP_SCENE.instantiate()
-			prop.tile_index = PROP_TILES[_rng.randi() % PROP_TILES.size()]
-			prop.position = _cell_center(corner)
-			_world.add_child(prop)
-
-
-## Random floor cell inside the room, `margin` tiles away from its walls. (-1, -1) if none found.
-func _random_free_cell(room: FloorLayout.Room, margin: int) -> Vector2i:
-	var inner: Rect2i = room.rect.grow(-margin)
-	for attempt in 20:
-		var cell := Vector2i(
-			_rng.randi_range(inner.position.x, inner.end.x - 1),
-			_rng.randi_range(inner.position.y, inner.end.y - 1))
-		if layout.is_floor(cell.x, cell.y):
-			return cell
-	return Vector2i(-1, -1)
 
 
 func _cell_center(cell: Vector2i) -> Vector2:

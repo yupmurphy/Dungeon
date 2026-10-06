@@ -45,13 +45,19 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   5 enemy_hurtbox, 6 player_hitbox, 7 enemy_hitbox. A hitbox's mask lists the hurtbox layer it can damage.
 
 ## Dungeon floors
-- `FloorGenerator` (pure code, seeded) -> `FloorLayout` (grid + rooms + regions). 160 x 160 tiles cut into 4 x 4
-  sectors, one room per sector. Start on the map edge, boss arena in the farthest sector with exactly one entrance,
-  portal at the far end of the arena; 3 regions grow by random flood fill (each contiguous). Corridors: random
-  spanning tree + extra loops. Region "slots": 0 start, 1..N regions, N+1 boss.
-- `FloorLevel` (scenes/floors/floor.tscn, the main scene) paints one tinted TileMapLayer per slot, spawns monsters,
-  props, torches, portal. `ExplorationMap` = fog of war + minimap texture (line-of-sight reveal).
-  `EnemyActivator` pauses monsters farther than 480 px.
+- `FloorGenerator` (pure code, seeded) -> `FloorLayout` (grid + halls + regions). 480 x 480 tiles cut into 6 x 6
+  sectors, one big hall per sector (sizes in `FloorData`), near the sector center. Start on the map edge, boss arena
+  in the farthest sector with exactly one entrance, portal at the far end of the arena; 3 regions grow by random
+  flood fill (each contiguous). Corridors: random spanning tree + few extra links. Region "slots": 0 start,
+  1..N regions, N+1 boss. `FloorPopulator` (seeded) then plans every monster/prop/torch as `FloorLayout.Spawn`
+  data, grouped by 32 x 32 chunk; densities per 100 floor tiles live in `RegionData`.
+- **Chunk streaming:** `ChunkManager` paints tiles and creates nodes only for chunks within 2 of the player's chunk,
+  clears chunks farther than 3, max 1 chunk load per frame (~3 ms each). Killed monsters (by spawn id) stay dead;
+  living monsters left in unloaded chunks go back to data and respawn at their spawn point. Tile variation uses a
+  per-cell hash, not a sequential RNG, so load order doesn't matter.
+- `FloorLevel` (scenes/floors/floor.tscn, the main scene) creates one tinted TileMapLayer per slot and the portal.
+  `ExplorationMap` = fog of war + minimap texture (line-of-sight reveal). `EnemyActivator` pauses monsters farther
+  than 30 tiles. Dying enemies leave the "enemy" group so they are never paused mid fade-out.
 - Seed: static `FloorLevel.next_seed` survives reloads (R = same layout, F1 = new seed), or `-- --seed=<n>`.
 - Debug keys: F1 new seed, F2 reveal map, F3 invincible, F4 show seed + copy to clipboard. M = big map.
 

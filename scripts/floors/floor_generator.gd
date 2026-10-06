@@ -2,25 +2,26 @@ class_name FloorGenerator
 extends RefCounted
 ## Builds a FloorLayout from FloorData + seed. Same seed => same floor.
 ##
-## 1. The map is cut into sectors (4 x 4 sectors of 40 x 40 tiles for a 160 x 160 floor).
+## 1. The map is cut into sectors (6 x 6 sectors of 80 x 80 tiles for a 480 x 480 floor).
 ## 2. Start sector on the map edge; boss sector = the sector farthest from it.
 ## 3. The other sectors are shared between the regions by a random flood fill, so every
 ##    region is one connected block and lands somewhere else on each generation.
-## 4. One room per sector. Corridors follow a random spanning tree of neighboring sectors
-##    (everything reachable) plus a few extra links (loops, so it's not a pure maze).
+## 4. One big hall per sector. Corridors follow a random spanning tree of neighboring sectors
+##    (everything reachable) plus a few extra links (FloorData.extra_link_chance).
 ## 5. The boss arena is linked to exactly one neighbor; the portal sits at the far end of the arena.
+## Then FloorPopulator decides what spawns where.
 
-const SECTOR_MARGIN: int = 3
+const SECTOR_MARGIN: int = 4
 const CORRIDOR_HALF_WIDTH: int = 1  # 3 tiles wide
-const EXTRA_LINK_CHANCE: float = 0.3
-const MIN_ROOM: Vector2i = Vector2i(12, 10)
-const MAX_ROOM: Vector2i = Vector2i(28, 24)
-const START_ROOM: Vector2i = Vector2i(14, 12)
-const BOSS_ROOM: Vector2i = Vector2i(30, 26)
-## Rooms at least this big may get stone pillars.
-const PILLAR_ROOM_MIN: Vector2i = Vector2i(18, 16)
-const PILLAR_CHANCE: float = 0.5
+## Halls at least this big may get a grid of pillars.
+const PILLAR_HALL_MIN: Vector2i = Vector2i(24, 20)
+const PILLAR_SPACING_MIN: int = 7
+const PILLAR_SPACING_MAX: int = 10
 const PORTAL_WALL_DISTANCE: int = 3
+## Halls may drift from their sector's center by 1/this of the free space on each side.
+const HALL_JITTER_DIVISOR: int = 2
+## The start room varies a little so every run looks different from the first second.
+const START_ROOM_VARIATION: int = 4
 
 
 static func generate(data: FloorData, seed_value: int) -> FloorLayout:
@@ -28,6 +29,7 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	rng.seed = seed_value
 	var layout := FloorLayout.new()
 	layout.setup(data.map_size, data.sector_grid, seed_value, data.regions.size())
+	layout.chunk_size = data.chunk_size
 
 	var start: Vector2i = _pick_start_sector(layout, rng)
 	var boss: Vector2i = _farthest_sector(layout, start, rng)
@@ -38,14 +40,15 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 
 	var room_by_sector: Dictionary = {}
 	for sector in layout.all_sectors():
-		room_by_sector[sector] = _carve_room(layout, sector, rng)
-	_connect_sectors(layout, room_by_sector, start, boss, rng)
+		room_by_sector[sector] = _carve_room(layout, data, sector, rng)
+	_connect_sectors(layout, data, room_by_sector, start, boss, rng)
 	for room in layout.rooms:
 		if room.kind == FloorLayout.RoomKind.NORMAL:
-			_add_pillars(layout, room, rng)
+			_add_pillars(layout, data, room, rng)
 
 	layout.start_cell = (room_by_sector[start] as FloorLayout.Room).center()
 	layout.finalize()
+	FloorPopulator.populate(layout, data)
 	return layout
 
 
@@ -126,7 +129,8 @@ static func _assign_regions(layout: FloorLayout, rng: RandomNumberGenerator) -> 
 		layout.set_sector_slot(sector, slot)
 
 
-static func _carve_room(layout: FloorLayout, sector: Vector2i, rng: RandomNumberGenerator) -> FloorLayout.Room:
+static func _carve_room(layout: FloorLayout, data: FloorData, sector: Vector2i,
+		rng: RandomNumberGenerator) -> FloorLayout.Room:
 	var slot: int = layout.sector_slot(sector)
 	var room := FloorLayout.Room.new()
 	room.sector = sector
@@ -134,19 +138,27 @@ static func _carve_room(layout: FloorLayout, sector: Vector2i, rng: RandomNumber
 	var room_size: Vector2i
 	if slot == FloorLayout.START_SLOT:
 		room.kind = FloorLayout.RoomKind.START
-		room_size = START_ROOM
+		room_size = data.start_room + Vector2i(
+			rng.randi_range(-START_ROOM_VARIATION, START_ROOM_VARIATION),
+			rng.randi_range(-START_ROOM_VARIATION, START_ROOM_VARIATION))
 	elif slot == layout.boss_slot:
 		room.kind = FloorLayout.RoomKind.BOSS
-		room_size = BOSS_ROOM
+		room_size = data.boss_room
 	else:
 		room.kind = FloorLayout.RoomKind.NORMAL
-		room_size = Vector2i(rng.randi_range(MIN_ROOM.x, MAX_ROOM.x), rng.randi_range(MIN_ROOM.y, MAX_ROOM.y))
+		room_size = Vector2i(rng.randi_range(data.room_min.x, data.room_max.x),
+			rng.randi_range(data.room_min.y, data.room_max.y))
 
 	var available: Vector2i = layout.sector_size - Vector2i(SECTOR_MARGIN, SECTOR_MARGIN) * 2
 	room_size = room_size.min(available)
 	var origin: Vector2i = sector * layout.sector_size + Vector2i(SECTOR_MARGIN, SECTOR_MARGIN)
-	var position: Vector2i = origin + Vector2i(
-		rng.randi_range(0, available.x - room_size.x), rng.randi_range(0, available.y - room_size.y))
+	# Halls sit near the middle of their sector (a little jitter), which keeps corridors short.
+	var slack: Vector2i = available - room_size
+	@warning_ignore("integer_division")
+	var jitter: Vector2i = slack / (2 * HALL_JITTER_DIVISOR)
+	@warning_ignore("integer_division")
+	var position: Vector2i = origin + slack / 2 + Vector2i(
+		rng.randi_range(-jitter.x, jitter.x), rng.randi_range(-jitter.y, jitter.y))
 	room.rect = Rect2i(position, room_size)
 	for y in range(room.rect.position.y, room.rect.end.y):
 		for x in range(room.rect.position.x, room.rect.end.x):
@@ -157,8 +169,8 @@ static func _carve_room(layout: FloorLayout, sector: Vector2i, rng: RandomNumber
 	return room
 
 
-static func _connect_sectors(layout: FloorLayout, room_by_sector: Dictionary, start: Vector2i,
-		boss: Vector2i, rng: RandomNumberGenerator) -> void:
+static func _connect_sectors(layout: FloorLayout, data: FloorData, room_by_sector: Dictionary,
+		start: Vector2i, boss: Vector2i, rng: RandomNumberGenerator) -> void:
 	# Random spanning tree (randomized Prim) over every sector except the boss arena.
 	var visited: Dictionary = {start: true}
 	var frontier: Array[Array] = []
@@ -178,14 +190,14 @@ static func _connect_sectors(layout: FloorLayout, room_by_sector: Dictionary, st
 			if neighbor != boss and not visited.has(neighbor):
 				frontier.append([target, neighbor])
 
-	# Extra links make loops, so there is more than one way around.
+	# A few extra links make loops, so there is sometimes more than one way around.
 	for sector in layout.all_sectors():
 		if sector == boss:
 			continue
 		for neighbor in layout.sector_neighbors(sector):
 			if neighbor == boss or neighbor < sector or used.has(_edge_key(sector, neighbor)):
 				continue
-			if rng.randf() < EXTRA_LINK_CHANCE:
+			if rng.randf() < data.extra_link_chance:
 				_link(layout, room_by_sector, sector, neighbor, rng)
 				used[_edge_key(sector, neighbor)] = true
 
@@ -226,28 +238,31 @@ static func _carve_line(layout: FloorLayout, from: Vector2i, to: Vector2i) -> vo
 		cell += step
 
 
-## Stone pillars (2 wide x 3 tall) in the room's quarters, never on a corridor or touching a wall.
-static func _add_pillars(layout: FloorLayout, room: FloorLayout.Room, rng: RandomNumberGenerator) -> void:
+## Big halls may get a grid of stone pillars (2 wide x 3 tall), never on a corridor path or next to a wall.
+static func _add_pillars(layout: FloorLayout, data: FloorData, room: FloorLayout.Room,
+		rng: RandomNumberGenerator) -> void:
 	var rect: Rect2i = room.rect
-	if rect.size.x < PILLAR_ROOM_MIN.x or rect.size.y < PILLAR_ROOM_MIN.y or rng.randf() > PILLAR_CHANCE:
+	if rect.size.x < PILLAR_HALL_MIN.x or rect.size.y < PILLAR_HALL_MIN.y or rng.randf() > data.pillar_hall_chance:
 		return
-	var spots: Array[Vector2i] = [
-		rect.position + Vector2i(3, 3),
-		Vector2i(rect.end.x - 5, rect.position.y + 3),
-		Vector2i(rect.position.x + 3, rect.end.y - 6),
-		rect.end - Vector2i(5, 6),
-	]
-	for spot in spots:
-		if _pillar_fits(layout, spot):
-			for y in range(spot.y, spot.y + 3):
-				for x in range(spot.x, spot.x + 2):
-					layout.set_floor(x, y, false)
+	var spacing := Vector2i(rng.randi_range(PILLAR_SPACING_MIN, PILLAR_SPACING_MAX),
+		rng.randi_range(PILLAR_SPACING_MIN, PILLAR_SPACING_MAX))
+	var y: int = rect.position.y + 4
+	while y + 3 <= rect.end.y - 4:
+		var x: int = rect.position.x + 4
+		while x + 2 <= rect.end.x - 4:
+			var spot := Vector2i(x, y)
+			if _pillar_fits(layout, spot):
+				for py in range(spot.y, spot.y + 3):
+					for px in range(spot.x, spot.x + 2):
+						layout.set_floor(px, py, false)
+			x += spacing.x
+		y += spacing.y
 
 
 static func _pillar_fits(layout: FloorLayout, spot: Vector2i) -> bool:
-	# Pillar plus a one-tile ring must be plain room floor (no corridor, no wall).
-	for y in range(spot.y - 1, spot.y + 4):
-		for x in range(spot.x - 1, spot.x + 3):
+	# Pillar plus a two-tile ring must be plain hall floor (no corridor, no wall).
+	for y in range(spot.y - 2, spot.y + 5):
+		for x in range(spot.x - 2, spot.x + 4):
 			if not layout.is_floor(x, y) or layout.is_corridor(x, y):
 				return false
 	return true

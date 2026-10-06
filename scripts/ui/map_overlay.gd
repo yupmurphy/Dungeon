@@ -5,6 +5,8 @@ extends Control
 const BACKGROUND: Color = Color(0.02, 0.02, 0.04, 0.92)
 const FONT_SIZE: int = 10
 const MAP_TOP: float = 24.0
+## Room kept on the right for the legend.
+const LEGEND_WIDTH: float = 150.0
 
 var exploration: ExplorationMap
 var player: Node2D
@@ -25,8 +27,11 @@ func _draw() -> void:
 		return
 	var font: Font = ThemeDB.fallback_font
 	var map_size: Vector2 = Vector2(exploration.layout.size)
-	var scale_factor: float = floorf(minf((size.x - 180.0) / map_size.x, (size.y - MAP_TOP - 12.0) / map_size.y))
-	scale_factor = maxf(scale_factor, 1.0)
+	# Fit the map next to the legend. Big floors are shrunk (linear filtering keeps thin corridors visible).
+	var scale_factor: float = minf((size.x - LEGEND_WIDTH) / map_size.x, (size.y - MAP_TOP - 8.0) / map_size.y)
+	if scale_factor >= 1.0:
+		scale_factor = floorf(scale_factor)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if scale_factor >= 1.0 else CanvasItem.TEXTURE_FILTER_LINEAR
 	var map_rect := Rect2(Vector2(16.0, MAP_TOP), map_size * scale_factor)
 	draw_rect(map_rect.grow(1.0), Color(1, 1, 1, 0.25), false, 1.0)
 	draw_texture_rect(exploration.map_texture, map_rect, false)

@@ -190,6 +190,9 @@ func _on_hit_received(damage: float, knockback: Vector2) -> void:
 
 func _on_died() -> void:
 	_set_state(State.DEAD, 0.0)
+	# Out of the "enemy" group so EnemyActivator can't pause it mid fade-out (it would never be freed).
+	remove_from_group("enemy")
+	process_mode = Node.PROCESS_MODE_INHERIT
 	hurtbox.invulnerable = true
 	hitbox.deactivate()
 	# Deferred: we are probably inside a physics callback (the player's hit).

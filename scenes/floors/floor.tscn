@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/floors/exploration_map.gd" id="4_exploration"]
 [ext_resource type="Script" path="res://scripts/floors/enemy_activator.gd" id="5_activator"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="6_hud"]
+[ext_resource type="Script" path="res://scripts/floors/chunk_manager.gd" id="7_chunks"]
 
 [node name="Floor" type="Node2D"]
 script = ExtResource("1_floor")
@@ -27,6 +28,9 @@ script = ExtResource("4_exploration")
 
 [node name="Fog" type="Sprite2D" parent="Exploration"]
 texture_filter = 2
+
+[node name="ChunkManager" type="Node" parent="."]
+script = ExtResource("7_chunks")
 
 [node name="EnemyActivator" type="Node" parent="."]
 script = ExtResource("5_activator")

@@ -1,11 +1,13 @@
 class_name FloorLayout
 extends RefCounted
-## Result of FloorGenerator: a wall/floor grid plus rooms, regions and key positions.
+## Result of FloorGenerator + FloorPopulator: a wall/floor grid, halls, regions, key positions and
+## everything that will be spawned (monsters, props, torches), grouped by chunk for streaming.
 ## Pure data (no nodes), so it can be generated and checked without running the game.
 ##
 ## Region "slots": 0 = start zone, 1..N = FloorData.regions in order, N + 1 = boss arena.
 
 enum RoomKind { START, NORMAL, BOSS }
+enum SpawnKind { MONSTER, PROP, TORCH }
 
 const START_SLOT: int = 0
 ## Walls this close to a floor cell are drawn; deeper rock stays empty (black).
@@ -21,10 +23,24 @@ class Room:
 	func center() -> Vector2i:
 		return rect.position + rect.size / 2
 
+	func area() -> int:
+		return rect.size.x * rect.size.y
+
+
+class Spawn:
+	var id: int
+	var kind: int  # SpawnKind
+	var cell: Vector2i
+	var slot: int
+	var monster: MonsterData
+	var tile_index: int
+	var solid: bool
+
 
 var size: Vector2i
 var sector_grid: Vector2i
 var sector_size: Vector2i
+var chunk_size: int = 32
 var seed_value: int
 var region_count: int
 var rooms: Array[Room] = []
@@ -34,6 +50,9 @@ var start_cell: Vector2i
 var portal_cell: Vector2i
 var boss_sector: Vector2i
 var boss_room: Room
+var spawns: Array[Spawn] = []
+## Vector2i chunk -> Array of spawn indices.
+var spawns_by_chunk: Dictionary = {}
 
 var _cells: PackedByteArray
 var _corridor: PackedByteArray
@@ -138,20 +157,60 @@ func floor_cell_count() -> int:
 	return _cells.count(1)
 
 
-## Computes the render mask. Call once after carving.
+# --- Chunks ---
+
+func chunk_of(cell: Vector2i) -> Vector2i:
+	return Vector2i(floori(float(cell.x) / chunk_size), floori(float(cell.y) / chunk_size))
+
+
+func chunk_rect(chunk: Vector2i) -> Rect2i:
+	return Rect2i(chunk * chunk_size, Vector2i(chunk_size, chunk_size)).intersection(Rect2i(Vector2i.ZERO, size))
+
+
+func chunk_count() -> Vector2i:
+	return Vector2i(ceili(float(size.x) / chunk_size), ceili(float(size.y) / chunk_size))
+
+
+func add_spawn(spawn: Spawn) -> void:
+	spawn.id = spawns.size()
+	spawns.append(spawn)
+	var chunk: Vector2i = chunk_of(spawn.cell)
+	if not spawns_by_chunk.has(chunk):
+		spawns_by_chunk[chunk] = []
+	spawns_by_chunk[chunk].append(spawn.id)
+
+
+func count_spawns(kind: int) -> int:
+	var count: int = 0
+	for spawn in spawns:
+		if spawn.kind == kind:
+			count += 1
+	return count
+
+
+## Computes the render mask (floor dilated by RENDER_DISTANCE). Call once after carving.
+## Two separable passes (rows, then columns) keep it fast on big maps.
 func finalize() -> void:
-	_render.resize(size.x * size.y)
+	var w: int = size.x
+	var h: int = size.y
+	var rows := PackedByteArray()
+	rows.resize(w * h)
+	rows.fill(0)
+	for y in h:
+		var row: int = y * w
+		for x in w:
+			if _cells[row + x] == 1:
+				for dx in range(maxi(x - RENDER_DISTANCE, 0), mini(x + RENDER_DISTANCE, w - 1) + 1):
+					rows[row + dx] = 1
+	_render.resize(w * h)
 	_render.fill(0)
-	for y in size.y:
-		for x in size.x:
-			if _cells[y * size.x + x] != 1:
-				continue
-			for dy in range(-RENDER_DISTANCE, RENDER_DISTANCE + 1):
-				for dx in range(-RENDER_DISTANCE, RENDER_DISTANCE + 1):
-					if in_bounds(x + dx, y + dy):
-						_render[(y + dy) * size.x + x + dx] = 1
+	for y in h:
+		for x in w:
+			if rows[y * w + x] == 1:
+				for dy in range(maxi(y - RENDER_DISTANCE, 0), mini(y + RENDER_DISTANCE, h - 1) + 1):
+					_render[dy * w + x] = 1
 
 
 ## Same seed must give the same map; this fingerprint makes that easy to check.
 func fingerprint() -> int:
-	return hash([_cells, _sector_slots, portal_cell, start_cell])
+	return hash([_cells, _sector_slots, portal_cell, start_cell, spawns.size()])

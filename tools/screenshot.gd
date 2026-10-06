@@ -59,6 +59,21 @@ func run(options: Dictionary) -> void:
 				fog.visible = false
 			for i in 5:
 				await get_tree().process_frame
+		"hall":
+			# Biggest regular hall, zoomed out, without darkness: checks halls, pillars and decoration.
+			var floor_level := room as FloorLevel
+			var biggest: FloorLayout.Room = null
+			for hall in floor_level.layout.rooms:
+				if hall.kind == FloorLayout.RoomKind.NORMAL and (biggest == null or hall.area() > biggest.area()):
+					biggest = hall
+			player.global_position = (Vector2(biggest.center()) + Vector2(0.5, 3.5)) * GameScale.TILE_SIZE
+			var camera := player.get_node("Camera2D") as Camera2D
+			camera.zoom = Vector2(0.5, 0.5)
+			camera.position_smoothing_enabled = false
+			(room.get_node("Darkness") as CanvasModulate).visible = false
+			(room.get_node("Exploration/Fog") as CanvasItem).visible = false
+			for i in 60:
+				await get_tree().physics_frame
 		"map":
 			var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
 			exploration.reveal_all()
