@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="EnemyData" format=3]
+[gd_resource type="Resource" script_class="MonsterData" format=3]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="1_data"]
 [ext_resource type="Resource" path="res://resources/stats/slime_stats.tres" id="2_stats"]
 [ext_resource type="SpriteFrames" path="res://resources/sprites/slime_frames.tres" id="3_frames"]
 

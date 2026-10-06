@@ -11,6 +11,8 @@ signal hit_received(damage: float, knockback: Vector2)
 
 ## Set by the owner for invulnerability windows (e.g. while dodging).
 var invulnerable: bool = false
+## Debug invincibility (F3); separate so dodges don't switch it off.
+var god_mode: bool = false
 var _grace_left: float = 0.0
 
 
@@ -20,7 +22,7 @@ func _process(delta: float) -> void:
 
 
 func is_invulnerable() -> bool:
-	return invulnerable or _grace_left > 0.0 or (health != null and health.is_dead)
+	return invulnerable or god_mode or _grace_left > 0.0 or (health != null and health.is_dead)
 
 
 ## Returns true if the hit actually landed.

@@ -1,4 +1,5 @@
 @tool
+class_name Prop
 extends StaticBody2D
 ## Decoration taken from the tilesheet (barrel, tombstone, chest...). Choose it with `tile_index`;
 ## `solid` decides whether it blocks movement.

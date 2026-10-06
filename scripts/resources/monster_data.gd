@@ -1,13 +1,21 @@
-class_name EnemyData
+class_name MonsterData
 extends Resource
 ## Everything that defines one monster type. New monster = new .tres, no new code.
 
-@export var display_name: String = "Grunt"
+@export var display_name: String = "Monster"
 @export var stats: Stats
+## XP given the first time this monster type is killed (bestiary, stage 4).
+@export var xp_reward: int = 5
+## Region this monster belongs to (RegionData.id). Informational; RegionData lists what spawns where.
+@export var region_id: StringName = &""
+## Behavior components to attach (filled in stage 2). Empty = basic chase + melee.
+@export var behaviors: Array[StringName] = []
 
 @export_group("Look")
 ## Animations "idle", "run", "attack".
 @export var sprite_frames: SpriteFrames
+## Multiplied over the sprite, so one pack sprite can be reused for several monsters.
+@export var sprite_tint: Color = Color.WHITE
 @export var art_faces_right: bool = true
 ## Color of hit/death particles.
 @export var body_color: Color = Color(0.45, 0.75, 0.35)
@@ -15,7 +23,7 @@ extends Resource
 @export var windup_color: Color = Color(1.0, 0.15, 0.1)
 @export var body_radius: float = 6.0
 
-@export_group("Behavior")
+@export_group("Movement")
 @export var move_speed: float = 55.0
 @export var detect_range: float = 160.0
 ## If the player gets farther than this, the enemy gives up the chase.

@@ -1,9 +1,12 @@
 extends Node
-## Debug tool: saves one rendered frame of the main scene, optionally with a staged fight.
+## Debug tool: saves one rendered frame, optionally with a staged situation.
 ## Run (NOT headless, it needs a GPU):
-##   <godot.exe> --path . -- --screenshot=<file.png> --mode=idle|fight|dodge|overview
+##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
+## Modes on the dungeon floor: idle, map (whole map revealed, big map open), overview.
+## Modes in the combat test room: fight, dodge, room.
 
 const SETTLE_FRAMES: int = 40
+const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
 
 
 func run(options: Dictionary) -> void:
@@ -11,6 +14,8 @@ func run(options: Dictionary) -> void:
 	if output.is_empty():
 		output = "user://screenshot.png"
 	var mode: String = options.get("--mode", "idle")
+	if mode in ["fight", "dodge", "room"]:
+		get_tree().change_scene_to_file.call_deferred(TEST_ROOM)
 
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame
@@ -43,12 +48,21 @@ func run(options: Dictionary) -> void:
 			player._try_dodge(Vector2.RIGHT)
 			for i in 6:
 				await get_tree().physics_frame
-		"overview":
-			# Whole room, without darkness, to check the tile layout.
+		"overview", "room":
+			# Zoomed out, without darkness, to check the tile layout.
 			var camera := player.get_node("Camera2D") as Camera2D
-			camera.zoom = Vector2(0.75, 0.75)
+			camera.zoom = Vector2(0.75, 0.75) if mode == "room" else Vector2(0.4, 0.4)
 			camera.position_smoothing_enabled = false
 			(room.get_node("Darkness") as CanvasModulate).visible = false
+			var fog := room.get_node_or_null("Exploration/Fog") as CanvasItem
+			if fog != null:
+				fog.visible = false
+			for i in 5:
+				await get_tree().process_frame
+		"map":
+			var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
+			exploration.reveal_all()
+			(room.get_node("HUD/Root/MapOverlay") as Control).visible = true
 			for i in 5:
 				await get_tree().process_frame
 

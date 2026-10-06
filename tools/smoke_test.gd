@@ -6,6 +6,8 @@ var _failures: int = 0
 
 
 func run(_options: Dictionary) -> void:
+	# Deferred: tools start while the tree is still adding the main scene.
+	get_tree().change_scene_to_file.call_deferred("res://scenes/levels/test_room.tscn")
 	for i in 10:
 		await get_tree().process_frame
 	var room: Node = get_tree().current_scene

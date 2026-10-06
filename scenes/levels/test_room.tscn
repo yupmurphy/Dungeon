@@ -7,8 +7,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
 [ext_resource type="PackedScene" path="res://scenes/levels/prop.tscn" id="6_prop"]
 [ext_resource type="PackedScene" path="res://scenes/levels/wall_torch.tscn" id="7_torch"]
-[ext_resource type="Resource" path="res://resources/enemies/slime.tres" id="8_slime"]
-[ext_resource type="Resource" path="res://resources/enemies/bat.tres" id="9_bat"]
+[ext_resource type="Resource" path="res://resources/monsters/slime.tres" id="8_slime"]
+[ext_resource type="Resource" path="res://resources/monsters/bat.tres" id="9_bat"]
 
 [node name="TestRoom" type="Node2D" unique_id=1202491886]
 script = ExtResource("1_room")

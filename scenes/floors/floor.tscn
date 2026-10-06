@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/floors/floor_level.gd" id="1_floor"]
+[ext_resource type="Resource" path="res://resources/floors/floor_1.tres" id="2_data"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://scripts/floors/exploration_map.gd" id="4_exploration"]
+[ext_resource type="Script" path="res://scripts/floors/enemy_activator.gd" id="5_activator"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="6_hud"]
+
+[node name="Floor" type="Node2D"]
+script = ExtResource("1_floor")
+floor_data = ExtResource("2_data")
+
+[node name="Darkness" type="CanvasModulate" parent="."]
+color = Color(0.1, 0.09, 0.15, 1)
+
+[node name="Tiles" type="Node2D" parent="."]
+
+[node name="World" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Player" parent="World" instance=ExtResource("3_player")]
+
+[node name="Exploration" type="Node2D" parent="."]
+z_index = 50
+script = ExtResource("4_exploration")
+
+[node name="Fog" type="Sprite2D" parent="Exploration"]
+texture_filter = 2
+
+[node name="EnemyActivator" type="Node" parent="."]
+script = ExtResource("5_activator")
+
+[node name="HUD" parent="." instance=ExtResource("6_hud")]

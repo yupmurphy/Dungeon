@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/floors/portal.gd" id="1_portal"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_portal"]
+radius = 10.0
+
+[sub_resource type="Gradient" id="Gradient_light"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_light"]
+gradient = SubResource("Gradient_light")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[node name="Portal" type="Area2D"]
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+script = ExtResource("1_portal")
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0.45, 0.45, 0.5, 0.8)
+polygon = PackedVector2Array(0, -14, 10, -10, 14, 0, 10, 10, 0, 14, -10, 10, -14, 0, -10, -10)
+
+[node name="Core" type="Polygon2D" parent="."]
+color = Color(0.05, 0.02, 0.1, 1)
+polygon = PackedVector2Array(0, -8, 6, -6, 8, 0, 6, 6, 0, 8, -6, 6, -8, 0, -6, -6)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_portal")
+
+[node name="Light" type="PointLight2D" parent="."]
+enabled = false
+color = Color(0.7, 0.35, 1, 1)
+texture = SubResource("GradientTexture2D_light")
+texture_scale = 0.6

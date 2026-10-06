@@ -1,7 +1,7 @@
 class_name Enemy
 extends CharacterBody2D
 ## Data-driven melee enemy. Chases the player when it sees them, telegraphs its attack by
-## turning red for `windup_time`, lunges, then recovers. Everything tunable lives in EnemyData.
+## turning red for `windup_time`, lunges, then recovers. Everything tunable lives in MonsterData.
 
 signal died(enemy: Enemy)
 
@@ -17,7 +17,7 @@ const DEATH_SHAKE: float = 3.5
 const DAMAGE_DEALT_COLOR: Color = Color(1.0, 0.95, 0.6)
 const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
 
-@export var data: EnemyData
+@export var data: MonsterData
 
 var state: State = State.IDLE
 
@@ -42,7 +42,7 @@ var _shader: ShaderMaterial
 
 func _ready() -> void:
 	if data == null:
-		data = EnemyData.new()
+		data = MonsterData.new()
 	if data.stats == null:
 		data.stats = Stats.new()
 
@@ -52,6 +52,7 @@ func _ready() -> void:
 	if data.sprite_frames != null:
 		sprite.sprite_frames = data.sprite_frames
 		sprite.play(&"idle")
+	sprite.modulate = data.sprite_tint
 	animator.art_faces_right = data.art_faces_right
 	_shader = sprite.material as ShaderMaterial
 	hitbox.position.x = radius + 9.0
