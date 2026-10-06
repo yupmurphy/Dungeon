@@ -37,6 +37,20 @@ func run(_options: Dictionary) -> void:
 		enemy.process_mode = Node.PROCESS_MODE_DISABLED
 	player.global_position = Vector2(300, 250)
 
+	print("--- movement (simulated physical keys)")
+	for key in [[KEY_D, Vector2.RIGHT], [KEY_A, Vector2.LEFT], [KEY_S, Vector2.DOWN], [KEY_W, Vector2.UP]]:
+		player.global_position = Vector2(300, 250)
+		await get_tree().physics_frame
+		var start: Vector2 = player.global_position
+		_send_key(key[0], true)
+		for i in 15:
+			await get_tree().physics_frame
+		_send_key(key[0], false)
+		var moved: Vector2 = player.global_position - start
+		_check(moved.dot(key[1]) > 10.0, "key %s moves the player %s (moved %s)" % [OS.get_keycode_string(key[0]), key[1], moved.round()])
+	await get_tree().physics_frame
+	player.global_position = Vector2(300, 250)
+
 	print("--- dodge")
 	player._try_dodge(Vector2.RIGHT)
 	_check(player.hurtbox.is_invulnerable(), "dodge gives invulnerability")
@@ -92,6 +106,13 @@ func _hit_with_player(player: Player, enemy: Enemy) -> void:
 	player.hitbox.knockback_force = player.attack_knockback
 	player.hitbox.activate(Player.ATTACK_ACTIVE_TIME)
 	await get_tree().create_timer(0.3, true, false, true).timeout
+
+
+func _send_key(physical_key: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.physical_keycode = physical_key
+	event.pressed = pressed
+	Input.parse_input_event(event)
 
 
 func _has_child_of(parent: Node, type: Variant) -> bool:
