@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/levels/prop.gd" id="1_prop"]
+[ext_resource type="Texture2D" path="res://assets/Tilemap/tilemap_packed.png" id="2_sheet"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_prop"]
+size = Vector2(12, 8)
+
+[node name="Prop" type="StaticBody2D"]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("1_prop")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_sheet")
+region_enabled = true
+region_filter_clip_enabled = true
+region_rect = Rect2(96, 80, 16, 16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 3)
+shape = SubResource("RectangleShape2D_prop")

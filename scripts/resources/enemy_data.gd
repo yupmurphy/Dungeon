@@ -6,10 +6,14 @@ extends Resource
 @export var stats: Stats
 
 @export_group("Look")
+## Animations "idle", "run", "attack".
+@export var sprite_frames: SpriteFrames
+@export var art_faces_right: bool = true
+## Color of hit/death particles.
 @export var body_color: Color = Color(0.45, 0.75, 0.35)
-## Body turns toward this color during the attack wind-up (the visual warning).
+## Sprite is tinted toward this color during the attack wind-up (the visual warning).
 @export var windup_color: Color = Color(1.0, 0.15, 0.1)
-@export var body_radius: float = 7.0
+@export var body_radius: float = 6.0
 
 @export_group("Behavior")
 @export var move_speed: float = 55.0

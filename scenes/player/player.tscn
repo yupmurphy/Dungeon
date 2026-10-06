@@ -6,6 +6,33 @@
 [ext_resource type="Script" path="res://scripts/components/stamina_component.gd" id="4_stamina"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="5_hurtbox"]
 [ext_resource type="Script" path="res://scripts/components/hitbox.gd" id="6_hitbox"]
+[ext_resource type="SpriteFrames" path="res://resources/sprites/player_frames.tres" id="7_frames"]
+[ext_resource type="Shader" path="res://resources/shaders/flash.gdshader" id="8_flash"]
+[ext_resource type="Script" path="res://scripts/components/sprite_animator.gd" id="9_animator"]
+[ext_resource type="Script" path="res://scripts/components/camera_shake.gd" id="10_camera"]
+[ext_resource type="Texture2D" path="res://assets/Tilemap/tilemap_packed.png" id="11_sheet"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+resource_local_to_scene = true
+shader = ExtResource("8_flash")
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/flash_amount = 0.0
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sword"]
+atlas = ExtResource("11_sheet")
+region = Rect2(128, 128, 16, 16)
+filter_clip = true
+
+[sub_resource type="Gradient" id="Gradient_light"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_light"]
+gradient = SubResource("Gradient_light")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 radius = 6.0
@@ -25,13 +52,15 @@ stats = ExtResource("2_stats")
 
 [node name="Visual" type="Node2D" parent="."]
 
-[node name="Body" type="ColorRect" parent="Visual"]
-offset_left = -6.0
-offset_top = -6.0
-offset_right = 6.0
-offset_bottom = 6.0
-mouse_filter = 2
-color = Color(0.3, 0.6, 1, 1)
+[node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
+material = SubResource("ShaderMaterial_flash")
+sprite_frames = ExtResource("7_frames")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="SpriteAnimator" type="Node" parent="." node_paths=PackedStringArray("sprite")]
+script = ExtResource("9_animator")
+sprite = NodePath("../Visual/Sprite")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_body")
@@ -55,12 +84,13 @@ shape = SubResource("CircleShape2D_hurt")
 
 [node name="AttackPivot" type="Node2D" parent="."]
 
-[node name="AimMarker" type="ColorRect" parent="AttackPivot"]
-offset_left = 8.0
-offset_top = -1.0
-offset_right = 11.0
-offset_bottom = 2.0
-mouse_filter = 2
+[node name="WeaponPivot" type="Node2D" parent="AttackPivot"]
+z_index = 1
+
+[node name="Sword" type="Sprite2D" parent="AttackPivot/WeaponPivot"]
+position = Vector2(11, 0)
+rotation = 1.5708
+texture = SubResource("AtlasTexture_sword")
 
 [node name="Hitbox" type="Area2D" parent="AttackPivot"]
 position = Vector2(18, 0)
@@ -73,7 +103,19 @@ script = ExtResource("6_hitbox")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackPivot/Hitbox"]
 shape = SubResource("RectangleShape2D_hit")
 
-[node name="SwingVisual" type="Polygon2D" parent="AttackPivot/Hitbox"]
+[node name="SlashVisual" type="Polygon2D" parent="AttackPivot/Hitbox"]
 visible = false
-color = Color(1, 1, 1, 0.55)
-polygon = PackedVector2Array(-11, -14, 11, -14, 11, 14, -11, 14)
+z_index = 2
+color = Color(1, 1, 1, 0.6)
+polygon = PackedVector2Array(-5, -22.5, 4.5, -13, 8, 0, 4.5, 13, -5, 22.5, -12, 10.4, -7.6, 6, -6, 0, -7.6, -6, -12, -10.4)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
+script = ExtResource("10_camera")
+
+[node name="Torch" type="PointLight2D" parent="."]
+color = Color(1, 0.85, 0.6, 1)
+texture = SubResource("GradientTexture2D_light")
+energy = 0.9
+texture_scale = 0.8

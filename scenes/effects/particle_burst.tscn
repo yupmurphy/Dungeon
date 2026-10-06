@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/effects/particle_burst.gd" id="1_burst"]
+
+[sub_resource type="Gradient" id="Gradient_fade"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[node name="ParticleBurst" type="CPUParticles2D"]
+emitting = false
+amount = 8
+lifetime = 0.4
+one_shot = true
+explosiveness = 1.0
+direction = Vector2(1, 0)
+spread = 180.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+damping_min = 120.0
+damping_max = 160.0
+scale_amount_min = 1.5
+scale_amount_max = 3.0
+color_ramp = SubResource("Gradient_fade")
+script = ExtResource("1_burst")

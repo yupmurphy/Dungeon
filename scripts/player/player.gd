@@ -10,7 +10,12 @@ enum State { NORMAL, DODGE, DEAD }
 const ATTACK_ACTIVE_TIME: float = 0.12
 const ATTACK_SLOW_TIME: float = 0.2
 const KNOCKBACK_DECAY: float = 900.0
-const DEAD_COLOR: Color = Color(0.35, 0.35, 0.4)
+## Sword swing arc, in radians, on each side of the aim direction.
+const SWING_HALF_ARC: float = 1.3
+const GHOST_INTERVAL: float = 0.03
+const GHOST_TINT: Color = Color(0.5, 0.8, 1.0, 0.6)
+const DAMAGE_TAKEN_COLOR: Color = Color(1.0, 0.35, 0.3)
+const HURT_SHAKE: float = 6.0
 
 @export var stats: Stats
 
@@ -39,31 +44,34 @@ var is_dead: bool:
 var _attack_cooldown_left: float = 0.0
 var _attack_slow_left: float = 0.0
 var _swing_left: float = 0.0
+var _swing_side: float = 1.0
 var _dodge_cooldown_left: float = 0.0
 var _dodge_time_left: float = 0.0
 var _dodge_dir: Vector2 = Vector2.ZERO
+var _ghost_left: float = 0.0
 var _knockback: Vector2 = Vector2.ZERO
-var _base_color: Color
+var _flash_tween: Tween
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var stamina: StaminaComponent = $StaminaComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
 @onready var attack_pivot: Node2D = $AttackPivot
+@onready var weapon_pivot: Node2D = $AttackPivot/WeaponPivot
 @onready var hitbox: Hitbox = $AttackPivot/Hitbox
-@onready var swing_visual: Polygon2D = $AttackPivot/Hitbox/SwingVisual
+@onready var slash_visual: Polygon2D = $AttackPivot/Hitbox/SlashVisual
 @onready var visual: Node2D = $Visual
-@onready var body: ColorRect = $Visual/Body
+@onready var sprite: AnimatedSprite2D = $Visual/Sprite
+@onready var animator: SpriteAnimator = $SpriteAnimator
 
 
 func _ready() -> void:
 	if stats == null:
 		stats = Stats.new()
-	_base_color = body.color
 	health.setup(stats.get_max_health())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
-	hitbox.activated.connect(swing_visual.show)
-	hitbox.deactivated.connect(swing_visual.hide)
+	hitbox.activated.connect(slash_visual.show)
+	hitbox.deactivated.connect(slash_visual.hide)
 
 
 func _physics_process(delta: float) -> void:
@@ -81,6 +89,11 @@ func _physics_process(delta: float) -> void:
 		State.DEAD:
 			velocity = _knockback
 	move_and_slide()
+
+	if state != State.DEAD:
+		animator.face(get_global_mouse_position().x - global_position.x)
+		animator.update_motion(velocity, delta)
+		_update_weapon()
 
 
 func _physics_normal() -> void:
@@ -101,6 +114,10 @@ func _physics_normal() -> void:
 func _physics_dodge(delta: float) -> void:
 	velocity = _dodge_dir * dodge_speed + _knockback
 	_dodge_time_left -= delta
+	_ghost_left -= delta
+	if _ghost_left <= 0.0:
+		_ghost_left = GHOST_INTERVAL
+		GameFeel.spawn_ghost(sprite, GHOST_TINT)
 	if _dodge_time_left <= 0.0:
 		_end_dodge()
 
@@ -111,6 +128,15 @@ func _aim_at_mouse() -> void:
 		attack_pivot.rotation = aim.angle()
 
 
+## Sword rests slightly to one side of the aim; during a swing it sweeps across the arc.
+func _update_weapon() -> void:
+	if _swing_left > 0.0:
+		var progress: float = 1.0 - _swing_left / ATTACK_ACTIVE_TIME
+		weapon_pivot.rotation = lerpf(-SWING_HALF_ARC, SWING_HALF_ARC, progress) * _swing_side
+	else:
+		weapon_pivot.rotation = SWING_HALF_ARC * 0.5 * _swing_side
+
+
 func _try_attack() -> void:
 	if _attack_cooldown_left > 0.0 or not stamina.spend(attack_stamina_cost):
 		return
@@ -119,8 +145,10 @@ func _try_attack() -> void:
 	hitbox.knockback_force = attack_knockback
 	hitbox.activate(ATTACK_ACTIVE_TIME)
 	_swing_left = ATTACK_ACTIVE_TIME
+	_swing_side = -_swing_side
 	_attack_slow_left = ATTACK_SLOW_TIME
 	_attack_cooldown_left = base_attack_cooldown / stats.get_attack_speed_multiplier()
+	animator.play_attack(ATTACK_SLOW_TIME)
 
 
 func _try_dodge(input_dir: Vector2) -> void:
@@ -135,8 +163,9 @@ func _try_dodge(input_dir: Vector2) -> void:
 	_dodge_dir = dir
 	_dodge_time_left = base_dodge_duration * stats.get_dodge_length_multiplier()
 	_dodge_cooldown_left = dodge_cooldown
+	_ghost_left = 0.0
 	hurtbox.invulnerable = true
-	visual.modulate.a = 0.4
+	visual.modulate.a = 0.5
 	state = State.DODGE
 
 
@@ -146,18 +175,28 @@ func _end_dodge() -> void:
 	state = State.NORMAL
 
 
-func _on_hit_received(_damage: float, knockback: Vector2) -> void:
+func _set_flash(amount: float) -> void:
+	(sprite.material as ShaderMaterial).set_shader_parameter("flash_amount", amount)
+
+
+func _on_hit_received(damage: float, knockback: Vector2) -> void:
 	_knockback = knockback
+	GameFeel.shake(HURT_SHAKE)
+	GameFeel.spawn_damage_number(global_position, damage, DAMAGE_TAKEN_COLOR)
 	if state == State.DEAD:
 		return
-	body.color = Color.WHITE
-	create_tween().tween_property(body, "color", _base_color, 0.15)
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_flash_tween = create_tween()
+	_flash_tween.tween_method(_set_flash, 1.0, 0.0, 0.2)
 
 
 func _on_died() -> void:
 	state = State.DEAD
 	hurtbox.invulnerable = true
 	hitbox.deactivate()
-	visual.modulate.a = 1.0
-	body.color = DEAD_COLOR
+	visual.modulate = Color(0.55, 0.55, 0.6, 1.0)
+	visual.rotation = PI / 2.0
+	weapon_pivot.hide()
+	_set_flash(0.0)
 	died.emit()

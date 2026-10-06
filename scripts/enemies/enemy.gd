@@ -1,7 +1,7 @@
 class_name Enemy
 extends CharacterBody2D
 ## Data-driven melee enemy. Chases the player when it sees them, telegraphs its attack by
-## shifting color for `windup_time`, lunges, then recovers. Everything tunable lives in EnemyData.
+## turning red for `windup_time`, lunges, then recovers. Everything tunable lives in EnemyData.
 
 signal died(enemy: Enemy)
 
@@ -10,6 +10,12 @@ enum State { IDLE, CHASE, WINDUP, ATTACK, RECOVER, DEAD }
 const KNOCKBACK_DECAY: float = 800.0
 const STAGGER_TIME: float = 0.35
 const HIT_FLASH_TIME: float = 0.1
+const MAX_WINDUP_TINT: float = 0.75
+const HIT_STOP_TIME: float = 0.05
+const HIT_SHAKE: float = 2.0
+const DEATH_SHAKE: float = 3.5
+const DAMAGE_DEALT_COLOR: Color = Color(1.0, 0.95, 0.6)
+const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
 
 @export var data: EnemyData
 
@@ -20,14 +26,16 @@ var _target: Player
 var _knockback: Vector2 = Vector2.ZERO
 var _attack_dir: Vector2 = Vector2.RIGHT
 var _flash_left: float = 0.0
+var _shader: ShaderMaterial
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
 @onready var attack_pivot: Node2D = $AttackPivot
 @onready var hitbox: Hitbox = $AttackPivot/Hitbox
-@onready var swing_visual: Polygon2D = $AttackPivot/Hitbox/SwingVisual
+@onready var slash_visual: Polygon2D = $AttackPivot/Hitbox/SlashVisual
 @onready var visual: Node2D = $Visual
-@onready var body: ColorRect = $Visual/Body
+@onready var sprite: AnimatedSprite2D = $Visual/Sprite
+@onready var animator: SpriteAnimator = $SpriteAnimator
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
 @onready var hurtbox_shape: CollisionShape2D = $Hurtbox/CollisionShape2D
 
@@ -41,9 +49,11 @@ func _ready() -> void:
 	var radius: float = data.body_radius
 	(body_shape.shape as CircleShape2D).radius = radius
 	(hurtbox_shape.shape as CircleShape2D).radius = radius + 1.0
-	body.size = Vector2.ONE * radius * 2.0
-	body.position = -Vector2.ONE * radius
-	body.color = data.body_color
+	if data.sprite_frames != null:
+		sprite.sprite_frames = data.sprite_frames
+		sprite.play(&"idle")
+	animator.art_faces_right = data.art_faces_right
+	_shader = sprite.material as ShaderMaterial
 	hitbox.position.x = radius + 9.0
 	hitbox.damage = data.attack_damage * data.stats.get_damage_multiplier()
 	hitbox.knockback_force = data.attack_knockback
@@ -51,8 +61,8 @@ func _ready() -> void:
 	health.setup(data.stats.get_max_health())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
-	hitbox.activated.connect(swing_visual.show)
-	hitbox.deactivated.connect(swing_visual.hide)
+	hitbox.activated.connect(slash_visual.show)
+	hitbox.deactivated.connect(slash_visual.hide)
 
 
 func _physics_process(delta: float) -> void:
@@ -81,7 +91,10 @@ func _physics_process(delta: float) -> void:
 
 	velocity = move + _knockback
 	move_and_slide()
-	_update_color()
+	if state != State.DEAD:
+		_update_facing()
+		animator.update_motion(move, delta)
+	_update_tint()
 
 
 func _set_state(new_state: State, duration: float) -> void:
@@ -124,26 +137,43 @@ func _tick_chase() -> Vector2:
 func _begin_attack() -> void:
 	attack_pivot.rotation = _attack_dir.angle()
 	hitbox.activate(data.attack_active_time)
+	animator.play_attack(data.attack_active_time)
 	_set_state(State.ATTACK, data.attack_active_time)
 
 
-func _update_color() -> void:
+func _update_facing() -> void:
+	if state in [State.WINDUP, State.ATTACK]:
+		animator.face(_attack_dir.x)
+	elif is_instance_valid(_target):
+		animator.face(_target.global_position.x - global_position.x)
+
+
+func _update_tint() -> void:
 	if _flash_left > 0.0:
-		body.color = Color.WHITE
+		_set_tint(Color.WHITE, 1.0)
 	elif state == State.WINDUP:
 		var progress: float = 1.0 - clampf(_state_left / maxf(data.windup_time, 0.01), 0.0, 1.0)
-		body.color = data.body_color.lerp(data.windup_color, progress)
+		_set_tint(data.windup_color, progress * MAX_WINDUP_TINT)
 	elif state == State.ATTACK:
-		body.color = data.windup_color
+		_set_tint(data.windup_color, MAX_WINDUP_TINT)
 	else:
-		body.color = data.body_color
+		_set_tint(Color.WHITE, 0.0)
 
 
-func _on_hit_received(_damage: float, knockback: Vector2) -> void:
+func _set_tint(color: Color, amount: float) -> void:
+	_shader.set_shader_parameter("flash_color", color)
+	_shader.set_shader_parameter("flash_amount", amount)
+
+
+func _on_hit_received(damage: float, knockback: Vector2) -> void:
 	_knockback = knockback * (1.0 - data.knockback_resistance)
+	GameFeel.hit_stop(HIT_STOP_TIME)
+	GameFeel.shake(HIT_SHAKE)
+	GameFeel.spawn_damage_number(global_position, damage, DAMAGE_DEALT_COLOR)
+	GameFeel.spawn_burst(global_position, SPARK_COLOR, 6, 90.0)
+	_flash_left = HIT_FLASH_TIME
 	if state == State.DEAD:
 		return
-	_flash_left = HIT_FLASH_TIME
 	if state == State.WINDUP:
 		_set_state(State.RECOVER, STAGGER_TIME)
 	elif state == State.IDLE:
@@ -158,6 +188,8 @@ func _on_died() -> void:
 	# Deferred: we are probably inside a physics callback (the player's hit).
 	set_deferred("collision_layer", 0)
 	set_deferred("collision_mask", 0)
+	GameFeel.shake(DEATH_SHAKE)
+	GameFeel.spawn_burst(global_position, data.body_color, 18, 120.0)
 	died.emit(self)
 	var tween: Tween = create_tween()
 	tween.tween_property(visual, "modulate:a", 0.0, 0.4)

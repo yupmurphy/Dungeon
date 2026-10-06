@@ -1,18 +1,26 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
-[ext_resource type="Resource" path="res://resources/enemies/grunt.tres" id="2_data"]
+[ext_resource type="Resource" path="res://resources/enemies/spider.tres" id="2_data"]
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="3_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="4_hurtbox"]
 [ext_resource type="Script" path="res://scripts/components/hitbox.gd" id="5_hitbox"]
+[ext_resource type="Shader" path="res://resources/shaders/flash.gdshader" id="6_flash"]
+[ext_resource type="Script" path="res://scripts/components/sprite_animator.gd" id="7_animator"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+resource_local_to_scene = true
+shader = ExtResource("6_flash")
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/flash_amount = 0.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 resource_local_to_scene = true
-radius = 7.0
+radius = 6.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
 resource_local_to_scene = true
-radius = 8.0
+radius = 7.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
 size = Vector2(20, 24)
@@ -26,13 +34,12 @@ data = ExtResource("2_data")
 
 [node name="Visual" type="Node2D" parent="."]
 
-[node name="Body" type="ColorRect" parent="Visual"]
-offset_left = -7.0
-offset_top = -7.0
-offset_right = 7.0
-offset_bottom = 7.0
-mouse_filter = 2
-color = Color(0.45, 0.75, 0.35, 1)
+[node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
+material = SubResource("ShaderMaterial_flash")
+
+[node name="SpriteAnimator" type="Node" parent="." node_paths=PackedStringArray("sprite")]
+script = ExtResource("7_animator")
+sprite = NodePath("../Visual/Sprite")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_body")
@@ -54,7 +61,7 @@ shape = SubResource("CircleShape2D_hurt")
 [node name="AttackPivot" type="Node2D" parent="."]
 
 [node name="Hitbox" type="Area2D" parent="AttackPivot"]
-position = Vector2(16, 0)
+position = Vector2(15, 0)
 collision_layer = 64
 collision_mask = 8
 monitoring = false
@@ -64,7 +71,8 @@ script = ExtResource("5_hitbox")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackPivot/Hitbox"]
 shape = SubResource("RectangleShape2D_hit")
 
-[node name="SwingVisual" type="Polygon2D" parent="AttackPivot/Hitbox"]
+[node name="SlashVisual" type="Polygon2D" parent="AttackPivot/Hitbox"]
 visible = false
-color = Color(1, 0.3, 0.2, 0.5)
-polygon = PackedVector2Array(-10, -12, 10, -12, 10, 12, -10, 12)
+z_index = 2
+color = Color(1, 0.3, 0.2, 0.6)
+polygon = PackedVector2Array(-4, -19, 4, -11, 7, 0, 4, 11, -4, 19, -10, 8.7, -6.3, 5, -5, 0, -6.3, -5, -10, -8.7)

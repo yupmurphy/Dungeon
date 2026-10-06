@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/stats/bat_stats.tres" id="2_stats"]
+[ext_resource type="SpriteFrames" path="res://resources/sprites/bat_frames.tres" id="3_frames"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Bat"
+stats = ExtResource("2_stats")
+sprite_frames = ExtResource("3_frames")
+body_color = Color(0.75, 0.45, 0.3, 1)
+move_speed = 75.0
+detect_range = 190.0
+windup_time = 0.4
+lunge_speed = 230.0
+recovery_time = 0.6
+attack_damage = 10.0

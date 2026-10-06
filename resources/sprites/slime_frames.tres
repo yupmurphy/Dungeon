@@ -1,0 +1,11 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/Tilemap/tilemap_packed.png" id="1_sheet"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame"]
+atlas = ExtResource("1_sheet")
+region = Rect2(0, 144, 16, 16)
+filter_clip = true
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("AtlasTexture_frame")}], "loop": true, "name": &"idle", "speed": 5.0}, {"frames": [{"duration": 1.0, "texture": SubResource("AtlasTexture_frame")}], "loop": true, "name": &"run", "speed": 5.0}, {"frames": [{"duration": 1.0, "texture": SubResource("AtlasTexture_frame")}], "loop": true, "name": &"attack", "speed": 5.0}]
