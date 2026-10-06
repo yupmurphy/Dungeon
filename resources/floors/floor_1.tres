@@ -11,4 +11,5 @@
 script = ExtResource("1_floor")
 floor_number = 1
 display_name = "Floor 1"
+map_size = Vector2i(900, 900)
 regions = Array[ExtResource("2_region")]([ExtResource("3_galleries"), ExtResource("4_forest"), ExtResource("5_swamp"), ExtResource("6_desert")])

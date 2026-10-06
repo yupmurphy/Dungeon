@@ -10,16 +10,21 @@ extends Resource
 @export var boss: MonsterData
 
 @export_group("Layout")
-## Map size in tiles.
-@export var map_size: Vector2i = Vector2i(480, 480)
+## Map size in tiles: THE setting for how big the floor is. Zones scale with it (the hub radius is a share
+## of it); monster and decoration amounts follow the floor area (densities in RegionData).
+@export var map_size: Vector2i = Vector2i(900, 900)
 ## Radius of the closed hub zone, as a share of half the map size.
-@export_range(0.2, 0.6) var hub_radius: float = 0.4
-## The hub's edge wobbles in and out by up to this many tiles.
-@export var hub_radius_variation: int = 14
+@export_range(0.2, 0.6) var hub_radius: float = 0.36
+## The hub's edge wobbles in and out by up to this share of its radius.
+@export_range(0.0, 0.3) var hub_radius_variation: float = 0.09
 ## Thickness of the rock ring that closes the hub (crossed only by the gates).
 @export var hub_ring: int = 6
 ## Width of the gate passages through the ring.
 @export var gate_width: int = 5
+## How many gates lead from the hub into each open zone (random between x and y).
+@export var gates_per_zone: Vector2i = Vector2i(2, 3)
+## Minimum distance in tiles between two gates into the same zone (fewer gates if the zone's edge is short).
+@export var gate_spacing: int = 45
 ## Open zones get between these shares of the circle before normalizing (bigger gap = more uneven zones).
 @export var open_zone_share_min: float = 1.0
 @export var open_zone_share_max: float = 1.4
@@ -29,7 +34,7 @@ extends Resource
 @export var border_min: int = 5
 @export var border_max: int = 13
 ## Boss arena: inner half-size (ellipse radii) and wall thickness.
-@export var boss_arena_radii: Vector2i = Vector2i(22, 17)
+@export var boss_arena_radii: Vector2i = Vector2i(26, 20)
 @export var boss_arena_wall: int = 3
 
 @export_group("Content")

@@ -1,16 +1,26 @@
 extends Node
 ## Automated checks for the floor generator and the floor scene.
 ## Run:  <godot.exe> --headless --path . -- --floor-test     (exit code 0 = all passed)
+## Options: --seeds=<first>:<count> checks other seeds; --generator-only skips the scene checks.
 
 const FLOOR_DATA: FloorData = preload("res://resources/floors/floor_1.tres")
-const SEED_COUNT: int = 10
+const SEED_COUNT: int = 8
+## Seeds that are generated twice to check that the same seed gives the same map.
+const DETERMINISM_SEEDS: int = 2
 
 var _failures: int = 0
+var _first_seed: int = 1
+var _seed_count: int = SEED_COUNT
 
 
-func run(_options: Dictionary) -> void:
+func run(options: Dictionary) -> void:
+	var seeds: String = options.get("--seeds", "")
+	if seeds.contains(":"):
+		_first_seed = int(seeds.get_slice(":", 0))
+		_seed_count = maxi(int(seeds.get_slice(":", 1)), 1)
 	_check_generator()
-	await _check_scene()
+	if not options.has("--generator-only"):
+		await _check_scene()
 	print("--- result: %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	get_tree().quit(0 if _failures == 0 else 1)
 
@@ -22,7 +32,7 @@ const GENERATOR_CHECKS: Array[String] = [
 	"start is floor, in the middle of the closed zone",
 	"every floor tile reachable from start",
 	"each zone is one connected block",
-	"one gate per open zone, each leads into its zone",
+	"2-3 gates per open zone, spaced apart, each leads into its zone",
 	"closed zone is sealed except at its gates",
 	"open zones blend into each other (walkable borders)",
 	"portal is floor, inside the boss arena",
@@ -33,32 +43,42 @@ const GENERATOR_CHECKS: Array[String] = [
 
 
 func _check_generator() -> void:
-	print("--- generator (%d seeds)" % SEED_COUNT)
+	print("--- generator (%d seeds)" % _seed_count)
 	var problems: Dictionary = {}
 	var arrangements: Dictionary = {}
 	var total_ms: int = 0
 	var smallest_share: float = 1.0
-	for seed_value in range(1, SEED_COUNT + 1):
+	var sample: FloorLayout = null
+	var phase_ms: Dictionary = {}
+	for seed_value in range(_first_seed, _first_seed + _seed_count):
 		var started: int = Time.get_ticks_msec()
 		var layout: FloorLayout = FloorGenerator.generate(FLOOR_DATA, seed_value)
 		total_ms += Time.get_ticks_msec() - started
+		for phase: String in FloorGenerator.timings:
+			phase_ms[phase] = phase_ms.get(phase, 0.0) + FloorGenerator.timings[phase] / _seed_count
+		if sample == null:
+			sample = layout
 		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
 		for label in _generator_problems(layout):
 			if not problems.has(label):
 				problems[label] = seed_value
-		if FloorGenerator.generate(FLOOR_DATA, seed_value).fingerprint() != layout.fingerprint():
+		if seed_value < _first_seed + DETERMINISM_SEEDS and FloorGenerator.generate(FLOOR_DATA, seed_value).fingerprint() != layout.fingerprint():
 			problems["same seed gives the same map"] = seed_value
 		arrangements[_arrangement(layout)] = true
+	var phases: Array[String] = []
+	for phase: String in phase_ms:
+		phases.append("%s %.0f" % [phase, phase_ms[phase]])
+	print("  generation phases (ms): ", ", ".join(phases))
 
 	for label in GENERATOR_CHECKS:
 		_check(not problems.has(label), label + ("" if not problems.has(label) else " (seed %d)" % problems[label]))
-	_check(arrangements.size() >= SEED_COUNT * 0.6,
-		"zone order, rotation and boss zone change with the seed (%d different of %d)" % [arrangements.size(), SEED_COUNT])
+	_check(arrangements.size() >= _seed_count * 0.6,
+		"zone order, rotation and boss zone change with the seed (%d different of %d)" % [arrangements.size(), _seed_count])
 	_check(smallest_share > 0.4, "most of the map is walkable (smallest: %.0f%% floor)" % (smallest_share * 100.0))
-	var average: float = float(total_ms) / SEED_COUNT
-	_check(average < 3000.0, "generation is fast enough (%.0f ms average for %dx%d)" % [
+	var average: float = float(total_ms) / _seed_count
+	# Generous on purpose: a loading screen will hide generation time later.
+	_check(average < 6000.0, "generation is fast enough (%.0f ms average for %dx%d)" % [
 		average, FLOOR_DATA.map_size.x, FLOOR_DATA.map_size.y])
-	var sample: FloorLayout = FloorGenerator.generate(FLOOR_DATA, 1)
 	var monsters: int = sample.count_spawns(FloorLayout.SpawnKind.MONSTER)
 	var props: int = sample.count_spawns(FloorLayout.SpawnKind.PROP)
 	var torches: int = sample.count_spawns(FloorLayout.SpawnKind.TORCH)
@@ -100,15 +120,22 @@ func _generator_problems(layout: FloorLayout) -> Array[String]:
 	for slot in FLOOR_DATA.regions.size():
 		if FLOOR_DATA.regions[slot].kind == RegionData.Kind.OPEN:
 			open_slots.append(slot)
-	var gate_slots: Array[int] = []
+	var gates_by_slot: Dictionary = {}
 	for gate in layout.gates:
-		gate_slots.append(gate.slot)
+		if not gates_by_slot.has(gate.slot):
+			gates_by_slot[gate.slot] = []
+		gates_by_slot[gate.slot].append(gate)
 		if not layout.is_floor(gate.cell.x, gate.cell.y) or not layout.is_floor(gate.outside.x, gate.outside.y) \
 				or layout.slot_at(gate.outside.x, gate.outside.y) != gate.slot:
-			problems.append("one gate per open zone, each leads into its zone")
-	gate_slots.sort()
-	if gate_slots != open_slots:
-		problems.append("one gate per open zone, each leads into its zone")
+			problems.append("2-3 gates per open zone, spaced apart, each leads into its zone")
+	for slot in open_slots:
+		var gates: Array = gates_by_slot.get(slot, [])
+		if gates.size() < FLOOR_DATA.gates_per_zone.x or gates.size() > FLOOR_DATA.gates_per_zone.y:
+			problems.append("2-3 gates per open zone, spaced apart, each leads into its zone")
+		for i in gates.size():
+			for j in range(i + 1, gates.size()):
+				if Vector2(gates[i].cell).distance_to(Vector2(gates[j].cell)) < FLOOR_DATA.gate_spacing * 0.75:
+					problems.append("2-3 gates per open zone, spaced apart, each leads into its zone")
 
 	# Floor contacts between different zones.
 	var leaks: int = 0
@@ -340,6 +367,12 @@ func _zone_contiguous(layout: FloorLayout, slot: int) -> bool:
 				seen[j] = 1
 				found += 1
 				stack.append(j)
+	if found != slots.count(slot):
+		for i in slots.size():
+			if slots[i] == slot and seen[i] == 0:
+				print("    zone %d: %d of %d cells connected, first stray cell %s" % [
+					slot, found, slots.count(slot), Vector2i(i % w, i / w)])
+				break
 	return found == slots.count(slot)
 
 

@@ -48,10 +48,12 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - **"Ecological" floor generator, being rebuilt in stages** (1 structure DONE, 2 Goblin Galleries caves with
   themed halls, 3 swamp = the model zone, 4 forest + desert, 5 spawners/territories/day-night + F7).
 - `FloorGenerator` (pure code, seeded) -> `FloorLayout` (rock/floor grid + a zone slot per cell, no empty space).
-  480 x 480 tiles. The first CLOSED `RegionData` (Goblin Galleries) is the hub: a wobbly disc in the middle with the
+  900 x 900 tiles (`FloorData.map_size`, the one setting for floor size; ~1.3-2 s to generate, a loading
+  screen will hide it later - don't over-optimize). Zones are computed per 4x4 block (islands merged there),
+  cells next to the hub ring / arena are fixed cell by cell (`_fix_strip`). The first CLOSED `RegionData` (Goblin Galleries) is the hub: a wobbly disc in the middle with the
   start at its center, sealed by a rock ring. The OPEN regions (Forest, Swamp, Desert) are angular sectors around
   it; order, sizes and rotation change with the seed, borders meander (noise) and are walkable (natural transitions).
-  One gate per open zone through the ring. Boss arena = walled ellipse at the outer edge of a random open zone,
+  2-3 gates per open zone through the ring, spaced apart (`gates_per_zone`, `gate_spacing`). Boss arena = walled ellipse at the outer edge of a random open zone,
   one entrance facing the middle, portal at the far end. Map edge = rock band. Accessibility: tiny pockets filled,
   others joined to the start by the cheapest dug tunnel (never through the hub ring, arena walls or map edge).
   Slots: 0..N-1 = `FloorData.regions`, N = boss arena. Cells marked "protected" (gates, arena entrance) never get
@@ -100,7 +102,8 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . --import                       # re-import, register classes
     <godot> --headless --path . --quit-after 300               # run the game briefly, catch script errors
     <godot> --headless --path . -- --smoke-test                # combat checks (test room), exit code 0 = pass
-    <godot> --headless --path . -- --floor-test                # generator (10 seeds) + floor scene + streaming + debug keys
+    <godot> --headless --path . -- --floor-test                # generator (8 seeds) + floor scene + streaming + debug keys
+    <godot> --headless --path . -- --floor-test --seeds=100:25 --generator-only   # generator rules on more seeds
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless
             # floor modes: idle, map, overview, gate, arena, start / test room modes: fight, dodge, room
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
