@@ -142,8 +142,11 @@ static func _draw_tile(img: Image, type: int, v: int) -> void:
 			for root: Vector2i in [Vector2i(3, 12), Vector2i(12, 12), Vector2i(8, 14)]:
 				_line(img, Vector2i(8, 9), root, Color(0.3, 0.2, 0.11))
 		Terrain.Type.WATER_SHALLOW:
-			_speckle(img, Color(0.32, 0.58, 0.78), 0.04, s)
-			_waves(img, Color(0.55, 0.78, 0.92), 2, s)
+			# Murky green-brown water with stones and algae on the bottom (a flat pale blue read as ice).
+			_speckle(img, Color(0.2, 0.36, 0.34), 0.06, s)
+			_dots(img, [Color(0.27, 0.3, 0.22), Color(0.16, 0.28, 0.26)], 5 + v, s)
+			_dots(img, [Color(0.3, 0.46, 0.2)], 2 + v, s + 9)
+			_waves(img, Color(0.4, 0.58, 0.55), 1 + v % 2, s)
 		Terrain.Type.WATER_DEEP:
 			_speckle(img, Color(0.11, 0.24, 0.52), 0.04, s)
 			_waves(img, Color(0.22, 0.4, 0.7), 1 + v % 2, s)
@@ -160,7 +163,7 @@ static func _draw_tile(img: Image, type: int, v: int) -> void:
 			if v == 2:
 				_disc(img, Vector2(9, 9), 2.5, Color(0.25, 0.3, 0.25))
 		Terrain.Type.REEDS:
-			_speckle(img, Color(0.3, 0.52, 0.62), 0.05, s)
+			_speckle(img, Color(0.2, 0.36, 0.34), 0.06, s)
 			var rng := _rng(s)
 			for i in 5 + v:
 				var x: int = rng.randi_range(1, 14)

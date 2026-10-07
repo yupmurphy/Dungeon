@@ -27,7 +27,7 @@ const INFO: Dictionary = {
 	Type.GRASS: [true, 1.0, false, Color(0.45, 0.72, 0.3)],
 	Type.FOREST_FLOOR: [true, 1.0, false, Color(0.3, 0.5, 0.22)],
 	Type.TREE: [false, 1.0, true, Color(0.08, 0.3, 0.1)],
-	Type.WATER_SHALLOW: [true, 0.55, false, Color(0.35, 0.6, 0.85)],
+	Type.WATER_SHALLOW: [true, 0.55, false, Color(0.25, 0.5, 0.55)],
 	Type.WATER_DEEP: [false, 1.0, false, Color(0.12, 0.28, 0.65)],
 	Type.BRIDGE: [true, 1.0, false, Color(0.6, 0.42, 0.22)],
 	Type.MUD: [true, 0.9, false, Color(0.4, 0.42, 0.28)],
