@@ -59,14 +59,16 @@ const CRITICAL_DAMAGE: float = 1.5
 ## Radius (reference pixels, 16 = one tile) in which you see monsters (and traps, later).
 const SIGHT_RADIUS_BASE: float = 90.0
 const SIGHT_RADIUS_PER_PERCEPTION: float = 6.0
+const SIGHT_RADIUS_MAX: float = 240.0
 ## Light around the player (reference pixels): how far you see in the dark.
 const LIGHT_RADIUS_BASE: float = 70.0
 const LIGHT_RADIUS_PER_PERCEPTION: float = 6.0
-const LIGHT_RADIUS_MAX: float = 400.0
+## Capped near the screen size: a bigger light shows nothing more and makes the game heavier.
+const LIGHT_RADIUS_MAX: float = 192.0
 ## Tiles revealed on the map around the player (with line of sight). Capped: big radii cost time on every step.
 const REVEAL_RADIUS_BASE: float = 7.0
 const REVEAL_RADIUS_PER_PERCEPTION: float = 0.4
-const REVEAL_RADIUS_MAX: int = 30
+const REVEAL_RADIUS_MAX: int = 16
 
 # --- Damage taken = damage x DEFENSE_SCALE / (DEFENSE_SCALE + defense) ---
 const DEFENSE_SCALE: float = 100.0
@@ -171,7 +173,7 @@ func get_crit_chance() -> float:
 
 ## Radius in reference pixels (convert with GameScale.world) in which monsters (and traps, later) are visible.
 func get_sight_radius() -> float:
-	return SIGHT_RADIUS_BASE + perception * SIGHT_RADIUS_PER_PERCEPTION
+	return minf(SIGHT_RADIUS_BASE + perception * SIGHT_RADIUS_PER_PERCEPTION, SIGHT_RADIUS_MAX)
 
 
 ## Radius of the player's light, in reference pixels.

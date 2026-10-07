@@ -58,9 +58,12 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_PERCEPTION * 100.0)}))
 			lines.append(_text("EFFECT_CRIT", {"value": _num(minf(value * Stats.CRIT_CHANCE_PER_PERCEPTION,
 				Stats.CRIT_CHANCE_MAX) * 100.0)}))
-			lines.append(_text("EFFECT_SIGHT", {"value": _num(_tiles(value * Stats.SIGHT_RADIUS_PER_PERCEPTION))}))
-			lines.append(_text("EFFECT_LIGHT", {"value": _num(_tiles(value * Stats.LIGHT_RADIUS_PER_PERCEPTION))}))
-			lines.append(_text("EFFECT_REVEAL", {"value": _num(value * Stats.REVEAL_RADIUS_PER_PERCEPTION)}))
+			lines.append(_text("EFFECT_SIGHT", {"value": _num(_tiles(minf(value * Stats.SIGHT_RADIUS_PER_PERCEPTION,
+				Stats.SIGHT_RADIUS_MAX - Stats.SIGHT_RADIUS_BASE)))}))
+			lines.append(_text("EFFECT_LIGHT", {"value": _num(_tiles(minf(value * Stats.LIGHT_RADIUS_PER_PERCEPTION,
+				Stats.LIGHT_RADIUS_MAX - Stats.LIGHT_RADIUS_BASE)))}))
+			lines.append(_text("EFFECT_REVEAL", {"value": _num(minf(value * Stats.REVEAL_RADIUS_PER_PERCEPTION,
+				Stats.REVEAL_RADIUS_MAX - Stats.REVEAL_RADIUS_BASE))}))
 		Stats.Stat.LUCK:
 			lines.append(_text("EFFECT_NONE"))
 	return lines
@@ -97,7 +100,8 @@ static func derived(stats: Stats) -> Array[Derived]:
 	list.append(_derived("CRIT", "%s%%" % _num(stats.get_crit_chance() * 100.0),
 		{"per": _num(Stats.CRIT_CHANCE_PER_PERCEPTION * 100.0), "critical": _num(Stats.CRITICAL_DAMAGE * 100.0)}))
 	list.append(_derived("SIGHT", "%s tiles" % _num(_tiles(stats.get_sight_radius())),
-		{"base": _num(_tiles(Stats.SIGHT_RADIUS_BASE)), "per": _num(_tiles(Stats.SIGHT_RADIUS_PER_PERCEPTION))}))
+		{"base": _num(_tiles(Stats.SIGHT_RADIUS_BASE)), "per": _num(_tiles(Stats.SIGHT_RADIUS_PER_PERCEPTION)),
+		"max": _num(_tiles(Stats.SIGHT_RADIUS_MAX))}))
 	list.append(_derived("LIGHT", "%s tiles" % _num(_tiles(stats.get_light_radius())),
 		{"base": _num(_tiles(Stats.LIGHT_RADIUS_BASE)), "per": _num(_tiles(Stats.LIGHT_RADIUS_PER_PERCEPTION)),
 		"max": _num(_tiles(Stats.LIGHT_RADIUS_MAX))}))
