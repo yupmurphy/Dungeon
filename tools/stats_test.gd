@@ -68,8 +68,6 @@ func run(_options: Dictionary) -> void:
 	_check_value(_with(Stats.Stat.AGILITY, 100).get_evade_chance(), 0.8, "Agility 100 -> still 80% miss (cap)")
 	_check_value(_with(Stats.Stat.VITALITY, 5).get_exhaustion_gain_multiplier(), 0.95, "Vitality 5 -> 95% exhaustion gained")
 	_check_value(_with(Stats.Stat.VITALITY, 500).get_exhaustion_gain_multiplier(), 0.1, "Vitality 500 -> 10% (floor)")
-	_check_value(_with(Stats.Stat.STRENGTH, 10).get_poison_duration_multiplier(), 0.7, "Strength 10 -> poison lasts 70%")
-	_check_value(_with(Stats.Stat.STRENGTH, 100).get_poison_duration_multiplier(), 0.1, "Strength 100 -> poison 10% (floor)")
 	_check_value(_with(Stats.Stat.PERCEPTION, 5).get_crit_chance(), 0.05, "Perception 5 -> 5% critical")
 	_check_value(_with(Stats.Stat.PERCEPTION, 150).get_crit_chance(), 1.0, "Perception 150 -> 100% critical (cap)")
 	_check(_with(Stats.Stat.PERCEPTION, 20).get_sight_radius() > _with(Stats.Stat.PERCEPTION, 5).get_sight_radius(),

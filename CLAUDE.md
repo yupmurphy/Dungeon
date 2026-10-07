@@ -28,7 +28,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
     decision). All start at 5 except Magic: 0 and locked until a story event (`magic_unlocked`; debug button).
     Magic: magic damage +4%/pt, mana 20 + 5/pt. Intelligence: passive, no combat effect (later: item appraisal,
     learning spells). General damage bonus = Strength, Agility, Magic, Perception (+1%/pt each). Strength keeps
-    health, defense and poison resistance. Vitality: -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
+    health and defense (poison resistance removed until poison exists). Vitality: -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
     Perception. Only main stats are saved. Stats owns every derived formula (health, mana, damage, speeds...)
     as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.

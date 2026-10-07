@@ -27,7 +27,7 @@ STAT_MAGIC,Magic
 STAT_INTELLIGENCE,Intelligence
 STAT_PERCEPTION,Perception
 STAT_LUCK,Luck
-STAT_STRENGTH_DESC,"Raw power and toughness. More health, harder hits that push enemies farther, less damage taken, more carry weight, and poison wears off sooner."
+STAT_STRENGTH_DESC,"Raw power and toughness. More health, harder hits that push enemies farther, less damage taken and more carry weight."
 STAT_AGILITY_DESC,"Speed and reflexes. You attack and move faster, and enemies miss you more often."
 STAT_VITALITY_DESC,"Endurance. Sprinting and attacking tire you less."
 STAT_MAGIC_DESC,"Arcane power. Stronger spells, more mana and a bit more damage."
@@ -45,7 +45,6 @@ EFFECT_MOVE_SPEED,+{value}% movement speed
 EFFECT_EVADE,+{value}% chance that enemies miss you (max {max}%)
 EFFECT_HEALTH,+{value} health
 EFFECT_EXHAUSTION,-{value}% exhaustion gained
-EFFECT_POISON,-{value}% poison duration
 EFFECT_MAGIC_DAMAGE,+{value}% magic damage
 EFFECT_INTELLIGENCE,"Later: judging the value of items and learning spells."
 EFFECT_MANA,+{value} mana
@@ -68,7 +67,6 @@ DERIVED_LIGHT,Light radius
 DERIVED_REVEAL,Map reveal radius
 DERIVED_KNOCKBACK,Knockback
 DERIVED_CARRY,Carry weight
-DERIVED_POISON,Poison duration
 DERIVED_EXHAUSTION,Exhaustion gained
 DERIVED_HEALTH_FROM,"From Strength: {base} + {per} per point. Strength {stat} gives {value}."
 DERIVED_MANA_FROM,"From Magic: {base} + {per} per point, 0 while Magic is locked. Magic {stat} gives {value}."
@@ -84,5 +82,4 @@ DERIVED_LIGHT_FROM,"From Perception: {base} + {per} tiles per point (at most {ma
 DERIVED_REVEAL_FROM,"From Perception: {base} + {per} tiles per point, rounded down (at most {max}). How far around you the map gets revealed."
 DERIVED_KNOCKBACK_FROM,"From Strength: +{per}% per point."
 DERIVED_CARRY_FROM,"From Strength: {base} + {per} per point."
-DERIVED_POISON_FROM,"From Strength: -{per}% per point, but poison lasts at least {min}% of its time."
 DERIVED_EXHAUSTION_FROM,"From Vitality: -{per}% per point, at least {min}%. Sprint adds {sprint} per second, an attack {attack}; it drops after a short rest. Above {tired} you are slower; at 100 you cannot sprint and deal less damage until it drops below {tired}."

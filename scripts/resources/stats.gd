@@ -52,11 +52,6 @@ const EVADE_MAX: float = 0.8
 const EXHAUSTION_GAIN_PER_VITALITY: float = 0.01
 const EXHAUSTION_GAIN_MIN: float = 0.1
 
-# --- Strength: toughness ---
-## Poison lasts x (1 - this per point), never less than POISON_DURATION_MIN.
-const POISON_DURATION_PER_STRENGTH: float = 0.03
-const POISON_DURATION_MIN: float = 0.1
-
 # --- Perception ---
 const CRIT_CHANCE_PER_PERCEPTION: float = 0.01
 const CRIT_CHANCE_MAX: float = 1.0
@@ -185,11 +180,6 @@ func get_evade_chance() -> float:
 ## Multiplier for every exhaustion gain (sprint, attacks).
 func get_exhaustion_gain_multiplier() -> float:
 	return maxf(1.0 - vitality * EXHAUSTION_GAIN_PER_VITALITY, EXHAUSTION_GAIN_MIN)
-
-
-## Multiplier for how long poison lasts (no poison yet; ready for it).
-func get_poison_duration_multiplier() -> float:
-	return maxf(1.0 - strength * POISON_DURATION_PER_STRENGTH, POISON_DURATION_MIN)
 
 
 ## Chance (0..1) that this character's hit is critical.

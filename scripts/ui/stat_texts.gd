@@ -39,8 +39,6 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 		Stats.Stat.STRENGTH:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_STRENGTH * 100.0)}))
 			lines.append(_text("EFFECT_HEALTH", {"value": _num(value * Stats.HEALTH_PER_STRENGTH)}))
-			lines.append(_text("EFFECT_POISON", {"value": _num(minf(value * Stats.POISON_DURATION_PER_STRENGTH,
-				1.0 - Stats.POISON_DURATION_MIN) * 100.0)}))
 			lines.append(_text("EFFECT_DEFENSE", {"value": _num(value * Stats.DEFENSE_PER_STRENGTH)}))
 			lines.append(_text("EFFECT_KNOCKBACK", {"value": _num(value * Stats.KNOCKBACK_PER_STRENGTH * 100.0)}))
 			lines.append(_text("EFFECT_CARRY", {"value": _num(value * Stats.CARRY_WEIGHT_PER_STRENGTH)}))
@@ -114,8 +112,6 @@ static func derived(stats: Stats) -> Array[Derived]:
 		{"per": _num(Stats.KNOCKBACK_PER_STRENGTH * 100.0)}))
 	list.append(_derived("CARRY", _num(stats.get_carry_weight()),
 		{"base": _num(Stats.CARRY_WEIGHT_BASE), "per": _num(Stats.CARRY_WEIGHT_PER_STRENGTH)}))
-	list.append(_derived("POISON", "%s%%" % _num(stats.get_poison_duration_multiplier() * 100.0),
-		{"per": _num(Stats.POISON_DURATION_PER_STRENGTH * 100.0), "min": _num(Stats.POISON_DURATION_MIN * 100.0)}))
 	list.append(_derived("EXHAUSTION", "%s%%" % _num(stats.get_exhaustion_gain_multiplier() * 100.0),
 		{"per": _num(Stats.EXHAUSTION_GAIN_PER_VITALITY * 100.0), "min": _num(Stats.EXHAUSTION_GAIN_MIN * 100.0),
 		"sprint": _num(ExhaustionComponent.SPRINT_PER_SECOND), "attack": _num(ExhaustionComponent.ATTACK_COST),
