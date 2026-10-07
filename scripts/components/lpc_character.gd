@@ -15,6 +15,9 @@ const LOOPING: Array[String] = ["idle", "walk"]
 const WALK_FIRST_FRAME: int = 1
 ## The frame's center is above the feet: lift the sprites so the node's origin sits at the feet.
 const FEET_OFFSET: Vector2 = Vector2(0, -22)
+## LPC art has 4 directions only. Diagonals (W+D, S+A...) use the side view, which reads best; up/down only
+## when the movement is closer than this to vertical (1.0 would split exactly at 45 degrees).
+const DIAGONAL_SIDE_BIAS: float = 0.5
 
 @export var body_type: String = "male"
 ## Item ids from the LPC catalog (assets/lpc/catalog.json), one per slot.
@@ -139,8 +142,9 @@ func _frame_count() -> int:
 	return 1
 
 
-## The LPC direction closest to a vector (screen y grows downwards).
+
+## The LPC direction for a vector (screen y grows downwards).
 static func direction_of(vector: Vector2) -> LpcCatalog.Direction:
-	if absf(vector.x) > absf(vector.y):
+	if absf(vector.x) >= absf(vector.y) * DIAGONAL_SIDE_BIAS:
 		return LpcCatalog.Direction.RIGHT if vector.x > 0.0 else LpcCatalog.Direction.LEFT
 	return LpcCatalog.Direction.DOWN if vector.y > 0.0 else LpcCatalog.Direction.UP

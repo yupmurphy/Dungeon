@@ -115,6 +115,11 @@ func run(_options: Dictionary) -> void:
 	for i in 3:
 		await get_tree().physics_frame
 	_check(player.character.action == "idle", "standing still plays idle (%s)" % player.character.action)
+	# LPC art has 4 directions: diagonals use the side view, up/down only when moving almost vertically.
+	for case in [[Vector2(1, -1), "right"], [Vector2(-1, -1), "left"], [Vector2(1, 1), "right"], [Vector2(-1, 1), "left"],
+			[Vector2(0.3, -1), "up"], [Vector2(-0.3, 1), "down"]]:
+		var facing: String = LpcCatalog.DIRECTION_NAMES[LpcCharacter.direction_of(case[0])]
+		_check(facing == case[1], "moving %s faces %s (%s)" % [case[0], case[1], facing])
 
 	print("--- dodge")
 	player._try_dodge(Vector2.RIGHT)
