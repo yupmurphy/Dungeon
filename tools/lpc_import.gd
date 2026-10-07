@@ -12,6 +12,8 @@ const CATALOG: String = "res://assets/lpc/catalog.json"
 const CREDITS: String = "res://assets/CREDITS.csv"
 ## Human-readable credits: every source and author, and which pieces are free to use and how.
 const CREDITS_PAGE: String = "res://CREDITS.md"
+## Start of the hand-written town art rows in CREDITS.csv, kept when the file is regenerated.
+const TOWN_CREDITS_MARKER: String = "# Town art in assets/town/"
 ## One EquipmentData .tres per wearable item (made once; later edits to the .tres are kept).
 const EQUIPMENT_DIR: String = "res://resources/equipment/"
 const BODY_TYPES: Array[String] = ["male", "female"]
@@ -168,6 +170,13 @@ func _write_credits(clone: String) -> int:
 		var folder: String = path.get_base_dir() + "/"
 		if not by_folder.has(folder):
 			by_folder[folder] = line
+	# Rows not from the LPC generator (the town art, assets/town/) are kept as they are.
+	var kept := PackedStringArray()
+	if FileAccess.file_exists(CREDITS):
+		var previous: String = FileAccess.get_file_as_string(CREDITS)
+		var start: int = previous.find(TOWN_CREDITS_MARKER)
+		if start >= 0:
+			kept = previous.substr(start).strip_edges().split("\n")
 	var output := FileAccess.open(CREDITS, FileAccess.WRITE)
 	output.store_line("# Credits for the LPC art in assets/lpc/ (copied from the Universal LPC generator's CREDITS.csv).")
 	output.store_line("# These licenses require crediting every author listed here, e.g. on a Credits screen.")
@@ -189,6 +198,8 @@ func _write_credits(clone: String) -> int:
 		output.store_line("\"%s\",%s" % [path, row.substr(row.find(",") + 1)])
 		_file_rows[path] = row
 		credited += 1
+	for line in kept:
+		output.store_line(line)
 	return credited
 
 
@@ -263,6 +274,7 @@ func _write_credits_page(catalog: Dictionary) -> void:
 	page.append("|---|---|---|---|")
 	page.append("| Dungeon tiles, props, monsters (`assets/Tilemap`) | Kenney, Tiny Dungeon - https://kenney.nl/assets/tiny-dungeon | CC0 | %s |" % FREE_NO_CONDITIONS)
 	page.append("| Nature tiles, trees, props (`NatureArt`) | Drawn by code in this project | ours | yes |")
+	page.append("| Town buildings, walls, roofs, decorations (`assets/town`) | OpenGameArt \"LPC Tiles\" collection, authors in `assets/CREDITS.csv` and `assets/town/*/CREDITS-*.txt` | CC-BY-SA 3.0 / 4.0 (some also GPL, OGA-BY, CC-BY) | %s |" % FREE_SHARE_ALIKE)
 	page.append("| Engine | Godot Engine - https://godotengine.org/license | MIT | Free, keep the Godot license text with the game |")
 	page.append("")
 	page.append("## LPC pieces: authors and sources")

@@ -1,0 +1,9 @@
+"LPC Castle Mega-Pack" by bluecarrot16. License: CC-BY-SA 3.0.
+http://opengameart.org/content/lpc-castle-mega-pack
+Based on:
+"Castle Tiles for RPG's" by Hyptosis, Zabin, Daniel Cook. CC-BY 3.0. http://opengameart.org/content/castle-tiles-for-rpgs
+"LPC castle" by Evert, Xenodora, and Lanea Zimmerman (Sharm). CC-BY 3.0. http://opengameart.org/content/lpc-castle
+"LPC Style Well" by Xenodora, Lanea Zimmerman. CC-BY-3.0 / GPL 3.0. http://opengameart.org/content/lpc-style-well
+"Another LPC style castle" by theidiotmachine. CC-BY-SA 3.0. http://opengameart.org/content/another-lpc-style-castle
+"LPC Base Assets" (castlewalls.png, castle_outside.png) by Daniel Armstrong (HughSpectrum). http://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+Files: castle8_0.png (grey), castle8brn.png (brown), castle8dark.png (dark), castle-extras_0.png.
