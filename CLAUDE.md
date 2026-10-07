@@ -21,12 +21,15 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - **Small, reusable scenes.** One scene = one job (`player`, `enemy`, `prop`, `wall_torch`, `portal`, `hud`).
   Rooms/levels only compose them.
 - **Components instead of duplicated code.** Shared behavior lives in `scripts/components/` as child nodes
-  (`HealthComponent`, `StaminaComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, camera shake). Player and enemies share them.
+  (`HealthComponent`, `ExhaustionComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, camera shake). Player and enemies share them.
 - **Game data is separated from logic** as `Resource` classes (`scripts/resources/`) with instances in `resources/`
   (`.tres`). Adding a monster or changing balance = new/edited `.tres`, no logic rewrite.
-  - `Stats`: 5 main stats (strength, agility, intelligence, perception, luck), all start at 5. Strength also
-    covers toughness (health, stamina, poison); there is no separate Vitality (user decision).
-    (`STARTING_VALUE`); only they are saved. It owns every derived formula (health, stamina, mana, damage, speeds...)
+  - `Stats` (player): 7 main stats: Strength, Agility, Vitality, Magic, Intelligence, Perception, Luck (user
+    decision). All start at 5 except Magic: 0 and locked until a story event (`magic_unlocked`; debug button).
+    Magic: magic damage +4%/pt, mana 20 + 5/pt. Intelligence: passive, no combat effect (later: item appraisal,
+    learning spells). General damage bonus = Strength, Agility, Magic, Perception (+1%/pt each). Vitality: health,
+    poison resistance, -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
+    Perception. Only main stats are saved. Stats owns every derived formula (health, mana, damage, speeds...)
     as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.
   - `Combat` (scripts/core/combat.gd) resolves every hit the same way for player and monsters: miss roll (target
@@ -103,7 +106,10 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - Debug keys: F1 new seed, F2 reveal map, F3 invincible, F4 show seed + copy to clipboard. M = big map.
 - Character sheet (C, pauses the game: CharacterSheet in the HUD, process_mode ALWAYS): level + XP bar
   (`Progression` on the player), main stats with debug -, +, +10 buttons, derived values; hover = tooltip built by
-  `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health/stamina follow).
+  `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health follows).
+- Exhaustion replaces stamina (user decision): 0..100, grows with sprint (Shift) and attacks, recovers after a
+  pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70. No dash/dodge.
+- Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player.
 
 ## Art
 - **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).
@@ -138,7 +144,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - `tools/` dev tools started through the `DebugRunner` autoload
 
 ## Input map
-`move_up/down/left/right` = WASD, `attack` = left mouse, `dodge` = Space, `restart` = R, `map` = M, `character_sheet` = C,
+`move_up/down/left/right` = WASD, `attack` = left mouse, `sprint` = Shift, `restart` = R, `map` = M, `character_sheet` = C,
 `debug_new_seed` F1, `debug_reveal_map` F2, `debug_invincible` F3, `debug_show_seed` F4.
 
 ## Running / checking
