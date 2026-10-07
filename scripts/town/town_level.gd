@@ -5,6 +5,8 @@ extends Node2D
 
 const DUNGEON_SCENE: String = "res://scenes/floors/floor.tscn"
 const TILE: int = 32
+## Top of the forge chimney, from the forge's bottom center.
+const FORGE_SMOKE_OFFSET: Vector2 = Vector2(0, -124)
 
 @onready var _grass: TileMapLayer = $Grass
 @onready var _world: Node2D = $World
@@ -18,6 +20,14 @@ func _ready() -> void:
 	var exit := get_node_or_null("DungeonExit") as Area2D
 	if exit != null:
 		exit.body_entered.connect(_on_dungeon_exit)
+	# Chimney smoke on every building with a chimney, and over the forge.
+	for node in _world.find_children("*", "", true, false):
+		if node is TownBuilding:
+			TownSmoke.attach(node)
+		elif node is TownProp and node.prop == "forge":
+			var smoke := TownSmoke.create()
+			smoke.position = FORGE_SMOKE_OFFSET
+			node.add_child(smoke)
 
 
 func _unhandled_input(event: InputEvent) -> void:

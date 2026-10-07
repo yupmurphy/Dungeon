@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_ax8ls"]
 
-[node name="HuntersGuild" type="Node2D" unique_id=1139663209]
+[node name="HuntersGuild" type="Node2D" unique_id=1367635520]
 script = ExtResource("1_ax8ls")
 width = 13
 wall_height = 5

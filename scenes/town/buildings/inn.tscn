@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_hoqok"]
 
-[node name="Inn" type="Node2D" unique_id=323406823]
+[node name="Inn" type="Node2D" unique_id=822896460]
 script = ExtResource("1_hoqok")
 width = 10
 wall_height = 5

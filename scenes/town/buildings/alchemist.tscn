@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_ta7ge"]
 
-[node name="Alchemist" type="Node2D" unique_id=1912567923]
+[node name="Alchemist" type="Node2D" unique_id=672980873]
 script = ExtResource("1_ta7ge")
 width = 8
 roof_height = 4

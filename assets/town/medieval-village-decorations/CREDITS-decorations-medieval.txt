@@ -99,3 +99,4 @@ https://opengameart.org/content/rpg-indoor-tileset-expansion-1
 Lanea Zimmerman (Sharm), William.Thompsonj
 CC-BY 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0
 https://opengameart.org/content/lpc-dungeon-elements
+Note: the solid placeholder green (#81a100) blocks of the original sheet were made transparent for this project.

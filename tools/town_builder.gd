@@ -16,6 +16,7 @@ const HOUSE_PATH: String = "res://scenes/town/buildings/house.tscn"
 const PLAYER_SCENE: String = "res://scenes/player/player.tscn"
 const HUD_SCENE: String = "res://scenes/ui/hud.tscn"
 const WANTED_DIR: String = "res://resources/town/wanted/"
+const WATER_SHADER: String = "res://resources/shaders/town_water.gdshader"
 
 const T: int = 32
 const MAP_SIZE: Vector2i = Vector2i(84, 62)
@@ -127,6 +128,9 @@ func run(options: Dictionary) -> void:
 	_plan_ground()
 	TownTiles.fill_grass(layers["Grass"], MAP_SIZE)
 	TownTiles.paint(layers["Water"], TownTiles.Source.WATER, _water, false, _bridges)
+	var shimmer := ShaderMaterial.new()
+	shimmer.shader = load(WATER_SHADER)
+	(layers["Water"] as TileMapLayer).material = shimmer
 	TownTiles.paint(layers["Roads"], TownTiles.Source.DIRT, _roads, true)
 	TownTiles.paint(layers["Roads"], TownTiles.Source.SOIL, _soil, false)
 	TownTiles.paint_cobbles(layers["Paving"], _paving)
@@ -135,7 +139,9 @@ func run(options: Dictionary) -> void:
 	var buildings := _group(world, "Buildings", true)
 	_place_landmarks(buildings)
 	_place_houses(buildings)
-	_place_structure_props(_group(world, "Props", true), ground_props)
+	var props := _group(world, "Props", true)
+	_place_structure_props(props, ground_props)
+	_place_details(props, buildings)
 	_place_trees(_group(world, "Trees", true))
 	_root.move_child(_root.get_node("SideWalls"), _root.get_node("World").get_index())
 
@@ -389,6 +395,92 @@ func _place_structure_props(props: Node2D, ground_props: Node2D) -> void:
 		_prop(props, "Grave%d" % (i + 1), "grave", Vector2(72.5 + (i % 3) * 2.0, 18.5 + (i / 3) * 2.0))
 
 
+## Small life: lamps, barrels, crates, sacks, carts, laundry, benches, flower pots, woodpiles, sheds.
+func _place_details(props: Node2D, buildings: Node2D) -> void:
+	var lamps: Array = [
+		# Dungeon road and north gate.
+		Vector2(39.6, 10.4), Vector2(43.4, 10.4), Vector2(39.6, 19), Vector2(43.4, 19),
+		# Square corners and along the paved strip.
+		Vector2(29.6, 27.6), Vector2(53.4, 27.6), Vector2(29.6, 37.8), Vector2(53.4, 37.8), Vector2(24, 27.4),
+		Vector2(59, 27.4),
+		# Streets.
+		Vector2(16.4, 15.4), Vector2(65.4, 15.4), Vector2(16.4, 32.4), Vector2(65.4, 32.4), Vector2(12, 40.6),
+		Vector2(26, 40.6), Vector2(36, 40.6), Vector2(39.6, 45), Vector2(43.4, 45), Vector2(56, 40.6),
+		Vector2(70, 40.6), Vector2(20, 49.4), Vector2(56, 49.4), Vector2(66, 49.4), Vector2(39.6, 53.6),
+		Vector2(43.4, 53.6), Vector2(5.8, 40.4),
+	]
+	for i in lamps.size():
+		var lamp := _prop(props, "Lamp%02d" % (i + 1), "lantern", lamps[i])
+		lamp.on_pole = true
+	var things: Array = [
+		# Store: goods by the door and in the back yard.
+		["crates", 60.5, 25.6], ["barrel", 62.3, 25.4], ["sacks", 56.4, 25.6], ["crate", 57.5, 16.7],
+		["crate_small", 59.5, 16.7], ["barrels", 61, 16.9],
+		# Inn: barrels and a cart in the back yard, stools by the tables.
+		["barrels", 54.5, 29.7], ["barrel_big", 56.6, 29.6], ["crates", 60, 29.7], ["hand_cart", 58.6, 29.5],
+		["stool", 50.4, 31.3], ["stool", 52.6, 31.3], ["stool", 50.4, 34.8], ["stool", 52.6, 34.8],
+		# Smithy side yard.
+		["woodpile", 20.6, 30.4], ["coal", 23.4, 31.4], ["barrel_open", 19.6, 28.4], ["wheelbarrow", 26, 29.6],
+		["crate", 28.6, 28.4],
+		# Alchemist: herbs and pots behind, pots by the door.
+		["pot_blue", 21.3, 25], ["pot_red", 24.6, 25], ["herbs", 20, 16.4], ["barrel_open", 25.6, 16.6],
+		["tub", 23, 16.9],
+		# Square: benches around the fountain, a cart by the stalls, sacks and crates at the market.
+		["bench", 37.6, 30.6], ["bench", 45.4, 30.6], ["bench", 34, 27.6], ["bench_long", 38, 34.4],
+		["hand_cart", 38.4, 37.8], ["sacks", 33.6, 37.6], ["crates", 47.6, 37.7], ["barrel", 43.6, 37.6],
+		["sack", 30.9, 37.7], ["pot_yellow", 40, 26.4], ["pot_red", 43, 26.4],
+		# Guild and Town Hall doors.
+		["pot_red", 31.4, 24.8], ["pot_red", 35.6, 24.8], ["pot_blue", 47.4, 24.8], ["pot_blue", 50.6, 24.8],
+		# Temple: statue and flowers.
+		["statue", 77.6, 31.5], ["flowers_mix", 72.4, 31.2], ["flowers_blue", 76, 31.2],
+		# Gardens by the stream: scarecrows, a well, a hay cart.
+		["scarecrow", 6, 15.4], ["scarecrow", 6, 30.4], ["scarecrow", 6, 47.4], ["well_stone", 6.2, 22.9],
+		["hay_cart", 6.3, 37.2], ["bucket", 7.3, 23.2], ["reeds", 11.3, 8.6], ["reeds", 11.3, 54.4],
+		# Back gardens along the south wall.
+		["laundry_line", 16, 51.6], ["woodpile", 18.6, 50.8], ["sack", 29.4, 52.6], ["hay_bale", 35.6, 49.6],
+		["woodpile_small", 55.2, 51.2], ["laundry_line", 64.3, 51.4], ["barrel", 62.6, 52.8], ["woodpile", 66.2, 52.6],
+		["sacks", 78.2, 52.6],
+		# Behind the north row, between the houses.
+		["woodpile_small", 17.4, 11.6], ["bush", 18, 9.6], ["barrel", 39.4, 12.6], ["crate_small", 42.8, 12.7],
+		["woodpile_small", 63.6, 12.6], ["bush_round", 64.2, 9.6],
+		# Outside the south gate: a merchant wagon waiting, a trough for the horses.
+		["wagon", 46.6, 59.6], ["trough", 36.6, 59.6], ["sign_post", 43.8, 58.4],
+		# Outside the north gate: the road sign to the dungeon.
+		["sign_post", 43.8, 3.4],
+	]
+	for i in things.size():
+		var thing: Array = things[i]
+		_prop(props, "%s%02d" % [String(thing[0]).to_pascal_case(), i + 1], thing[0], Vector2(thing[1], thing[2]))
+	# Flower pots and sacks by the house doors (every few houses), chosen by order so it stays the same.
+	var index: int = 0
+	for building in buildings.get_children():
+		var house := building as TownBuilding
+		if house == null or not String(house.name).begins_with("House"):
+			continue
+		index += 1
+		var door: float = house.position.x / T + house.door_x
+		var front: float = house.position.y / T
+		if index % 2 == 0:
+			_prop(props, "DoorPot%02d" % index, ["pot_red", "pot_blue", "pot_yellow"][index % 3],
+				Vector2(door + 1.35, front + 0.25))
+		elif index % 3 == 0:
+			_prop(props, "DoorSack%02d" % index, "sack", Vector2(door - 0.4, front + 0.3))
+	# Small storage sheds in the back gardens (no door, no windows).
+	var shed_scene: PackedScene = load(HOUSE_PATH)
+	for shed_spec in [[26, 3], [37, 3], [52, 3], [74, 4], [11, 3]]:
+		var shed: TownBuilding = shed_scene.instantiate()
+		shed.name = "Shed%02d" % shed_spec[0]
+		shed.position = Vector2(shed_spec[0], 54) * T
+		shed.width = shed_spec[1]
+		shed.wall_height = 2
+		shed.roof_height = 2
+		shed.wall_style = "planks"
+		shed.roof_color = "thatch_dark" if shed_spec[0] % 2 == 0 else "brown"
+		shed.door_x = -1
+		shed.window_spacing = 0
+		_own(buildings, shed)
+
+
 func _place_trees(trees: Node2D) -> void:
 	var index: int = 0
 	# Outside the wall: a ring of trees, leaving the roads and the stream free.
@@ -403,8 +495,7 @@ func _place_trees(trees: Node2D) -> void:
 			var jitter := Vector2(((x * 7 + y * 3) % 5) * 0.2, ((x * 3 + y * 5) % 5) * 0.15)
 			_prop(trees, "Tree%03d" % index, "tree_pine" if (x + y) % 2 == 0 else "tree", Vector2(x + 1, y + 1) + jitter)
 	# A few trees inside: temple yard and gardens.
-	for spot in [Vector2(77, 21), Vector2(73.5, 21.5), Vector2(6, 22.5), Vector2(6, 37), Vector2(27.5, 53.5),
-			Vector2(54, 53.5), Vector2(64.5, 53.5)]:
+	for spot in [Vector2(77, 21), Vector2(73.5, 21.5), Vector2(6.2, 8.6), Vector2(6.2, 41), Vector2(55.8, 53.8)]:
 		index += 1
 		_prop(trees, "Tree%03d" % index, "tree", spot)
 

@@ -161,6 +161,13 @@ const PROPS: Dictionary = {
 	"herbs": {"sheet": "plants", "rect": Rect2i(192, 352, 32, 32), "solid": Vector2i.ZERO},
 	"reeds": {"sheet": "plants", "rect": Rect2i(32, 416, 32, 64), "solid": Vector2i.ZERO},
 	"grass_tuft": {"sheet": "plants", "rect": Rect2i(0, 320, 32, 32), "solid": Vector2i.ZERO},
+	# Drawn by TownProp itself (no LPC sprite fits): sacks, flower pots, a laundry line between two poles.
+	"sack": {"draw": "sack", "rect": Rect2i(0, 0, 18, 20), "solid": Vector2i(16, 8)},
+	"sacks": {"draw": "sacks", "rect": Rect2i(0, 0, 36, 22), "solid": Vector2i(32, 10)},
+	"pot_red": {"draw": "pot", "sheet": "plants", "rect": Rect2i(320, 160, 32, 32), "solid": Vector2i(12, 6)},
+	"pot_blue": {"draw": "pot", "sheet": "plants", "rect": Rect2i(224, 160, 32, 32), "solid": Vector2i(12, 6)},
+	"pot_yellow": {"draw": "pot", "sheet": "plants", "rect": Rect2i(288, 160, 32, 32), "solid": Vector2i(12, 6)},
+	"laundry_line": {"draw": "laundry", "rect": Rect2i(0, 0, 80, 60), "solid": Vector2i.ZERO},
 }
 
 ## Hanging shop signs (with their iron bracket), LPC Medieval Village Decorations.

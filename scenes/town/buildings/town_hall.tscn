@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_h4kgf"]
 
-[node name="TownHall" type="Node2D" unique_id=458086009]
+[node name="TownHall" type="Node2D" unique_id=759698905]
 script = ExtResource("1_h4kgf")
 width = 12
 wall_height = 5

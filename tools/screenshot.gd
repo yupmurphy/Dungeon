@@ -109,7 +109,7 @@ func run(options: Dictionary) -> void:
 				town_camera.limit_bottom = 100000
 			if options.has("--night"):
 				(room.get_node("Lighting") as TownLighting).night = true
-			for i in 40:
+			for i in 150:
 				await get_tree().physics_frame
 		"sheet":
 			# Character sheet open; --hover=stat:<0-5> or derived:<n> shows that line's tooltip.

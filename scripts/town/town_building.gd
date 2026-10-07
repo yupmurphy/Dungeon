@@ -26,7 +26,7 @@ const WINDOW_GLOW: Color = Color(1.0, 0.8, 0.4, 0.55)
 ## Light of a lit window at night (stage 3: TownLevel turns `lit` on after dark).
 const WINDOW_LIGHT_COLOR: Color = Color(1.0, 0.75, 0.4)
 const WINDOW_LIGHT_ENERGY: float = 0.7
-const WINDOW_LIGHT_SCALE: float = 0.35
+const WINDOW_LIGHT_SCALE: float = 0.8
 
 @export_range(2, 20) var width: int = 6:
 	set(value):
@@ -326,15 +326,15 @@ func _draw_banners(w: float) -> void:
 func _update_lights() -> void:
 	if Engine.is_editor_hint() or not is_inside_tree():
 		return
-	if lit and _lights.is_empty():
-		for rect in window_rects():
-			var light := PointLight2D.new()
-			light.texture = TownLighting.light_texture()
-			light.color = WINDOW_LIGHT_COLOR
-			light.energy = WINDOW_LIGHT_ENERGY
-			light.texture_scale = WINDOW_LIGHT_SCALE
-			light.position = rect.get_center() + Vector2(0, TILE * 0.6)
-			add_child(light)
-			_lights.append(light)
+	# One light per building (in front of its windows), not one per window: dozens of houses stay cheap.
+	if lit and _lights.is_empty() and not window_rects().is_empty():
+		var light := PointLight2D.new()
+		light.texture = TownLighting.light_texture()
+		light.color = WINDOW_LIGHT_COLOR
+		light.energy = WINDOW_LIGHT_ENERGY
+		light.texture_scale = WINDOW_LIGHT_SCALE * maxf(1.0, width / 4.0)
+		light.position = Vector2(width * TILE / 2.0, TILE * 0.4)
+		add_child(light)
+		_lights.append(light)
 	for light in _lights:
 		light.visible = lit

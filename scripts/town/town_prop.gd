@@ -10,6 +10,9 @@ const FRAME_TIME: float = 0.18
 const LIGHT_COLOR: Color = Color(1.0, 0.72, 0.38)
 const LIGHT_ENERGY: float = 0.95
 const LIGHT_SCALE: float = 0.6
+const SACK_COLOR: Color = Color(0.72, 0.6, 0.4)
+const SACK_OUTLINE: Color = Color(0.3, 0.22, 0.12)
+const POT_COLOR: Color = Color(0.72, 0.36, 0.2)
 
 @export_enum("fountain", "well", "well_stone", "hand_cart", "hay_cart", "wheelbarrow", "wagon", "woodpile",
 	"woodpile_small", "anvil", "trough", "hay_trough", "hay_bale", "bench", "bench_long", "table", "stool",
@@ -18,7 +21,8 @@ const LIGHT_SCALE: float = 0.6
 	"tower", "stall_orange", "stall_green", "stall_grey", "barrel", "barrel_open", "barrels", "barrel_big", "bucket", "tub", "crate", "crate_small", "crates",
 	"chest", "forge", "smith_anvil", "smith_rack", "smith_bench", "quench", "coal", "tree", "tree_pine", "bridge",
 	"bush", "bush_round", "flowers_red", "flowers_blue", "flowers_yellow", "flowers_mix", "sunflower", "cabbage",
-	"lettuce", "leafy", "herbs", "reeds", "grass_tuft") var prop: String = "barrel":
+	"lettuce", "leafy", "herbs", "reeds", "grass_tuft", "sack", "sacks", "pot_red", "pot_blue", "pot_yellow",
+	"laundry_line") var prop: String = "barrel":
 	set(value):
 		prop = value
 		_frame = 0
@@ -94,6 +98,21 @@ func _pole_height() -> float:
 
 func _draw() -> void:
 	var info: Dictionary = _info()
+	match info.get("draw", ""):
+		"sack":
+			_draw_sack(Vector2.ZERO)
+			return
+		"sacks":
+			_draw_sack(Vector2(-9, 0))
+			_draw_sack(Vector2(9, 1))
+			_draw_sack(Vector2(0, -9))
+			return
+		"laundry":
+			_draw_laundry()
+			return
+		"pot":
+			_draw_pot(info)
+			return
 	var region := Rect2(info["rect"])
 	region.position += Vector2(info.get("step", Vector2i.ZERO) * _frame)
 	var texture: Texture2D = TownArt.sheet(info["sheet"])
@@ -118,6 +137,41 @@ func _draw() -> void:
 	if lit and info.has("light"):
 		var glow: Vector2 = info["light"] - Vector2(0, lift)
 		draw_circle(glow, 4.0, Color(1.0, 0.9, 0.5, 0.6))
+
+
+## A tied burlap sack standing at `at` (its bottom center).
+func _draw_sack(at: Vector2) -> void:
+	var body := PackedVector2Array([at + Vector2(-7, 0), at + Vector2(-8, -8), at + Vector2(-6, -15), at + Vector2(-2, -17),
+		at + Vector2(2, -17), at + Vector2(6, -15), at + Vector2(8, -8), at + Vector2(7, 0)])
+	draw_colored_polygon(body, SACK_COLOR)
+	draw_polyline(body + PackedVector2Array([body[0]]), SACK_OUTLINE, 1.0)
+	draw_line(at + Vector2(-4, -10), at + Vector2(-5, -3), SACK_COLOR.darkened(0.2), 1.0)
+	draw_rect(Rect2(at + Vector2(-3, -20), Vector2(6, 3)), SACK_COLOR.darkened(0.1))
+	draw_line(at + Vector2(-3, -17), at + Vector2(3, -17), SACK_OUTLINE, 1.0)
+
+
+## A terracotta pot with a flower sprite growing out of it.
+func _draw_pot(info: Dictionary) -> void:
+	var region: Rect2i = info["rect"]
+	draw_texture_rect_region(TownArt.sheet(info["sheet"]), Rect2(-16, -36, 32, 32), Rect2(region))
+	var pot := PackedVector2Array([Vector2(-5, 0), Vector2(-7, -10), Vector2(7, -10), Vector2(5, 0)])
+	draw_colored_polygon(pot, POT_COLOR)
+	draw_rect(Rect2(-8, -12, 16, 3), POT_COLOR.lightened(0.15))
+	draw_polyline(pot + PackedVector2Array([pot[0]]), POT_COLOR.darkened(0.45), 1.0)
+
+
+## Two poles with a rope and the LPC laundry hanging from it.
+func _draw_laundry() -> void:
+	var pole: Rect2i = TownArt.PROPS["pole"]["rect"]
+	var height: float = 56.0
+	for x in [-40.0, 36.0]:
+		draw_texture_rect_region(TownArt.sheet("deco"), Rect2(x, -height, pole.size.x, height),
+			Rect2(pole.position.x, pole.position.y, pole.size.x, height))
+	draw_line(Vector2(-36, -height + 6), Vector2(40, -height + 6), Color(0.85, 0.8, 0.7), 1.0)
+	var cloth: Rect2i = TownArt.PROPS["laundry"]["rect"]
+	draw_texture_rect_region(TownArt.sheet("deco"), Rect2(-30, -height + 4, cloth.size.x, cloth.size.y), Rect2(cloth))
+	var sheet: Rect2i = TownArt.PROPS["laundry_sheet"]["rect"]
+	draw_texture_rect_region(TownArt.sheet("deco"), Rect2(-36, -height + 3, 16, 24), Rect2(sheet))
 
 
 func _update_light() -> void:
