@@ -4,10 +4,11 @@ extends Node
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
 ## Modes on the dungeon floor: idle, map (whole map revealed, big map open), sheet (character page, --hover=stat:2), overview,
 ## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
-## Modes in the combat test room: fight, room.
+## Modes in the combat test room: fight, room. Town: town (--at=<x>,<y> in tiles, --zoom, --night).
 
 const SETTLE_FRAMES: int = 40
 const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
+const TOWN: String = "res://scenes/town/town.tscn"
 
 
 func run(options: Dictionary) -> void:
@@ -17,6 +18,8 @@ func run(options: Dictionary) -> void:
 	var mode: String = options.get("--mode", "idle")
 	if mode in ["fight", "room"]:
 		get_tree().change_scene_to_file.call_deferred(TEST_ROOM)
+	elif mode == "town":
+		get_tree().change_scene_to_file.call_deferred(TOWN)
 
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame
@@ -91,6 +94,22 @@ func run(options: Dictionary) -> void:
 			(room.get_node("Darkness") as CanvasModulate).visible = options.has("--dark")
 			(room.get_node("Exploration/Fog") as CanvasItem).visible = false
 			for i in 60:
+				await get_tree().physics_frame
+		"town":
+			# --at=<x>,<y> (tiles) moves the player there, --zoom=<z>, --night turns the lights on.
+			var at: PackedStringArray = String(options.get("--at", "41,30")).split(",")
+			player.global_position = Vector2(float(at[0]), float(at[1])) * GameScale.TILE_SIZE
+			var town_camera := player.get_node("Camera2D") as Camera2D
+			town_camera.zoom = Vector2.ONE * float(options.get("--zoom", "1"))
+			town_camera.position_smoothing_enabled = false
+			if options.has("--no-limits"):
+				town_camera.limit_left = -100000
+				town_camera.limit_top = -100000
+				town_camera.limit_right = 100000
+				town_camera.limit_bottom = 100000
+			if options.has("--night"):
+				(room.get_node("Lighting") as TownLighting).night = true
+			for i in 40:
 				await get_tree().physics_frame
 		"sheet":
 			# Character sheet open; --hover=stat:<0-5> or derived:<n> shows that line's tooltip.

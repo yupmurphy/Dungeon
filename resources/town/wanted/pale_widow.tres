@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="WantedPoster" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/wanted_poster.gd" id="1_poster"]
+
+[resource]
+script = ExtResource("1_poster")
+name_key = &"WANTED_PALE_WIDOW"
+kind = 1
+reward = 800

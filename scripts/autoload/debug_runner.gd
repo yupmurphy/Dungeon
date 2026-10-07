@@ -8,6 +8,7 @@ extends Node
 ##   -- --build-room                                  regenerate tileset + test room tiles
 ##   -- --terrain-map=<folder> [--seeds=<first>:<n>]  save floor terrain pictures (works headless)
 ##   -- --lpc-import=<LPC generator clone>             copy the LPC pieces we use into assets/lpc/ + credits
+##   -- --build-town [--force]                      lay out the town scene (scenes/town/town.tscn), once
 ## Tools run inside the real game (with autoloads), which a plain `--script` run does not provide.
 
 const TOOLS: Dictionary = {
@@ -18,6 +19,7 @@ const TOOLS: Dictionary = {
 	"--build-room": "res://tools/room_builder.gd",
 	"--terrain-map": "res://tools/terrain_map.gd",
 	"--lpc-import": "res://tools/lpc_import.gd",
+	"--build-town": "res://tools/town_builder.gd",
 }
 
 

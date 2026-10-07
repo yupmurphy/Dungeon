@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_hoqok"]
+
+[node name="Inn" type="Node2D" unique_id=323406823]
+script = ExtResource("1_hoqok")
+width = 10
+wall_height = 5
+wall_style = "tudor"
+roof_color = "rust"
+door_x = 4
+door_style = "double"
+window_style = "curtain_gold"
+flower_boxes = true
+chimney_x = 8
+shop_sign = "inn"

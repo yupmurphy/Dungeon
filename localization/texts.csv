@@ -83,3 +83,11 @@ DERIVED_REVEAL_FROM,"From Perception: {base} + {per} tiles per point, rounded do
 DERIVED_KNOCKBACK_FROM,"From Strength: +{per}% per point."
 DERIVED_CARRY_FROM,"From Strength: {base} + {per} per point."
 DERIVED_EXHAUSTION_FROM,"From Vitality: -{per}% per point, at least {min}%. Sprint adds {sprint} per second, an attack {attack}; it drops after a short rest. Above {tired} you are slower; at 100 you cannot sprint and deal less damage until it drops below {tired}."
+WANTED_TITLE,WANTED
+WANTED_REWARD,{reward}g
+WANTED_UNKNOWN,Unknown
+WANTED_BLACK_JACK,"""Black"" Jack Harrow, murderer"
+WANTED_PALE_WIDOW,"The Pale Widow, undead"
+WANTED_GRAVE_KING,"The Grave King, undead"
+WANTED_RED_MAW,"Red Maw, rare beast"
+WANTED_SILENT_ONE,"The Silent One, murderer"

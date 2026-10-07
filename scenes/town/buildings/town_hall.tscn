@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_h4kgf"]
+
+[node name="TownHall" type="Node2D" unique_id=458086009]
+script = ExtResource("1_h4kgf")
+width = 12
+wall_height = 5
+roof_height = 4
+wall_style = "sandstone"
+roof_color = "slate"
+roof_shape = 1
+door_x = 5
+door_style = "castle_big"
+window_style = "white_tall"
+banner = "blue"

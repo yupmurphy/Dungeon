@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_ta7ge"]
+
+[node name="Alchemist" type="Node2D" unique_id=1912567923]
+script = ExtResource("1_ta7ge")
+width = 8
+roof_height = 4
+wall_style = "cream_brick"
+roof_color = "green"
+door_x = 3
+door_style = "arched"
+window_style = "curtain"
+flower_boxes = true
+chimney_x = 6
+shop_sign = "potion"

@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_34xxc"]
+
+[node name="GeneralStore" type="Node2D" unique_id=1442653229]
+script = ExtResource("1_34xxc")
+width = 8
+wall_height = 4
+wall_style = "timber_cream"
+roof_color = "brown"
+door_x = 3
+door_style = "window"
+window_style = "white"
+chimney_x = 1
+shop_sign = "bag"

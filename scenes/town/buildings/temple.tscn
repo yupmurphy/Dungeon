@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/town_building.gd" id="1_o112m"]
+
+[node name="Temple" type="Node2D" unique_id=2100139162]
+script = ExtResource("1_o112m")
+width = 8
+wall_height = 4
+roof_height = 4
+wall_style = "stone_light"
+roof_color = "teal"
+roof_shape = 1
+door_x = 3
+door_style = "double"
+window_style = "round"
+banner = "white"
