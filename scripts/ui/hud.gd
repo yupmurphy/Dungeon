@@ -1,10 +1,12 @@
 extends CanvasLayer
-## Health and stamina bars, minimap, big map (M), character sheet (C), region name, debug info and the death message.
+## Health and exhaustion bars, minimap, big map (M), character sheet (C), region name, debug info and the death message.
 ## Binds to the node in group "player" and, on dungeon floors, to the one in group "exploration".
 
 const REGION_FADE_IN: float = 0.3
 const REGION_HOLD: float = 1.8
 const REGION_FADE_OUT: float = 0.8
+const EXHAUSTION_COLOR: Color = Color(0.95, 0.8, 0.2)
+const EXHAUSTION_TIRED_COLOR: Color = Color(0.95, 0.35, 0.1)
 
 var _seed: int = -1
 var _show_seed: bool = false
@@ -12,7 +14,7 @@ var _invincible: bool = false
 var _region_tween: Tween
 
 @onready var _health_bar: StatBar = $Root/HealthBar
-@onready var _stamina_bar: StatBar = $Root/StaminaBar
+@onready var _exhaustion_bar: StatBar = $Root/ExhaustionBar
 @onready var _death_panel: Control = $Root/DeathPanel
 @onready var _minimap: Minimap = $Root/Minimap
 @onready var _map_overlay: MapOverlay = $Root/MapOverlay
@@ -37,10 +39,10 @@ func _bind() -> void:
 		push_warning("HUD: no node in group 'player' found")
 		return
 	player.health.health_changed.connect(_on_health_changed)
-	player.stamina.stamina_changed.connect(_on_stamina_changed)
+	player.exhaustion.exhaustion_changed.connect(_on_exhaustion_changed)
 	player.died.connect(_death_panel.show)
 	_on_health_changed(player.health.current_health, player.health.max_health)
-	_on_stamina_changed(player.stamina.current_stamina, player.stamina.max_stamina)
+	_on_exhaustion_changed(player.exhaustion.current, ExhaustionComponent.MAX)
 	_character_sheet.player = player
 
 	var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
@@ -98,5 +100,7 @@ func _on_health_changed(current: float, maximum: float) -> void:
 	_health_bar.set_ratio(current / maximum)
 
 
-func _on_stamina_changed(current: float, maximum: float) -> void:
-	_stamina_bar.set_ratio(current / maximum)
+## Fills up as you get tired; another color above the tired threshold.
+func _on_exhaustion_changed(current: float, maximum: float) -> void:
+	_exhaustion_bar.set_ratio(current / maximum)
+	_exhaustion_bar.set_fill_color(EXHAUSTION_TIRED_COLOR if current > ExhaustionComponent.TIRED_THRESHOLD else EXHAUSTION_COLOR)

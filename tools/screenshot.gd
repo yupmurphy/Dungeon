@@ -4,7 +4,7 @@ extends Node
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
 ## Modes on the dungeon floor: idle, map (whole map revealed, big map open), sheet (character page, --hover=stat:2), overview,
 ## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
-## Modes in the combat test room: fight, dodge, room.
+## Modes in the combat test room: fight, room.
 
 const SETTLE_FRAMES: int = 40
 const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
@@ -15,7 +15,7 @@ func run(options: Dictionary) -> void:
 	if output.is_empty():
 		output = "user://screenshot.png"
 	var mode: String = options.get("--mode", "idle")
-	if mode in ["fight", "dodge", "room"]:
+	if mode in ["fight", "room"]:
 		get_tree().change_scene_to_file.call_deferred(TEST_ROOM)
 
 	for i in SETTLE_FRAMES:
@@ -58,10 +58,6 @@ func run(options: Dictionary) -> void:
 				await get_tree().physics_frame
 			for i in 4:
 				await get_tree().process_frame
-		"dodge":
-			player._try_dodge(Vector2.RIGHT)
-			for i in 6:
-				await get_tree().physics_frame
 		"overview", "room":
 			# Zoomed out, without darkness, to check the tile layout.
 			var camera := player.get_node("Camera2D") as Camera2D

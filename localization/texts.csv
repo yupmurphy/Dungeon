@@ -20,11 +20,13 @@ SLOT_HELMET,Helmet
 SLOT_WEAPON,Weapon
 STAT_STRENGTH,Strength
 STAT_AGILITY,Agility
+STAT_VITALITY,Vitality
 STAT_INTELLIGENCE,Intelligence
 STAT_PERCEPTION,Perception
 STAT_LUCK,Luck
-STAT_STRENGTH_DESC,"Raw power and toughness. More health and stamina, harder hits that push enemies farther, less damage taken, more carry weight, and poison wears off sooner."
-STAT_AGILITY_DESC,"Speed and reflexes. You attack and move faster, enemies miss you more often and your dodge protects you longer."
+STAT_STRENGTH_DESC,"Raw power and toughness. More health, harder hits that push enemies farther, less damage taken, more carry weight, and poison wears off sooner."
+STAT_AGILITY_DESC,"Speed and reflexes. You attack and move faster, and enemies miss you more often."
+STAT_VITALITY_DESC,"Endurance. Sprinting and attacking tire you less."
 STAT_INTELLIGENCE_DESC,"Mind. More mana for abilities, and a bit more damage."
 STAT_PERCEPTION_DESC,"Sharp eyes. More critical hits, a wider light around you, more of the map revealed, and you spot monsters and traps from farther away."
 STAT_LUCK_DESC,"Fortune. It does nothing yet; its effects come later."
@@ -36,9 +38,8 @@ EFFECT_KNOCKBACK,+{value}% knockback
 EFFECT_ATTACK_SPEED,+{value}% attack speed
 EFFECT_MOVE_SPEED,+{value}% movement speed
 EFFECT_EVADE,+{value}% chance that enemies miss you (max {max}%)
-EFFECT_DODGE,+{value} s invulnerability when you dodge
 EFFECT_HEALTH,+{value} health
-EFFECT_STAMINA,+{value} stamina
+EFFECT_EXHAUSTION,-{value}% exhaustion gained
 EFFECT_POISON,-{value}% poison duration
 EFFECT_MANA,+{value} mana
 EFFECT_CRIT,+{value}% critical chance
@@ -47,14 +48,12 @@ EFFECT_LIGHT,+{value} tiles light radius
 EFFECT_REVEAL,+{value} tiles map reveal radius
 EFFECT_NONE,No effect yet.
 DERIVED_HEALTH,Health
-DERIVED_STAMINA,Stamina
 DERIVED_MANA,Mana
 DERIVED_DEFENSE,Defense
 DERIVED_DAMAGE,Damage bonus
 DERIVED_ATTACK_SPEED,Attack speed
 DERIVED_MOVE_SPEED,Movement speed
 DERIVED_EVADE,Enemies miss you
-DERIVED_DODGE,Dodge invulnerability
 DERIVED_CRIT,Critical chance
 DERIVED_SIGHT,Monster sight
 DERIVED_LIGHT,Light radius
@@ -62,15 +61,14 @@ DERIVED_REVEAL,Map reveal radius
 DERIVED_KNOCKBACK,Knockback
 DERIVED_CARRY,Carry weight
 DERIVED_POISON,Poison duration
+DERIVED_EXHAUSTION,Exhaustion gained
 DERIVED_HEALTH_FROM,"From Strength: {base} + {per} per point. Strength {stat} gives {value}."
-DERIVED_STAMINA_FROM,"From Strength: {base} + {per} per point. Strength {stat} gives {value}."
 DERIVED_MANA_FROM,"From Intelligence: {base} + {per} per point. Intelligence {stat} gives {value}."
 DERIVED_DEFENSE_FROM,"From Strength: {per} per point. You take {taken}% of the damage (damage x 100 / (100 + defense))."
 DERIVED_DAMAGE_FROM,"From Strength (+{strength}%), Agility (+{agility}%), Intelligence (+{intelligence}%) and Perception (+{perception}%)."
 DERIVED_ATTACK_SPEED_FROM,"From Agility: +{per}% per point."
 DERIVED_MOVE_SPEED_FROM,"From Agility: +{per}% per point, no limit."
 DERIVED_EVADE_FROM,"From Agility: {per}% per point, at most {max}%."
-DERIVED_DODGE_FROM,"From Agility: {base} s + {per} s per point."
 DERIVED_CRIT_FROM,"From Perception: {per}% per point. Critical hits do {critical}% damage."
 DERIVED_SIGHT_FROM,"From Perception: {base} + {per} tiles per point (at most {max}). You see monsters (and traps, later) this far."
 DERIVED_LIGHT_FROM,"From Perception: {base} + {per} tiles per point (at most {max}). How far your light reaches in the dark."
@@ -78,3 +76,4 @@ DERIVED_REVEAL_FROM,"From Perception: {base} + {per} tiles per point, rounded do
 DERIVED_KNOCKBACK_FROM,"From Strength: +{per}% per point."
 DERIVED_CARRY_FROM,"From Strength: {base} + {per} per point."
 DERIVED_POISON_FROM,"From Strength: -{per}% per point, but poison lasts at least {min}% of its time."
+DERIVED_EXHAUSTION_FROM,"From Vitality: -{per}% per point, at least {min}%. Sprint adds {sprint} per second, an attack {attack}; it drops after a short rest. Above {tired} you are slower; at 100 you cannot sprint and deal less damage until it drops below {tired}."

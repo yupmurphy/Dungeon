@@ -18,12 +18,11 @@ func run(_options: Dictionary) -> void:
 	var effects: CanvasLayer = GameFeel.get_child(0)
 
 	print("--- setup")
-	for action in ["move_up", "move_down", "move_left", "move_right", "attack", "dodge", "restart"]:
+	for action in ["move_up", "move_down", "move_left", "move_right", "attack", "sprint", "restart"]:
 		_check(InputMap.has_action(action) and InputMap.action_get_events(action).size() > 0,
 			"input action '%s' mapped" % action)
 	_check(player.health.current_health == 100.0, "player starts with 100 HP")
-	_check(player.stamina.current_stamina == player.stats.get_max_stamina() and player.stamina.max_stamina == 70.0,
-		"player starts with full stamina (70 = 50 + 4 x Strength 5)")
+	_check(player.exhaustion.current == 0.0, "player starts with 0 exhaustion")
 	var frames: Array = [slime.sprite.sprite_frames, bat.sprite.sprite_frames, spider.sprite.sprite_frames]
 	_check(frames[0] != frames[1] and frames[1] != frames[2] and frames[0] != frames[2],
 		"each enemy uses different sprites")
@@ -64,7 +63,7 @@ func run(_options: Dictionary) -> void:
 	player.stats.strength = 5
 	_check(player.health.max_health == 100.0 and player.health.current_health == 100.0, "back to Strength 5: health 100")
 	sheet._stat_buttons[Vector2i(Stats.Stat.AGILITY, 10)].pressed.emit()
-	_check(sheet._derived_values[7].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[7].text)
+	_check(sheet._derived_values[6].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[6].text)
 	player.stats.agility = 5
 	var torch := player.get_node("Torch") as PointLight2D
 	var torch_before: float = torch.texture_scale
@@ -80,9 +79,9 @@ func run(_options: Dictionary) -> void:
 	sheet.forced_mouse = sheet._stat_rows[Stats.Stat.STRENGTH].get_center()
 	await get_tree().process_frame
 	_check(sheet._tooltip.visible and sheet._tooltip_label.text.contains("Strength 5:")
-		and sheet._tooltip_label.text.contains("+50 health") and sheet._tooltip_label.text.contains("+20 stamina"),
-		"hovering Strength explains it: +50 health, +20 stamina")
-	sheet.forced_mouse = sheet._derived_rows[3].get_center()
+		and sheet._tooltip_label.text.contains("+50 health") and sheet._tooltip_label.text.contains("+5% damage"),
+		"hovering Strength explains it: +50 health, +5% damage")
+	sheet.forced_mouse = sheet._derived_rows[2].get_center()
 	await get_tree().process_frame
 	_check(sheet._tooltip_label.text.contains("From Strength"), "hovering Defense: comes from Strength")
 	sheet.forced_mouse = Vector2(-1, -1)
@@ -121,14 +120,42 @@ func run(_options: Dictionary) -> void:
 		var facing: String = LpcCatalog.DIRECTION_NAMES[LpcCharacter.direction_of(case[0])]
 		_check(facing == case[1], "moving %s faces %s (%s)" % [case[0], case[1], facing])
 
-	print("--- dodge")
-	player._try_dodge(Vector2.RIGHT)
-	_check(player.hurtbox.is_invulnerable(), "dodge gives invulnerability")
-	_check(player.stamina.current_stamina == player.stamina.max_stamina - 25.0, "dodge costs 25 stamina")
-	await get_tree().create_timer(0.1).timeout
-	_check(effects.get_child_count() > 0, "dodge leaves a ghost trail")
-	await get_tree().create_timer(0.3).timeout
-	_check(not player.hurtbox.is_invulnerable(), "invulnerability ends after the dodge")
+	print("--- exhaustion")
+	var tired: ExhaustionComponent = player.exhaustion
+	var start_position: Vector2 = player.global_position
+	Input.action_press("move_right")
+	Input.action_press("sprint")
+	for i in 10:
+		await get_tree().physics_frame
+	var sprint_speed: float = player.velocity.length()
+	Input.action_release("sprint")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var walk_speed: float = player.velocity.length()
+	Input.action_release("move_right")
+	await get_tree().physics_frame
+	player.global_position = start_position
+	_check(tired.current > 0.5 and tired.current < 2.0, "sprinting raises exhaustion (%.2f)" % tired.current)
+	_check(sprint_speed > walk_speed * 1.5, "sprint is faster than walking (%d vs %d)" % [sprint_speed, walk_speed])
+	tired.current = 0.0
+	tired.add(ExhaustionComponent.ATTACK_COST)
+	_check(is_equal_approx(tired.current, 2.85), "an attack adds 3, x 0.95 from Vitality 5 (%.2f)" % tired.current)
+	tired.add(200.0)
+	_check(tired.current == 100.0 and tired.exhausted and not tired.can_sprint(), "at 100: exhausted, no sprint")
+	_check(tired.damage_factor() == 0.6 and tired.speed_factor() == 0.8, "exhausted: -40% damage, 20% slower")
+	tired._process(1.4)
+	tired._process(0.1)
+	_check(tired.current == 100.0, "no recovery during the 1.5 s pause")
+	tired._process(0.2)
+	tired._process(0.2)
+	_check(is_equal_approx(tired.current, 97.0), "then it drops 15 per second (%.2f)" % tired.current)
+	tired.current = 71.0
+	tired._process(0.1)
+	_check(not tired.exhausted and tired.can_sprint() and tired.damage_factor() == 1.0 and tired.speed_factor() == 1.0,
+		"below 70: no longer exhausted or slowed")
+	tired.current = 0.0
+	tired.add(0.0)
+	tired._delay_left = 0.0
 
 	print("--- player hits spider")
 	spider.process_mode = Node.PROCESS_MODE_INHERIT

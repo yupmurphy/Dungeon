@@ -27,8 +27,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   - `Stats` (player): 7 main stats: Strength, Agility, Vitality, Magic, Intelligence, Perception, Luck (user
     decision). All start at 5 except Magic: 0 and locked until a story event (`magic_unlocked`; debug button).
     Magic: magic damage +4%/pt, mana 20 + 5/pt. Intelligence: passive, no combat effect (later: item appraisal,
-    learning spells). General damage bonus = Strength, Agility, Magic, Perception (+1%/pt each). Vitality: health,
-    poison resistance, -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
+    learning spells). General damage bonus = Strength, Agility, Magic, Perception (+1%/pt each). Strength keeps
+    health, defense and poison resistance. Vitality: -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
     Perception. Only main stats are saved. Stats owns every derived formula (health, mana, damage, speeds...)
     as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.
@@ -159,7 +159,7 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . -- --floor-test                # generator (8 seeds) + floor scene + streaming + debug keys
     <godot> --headless --path . -- --floor-test --seeds=100:25 --generator-only   # generator rules on more seeds
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless
-            # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place / test room: fight (--crit, --miss), dodge, room
+            # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place / test room: fight (--crit, --miss), room
             # any mode: --perception=<n> sets the player's Perception first
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
 

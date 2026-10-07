@@ -4,7 +4,7 @@ extends Node
 ##   -- --floor-test                                  floor generator + floor scene checks
 ##   -- --stats-test                                  stat formulas checked with known values
 ##   -- --seed=<number>                               (read by FloorLevel) start the floor with this seed
-##   -- --screenshot=<file.png> [--mode=idle|fight|dodge]   save one rendered frame (not headless)
+##   -- --screenshot=<file.png> [--mode=idle|fight|room]   save one rendered frame (not headless)
 ##   -- --build-room                                  regenerate tileset + test room tiles
 ##   -- --terrain-map=<folder> [--seeds=<first>:<n>]  save floor terrain pictures (works headless)
 ##   -- --lpc-import=<LPC generator clone>             copy the LPC pieces we use into assets/lpc/ + credits

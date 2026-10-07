@@ -26,3 +26,9 @@ func set_ratio(value: float) -> void:
 
 func _refresh() -> void:
 	_fill.size = Vector2(maxf(size.x - 2.0, 0.0) * _ratio, maxf(size.y - 2.0, 0.0))
+
+
+func set_fill_color(color: Color) -> void:
+	fill_color = color
+	if _fill != null:
+		_fill.color = color

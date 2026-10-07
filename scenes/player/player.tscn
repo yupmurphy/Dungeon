@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://resources/stats/player_stats.tres" id="2_stats"]
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="3_health"]
-[ext_resource type="Script" path="res://scripts/components/stamina_component.gd" id="4_stamina"]
+[ext_resource type="Script" path="res://scripts/components/exhaustion_component.gd" id="4_exhaustion"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="5_hurtbox"]
 [ext_resource type="Script" path="res://scripts/components/hitbox.gd" id="6_hitbox"]
 [ext_resource type="Shader" path="res://resources/shaders/flash.gdshader" id="8_flash"]
@@ -66,8 +66,8 @@ script = ExtResource("3_health")
 script = ExtResource("12_equipment")
 starting = Array[ExtResource("18_equipment_data")]([ExtResource("13_hair"), ExtResource("14_torso"), ExtResource("15_legs"), ExtResource("16_feet"), ExtResource("17_weapon")])
 
-[node name="StaminaComponent" type="Node" parent="."]
-script = ExtResource("4_stamina")
+[node name="ExhaustionComponent" type="Node" parent="."]
+script = ExtResource("4_exhaustion")
 
 [node name="Hurtbox" type="Area2D" parent="." node_paths=PackedStringArray("health")]
 collision_layer = 8
