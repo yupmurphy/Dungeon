@@ -1,0 +1,1420 @@
+{
+	"body": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/body/bodies/female/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/body/bodies/female/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/body/bodies/female/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/body/bodies/female/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/body/bodies/female/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/body/bodies/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/body/bodies/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/body/bodies/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/body/bodies/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/body/bodies/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 10
+			}
+		],
+		"name": "Body",
+		"slot": "body"
+	},
+	"feet_boots": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/feet/boots/basic/thin/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/feet/boots/basic/thin/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/feet/boots/basic/thin/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/feet/boots/basic/thin/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/feet/boots/basic/thin/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/feet/boots/basic/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/feet/boots/basic/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/feet/boots/basic/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/feet/boots/basic/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/feet/boots/basic/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 25
+			}
+		],
+		"name": "Boots",
+		"slot": "feet"
+	},
+	"feet_boots_rim": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/feet/boots/rimmed/thin/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/feet/boots/rimmed/thin/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/feet/boots/rimmed/thin/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/feet/boots/rimmed/thin/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/feet/boots/rimmed/thin/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/feet/boots/rimmed/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/feet/boots/rimmed/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/feet/boots/rimmed/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/feet/boots/rimmed/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/feet/boots/rimmed/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 25
+			}
+		],
+		"name": "Rimmed boots",
+		"slot": "feet"
+	},
+	"feet_shoes": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/feet/shoes/basic/thin/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/feet/shoes/basic/thin/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/feet/shoes/basic/thin/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/feet/shoes/basic/thin/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/feet/shoes/basic/thin/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/feet/shoes/basic/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/feet/shoes/basic/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/feet/shoes/basic/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/feet/shoes/basic/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/feet/shoes/basic/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 15
+			}
+		],
+		"name": "Shoes",
+		"slot": "feet"
+	},
+	"hair_bob": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hair/bob/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/bob/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/bob/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/bob/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/bob/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hair/bob/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/bob/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/bob/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/bob/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/bob/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 120
+			}
+		],
+		"name": "Bob",
+		"slot": "hair"
+	},
+	"hair_buzzcut": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hair/buzzcut/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/buzzcut/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/buzzcut/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/buzzcut/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/buzzcut/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hair/buzzcut/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/buzzcut/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/buzzcut/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/buzzcut/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/buzzcut/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 120
+			}
+		],
+		"name": "Buzzcut",
+		"slot": "hair"
+	},
+	"hair_long": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hair/long/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/long/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/long/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/long/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/long/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hair/long/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/long/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/long/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/long/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/long/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 120
+			}
+		],
+		"name": "Long hair",
+		"slot": "hair"
+	},
+	"hair_plain": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hair/plain/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/plain/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/plain/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/plain/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/plain/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hair/plain/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/plain/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/plain/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/plain/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/plain/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 120
+			}
+		],
+		"name": "Short hair",
+		"slot": "hair"
+	},
+	"hair_ponytail": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hair/ponytail/adult/fg/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/ponytail/adult/fg/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/ponytail/adult/fg/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/ponytail/adult/fg/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/ponytail/adult/fg/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hair/ponytail/adult/fg/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/ponytail/adult/fg/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/ponytail/adult/fg/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/ponytail/adult/fg/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/ponytail/adult/fg/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 120
+			},
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hair/ponytail/adult/bg/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/ponytail/adult/bg/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/ponytail/adult/bg/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/ponytail/adult/bg/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/ponytail/adult/bg/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hair/ponytail/adult/bg/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hair/ponytail/adult/bg/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hair/ponytail/adult/bg/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hair/ponytail/adult/bg/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hair/ponytail/adult/bg/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 9
+			}
+		],
+		"name": "Ponytail",
+		"slot": "hair"
+	},
+	"head_human_female": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/head/heads/human/female/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/head/heads/human/female/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/head/heads/human/female/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/head/heads/human/female/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/head/heads/human/female/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/head/heads/human/female/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/head/heads/human/female/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/head/heads/human/female/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/head/heads/human/female/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/head/heads/human/female/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 100
+			}
+		],
+		"name": "Human head (female)",
+		"slot": "head"
+	},
+	"head_human_male": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/head/heads/human/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/head/heads/human/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/head/heads/human/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/head/heads/human/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/head/heads/human/male/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/head/heads/human/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/head/heads/human/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/head/heads/human/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/head/heads/human/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/head/heads/human/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 100
+			}
+		],
+		"name": "Human head (male)",
+		"slot": "head"
+	},
+	"helmet_kettle": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hat/helmet/kettle/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hat/helmet/kettle/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hat/helmet/kettle/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hat/helmet/kettle/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hat/helmet/kettle/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hat/helmet/kettle/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hat/helmet/kettle/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hat/helmet/kettle/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hat/helmet/kettle/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hat/helmet/kettle/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 135
+			}
+		],
+		"name": "Kettle helmet",
+		"slot": "helmet"
+	},
+	"helmet_nasal": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/hat/helmet/nasal/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hat/helmet/nasal/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hat/helmet/nasal/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hat/helmet/nasal/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hat/helmet/nasal/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/hat/helmet/nasal/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/hat/helmet/nasal/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/hat/helmet/nasal/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/hat/helmet/nasal/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/hat/helmet/nasal/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 130
+			}
+		],
+		"name": "Nasal helmet",
+		"slot": "helmet"
+	},
+	"legs_leggings": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/legs/leggings/thin/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/legs/leggings/thin/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/legs/leggings/thin/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/legs/leggings/thin/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/legs/leggings/thin/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/legs/leggings/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/legs/leggings/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/legs/leggings/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/legs/leggings/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/legs/leggings/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 20
+			}
+		],
+		"name": "Leggings",
+		"slot": "legs"
+	},
+	"legs_pantaloons": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/legs/pantaloons/thin/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/legs/pantaloons/thin/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/legs/pantaloons/thin/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/legs/pantaloons/thin/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/legs/pantaloons/thin/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/legs/pantaloons/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/legs/pantaloons/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/legs/pantaloons/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/legs/pantaloons/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/legs/pantaloons/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 20
+			}
+		],
+		"name": "Pantaloons",
+		"slot": "legs"
+	},
+	"legs_pants": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/legs/pants/thin/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/legs/pants/thin/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/legs/pants/thin/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/legs/pants/thin/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/legs/pants/thin/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/legs/pants/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/legs/pants/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/legs/pants/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/legs/pants/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/legs/pants/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 20
+			}
+		],
+		"name": "Pants",
+		"slot": "legs"
+	},
+	"torso_leather": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/torso/armour/leather/female/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/torso/armour/leather/female/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/torso/armour/leather/female/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/torso/armour/leather/female/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/torso/armour/leather/female/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/torso/armour/leather/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/torso/armour/leather/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/torso/armour/leather/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/torso/armour/leather/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/torso/armour/leather/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 60
+			}
+		],
+		"name": "Leather armor",
+		"slot": "torso"
+	},
+	"torso_longsleeve": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/female/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/female/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/female/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/female/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/female/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/male/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/male/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/male/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/male/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/torso/clothes/longsleeve/longsleeve/male/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 35
+			}
+		],
+		"name": "Shirt",
+		"slot": "torso"
+	},
+	"torso_sleeveless": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/female/hurt/forest.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/female/slash/forest.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/female/thrust/forest.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/female/walk/forest.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/male/hurt/forest.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/male/slash/forest.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/male/thrust/forest.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/torso/clothes/sleeveless/sleeveless/male/walk/forest.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 35
+			}
+		],
+		"name": "Sleeveless shirt",
+		"slot": "torso"
+	},
+	"weapon_axe": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"walk": {
+							"file": "lpc/weapon/blunt/waraxe/behind/walk/waraxe.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"walk": {
+							"file": "lpc/weapon/blunt/waraxe/behind/walk/waraxe.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 9
+			},
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/weapon/blunt/waraxe/hurt/waraxe.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/blunt/waraxe/walk/waraxe.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/weapon/blunt/waraxe/hurt/waraxe.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/blunt/waraxe/walk/waraxe.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 140
+			},
+			{
+				"bodies": {
+					"female": {
+						"slash": {
+							"file": "lpc/weapon/blunt/waraxe/attack_slash/behind/waraxe.png",
+							"frame": 192
+						}
+					},
+					"male": {
+						"slash": {
+							"file": "lpc/weapon/blunt/waraxe/attack_slash/behind/waraxe.png",
+							"frame": 192
+						}
+					}
+				},
+				"z": 8
+			},
+			{
+				"bodies": {
+					"female": {
+						"slash": {
+							"file": "lpc/weapon/blunt/waraxe/attack_slash/waraxe.png",
+							"frame": 192
+						}
+					},
+					"male": {
+						"slash": {
+							"file": "lpc/weapon/blunt/waraxe/attack_slash/waraxe.png",
+							"frame": 192
+						}
+					}
+				},
+				"z": 150
+			}
+		],
+		"name": "War axe",
+		"slot": "weapon"
+	},
+	"weapon_dagger": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/weapon/sword/dagger/hurt/dagger.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/weapon/sword/dagger/slash/dagger.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/weapon/sword/dagger/thrust/dagger.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/dagger/walk/dagger.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/weapon/sword/dagger/hurt/dagger.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/weapon/sword/dagger/slash/dagger.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/weapon/sword/dagger/thrust/dagger.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/dagger/walk/dagger.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 140
+			},
+			{
+				"bodies": {
+					"female": {
+						"slash": {
+							"file": "lpc/weapon/sword/dagger/behind/slash/dagger.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/dagger/behind/walk/dagger.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"slash": {
+							"file": "lpc/weapon/sword/dagger/behind/slash/dagger.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/dagger/behind/walk/dagger.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 9
+			}
+		],
+		"name": "Dagger",
+		"slot": "weapon"
+	},
+	"weapon_spear": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/weapon/polearm/spear/foreground/hurt/steel.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/weapon/polearm/spear/foreground/thrust/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/polearm/spear/foreground/walk/steel.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/weapon/polearm/spear/foreground/hurt/steel.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/weapon/polearm/spear/foreground/thrust/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/polearm/spear/foreground/walk/steel.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 140
+			},
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/weapon/polearm/spear/background/hurt/steel.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/weapon/polearm/spear/background/thrust/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/polearm/spear/background/walk/steel.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/weapon/polearm/spear/background/hurt/steel.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/weapon/polearm/spear/background/thrust/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/polearm/spear/background/walk/steel.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 9
+			}
+		],
+		"name": "Spear",
+		"slot": "weapon"
+	},
+	"weapon_sword": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/weapon/sword/arming/universal/fg/hurt/steel.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/weapon/sword/arming/universal/fg/idle/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/arming/universal/fg/walk/steel.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/weapon/sword/arming/universal/fg/hurt/steel.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/weapon/sword/arming/universal/fg/idle/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/arming/universal/fg/walk/steel.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 140
+			},
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/weapon/sword/arming/universal/bg/hurt/steel.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/weapon/sword/arming/universal/bg/idle/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/arming/universal/bg/walk/steel.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/weapon/sword/arming/universal/bg/hurt/steel.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/weapon/sword/arming/universal/bg/idle/steel.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/weapon/sword/arming/universal/bg/walk/steel.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 9
+			},
+			{
+				"bodies": {
+					"female": {
+						"slash": {
+							"file": "lpc/weapon/sword/arming/attack_slash/bg/steel.png",
+							"frame": 128
+						}
+					},
+					"male": {
+						"slash": {
+							"file": "lpc/weapon/sword/arming/attack_slash/bg/steel.png",
+							"frame": 128
+						}
+					}
+				},
+				"z": 8
+			},
+			{
+				"bodies": {
+					"female": {
+						"slash": {
+							"file": "lpc/weapon/sword/arming/attack_slash/fg/steel.png",
+							"frame": 128
+						}
+					},
+					"male": {
+						"slash": {
+							"file": "lpc/weapon/sword/arming/attack_slash/fg/steel.png",
+							"frame": 128
+						}
+					}
+				},
+				"z": 150
+			}
+		],
+		"name": "Arming sword",
+		"slot": "weapon"
+	}
+}

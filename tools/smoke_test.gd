@@ -27,8 +27,16 @@ func run(_options: Dictionary) -> void:
 	var frames: Array = [slime.sprite.sprite_frames, bat.sprite.sprite_frames, spider.sprite.sprite_frames]
 	_check(frames[0] != frames[1] and frames[1] != frames[2] and frames[0] != frames[2],
 		"each enemy uses different sprites")
-	for anim in [&"idle", &"run", &"attack"]:
-		_check(player.sprite.sprite_frames.has_animation(anim), "player has animation '%s'" % anim)
+	var layers: Array[AnimatedSprite2D] = player.character.layers()
+	_check(layers.size() >= 7, "player is drawn from %d LPC layers (body, head, hair, clothes, weapon)" % layers.size())
+	var walking: Array[AnimatedSprite2D] = layers.filter(func(l: AnimatedSprite2D) -> bool:
+		return l.sprite_frames.has_animation(&"walk_down"))
+	var frame_size: Vector2 = walking[0].sprite_frames.get_frame_texture(&"walk_down", 0).get_size()
+	_check(frame_size == Vector2(64, 64), "LPC frames are 64 x 64 (%s)" % frame_size)
+	for action in ["idle", "walk", "slash", "thrust", "hurt"]:
+		_check(player.character.has_action(action), "player has the '%s' animation" % action)
+	_check(GameScale.TILE_SIZE == 32 and (room.get_node("Dungeon") as TileMapLayer).tile_set.tile_size == Vector2i(32, 32),
+		"tiles are 32 x 32")
 	var camera := player.get_node("Camera2D") as Camera2D
 	_check(camera.limit_right == 48 * GameScale.TILE_SIZE and camera.limit_bottom == 30 * GameScale.TILE_SIZE, "camera limited to the room (48x30 tiles)")
 	var dungeon := room.get_node("Dungeon") as TileMapLayer
@@ -96,11 +104,17 @@ func run(_options: Dictionary) -> void:
 		_send_key(key[0], true)
 		for i in 15:
 			await get_tree().physics_frame
+		var walk_direction: String = LpcCatalog.DIRECTION_NAMES[LpcCharacter.direction_of(key[1])]
+		_check(player.character.action == "walk" and LpcCatalog.DIRECTION_NAMES[player.character.direction] == walk_direction,
+			"walking %s plays walk_%s (%s)" % [OS.get_keycode_string(key[0]), walk_direction, player.character.action])
 		_send_key(key[0], false)
 		var moved: Vector2 = player.global_position - start
 		_check(moved.dot(key[1]) > 10.0, "key %s moves the player %s (moved %s)" % [OS.get_keycode_string(key[0]), key[1], moved.round()])
 	await get_tree().physics_frame
 	player.global_position = Vector2(300, 250)
+	for i in 3:
+		await get_tree().physics_frame
+	_check(player.character.action == "idle", "standing still plays idle (%s)" % player.character.action)
 
 	print("--- dodge")
 	player._try_dodge(Vector2.RIGHT)
@@ -148,15 +162,20 @@ func run(_options: Dictionary) -> void:
 	_check(Engine.time_scale == 1.0, "hit-stop ends by itself")
 
 	print("--- spider dies")
-	await _hit_with_player(player, spider)
-	await _hit_with_player(player, spider)
-	await get_tree().create_timer(0.6).timeout
-	_check(not is_instance_valid(spider), "spider removed after death")
+	# Hit until it dies (an AI attack in between can change the rolls), then wait for the fade-out.
+	var hits: int = 0
+	while is_instance_valid(spider) and not spider.health.is_dead and hits < 4:
+		await _hit_with_player(player, spider)
+		hits += 1
+	var removal_deadline: int = Time.get_ticks_msec() + 2000
+	while is_instance_valid(spider) and Time.get_ticks_msec() < removal_deadline:
+		await get_tree().process_frame
+	_check(not is_instance_valid(spider), "spider removed after death (%d more hits)" % hits)
 
 	print("--- bat attacks player")
 	bat.process_mode = Node.PROCESS_MODE_INHERIT
 	player.global_position = Vector2(300, 250)
-	bat.global_position = Vector2(300, 228)
+	bat.global_position = Vector2(300, 250) + GameScale.world_vector(Vector2(0, -22))
 	Combat.forced_rolls.assign([0.99, 0.99, 0.99, 0.99, 0.99, 0.99])  # the bat's hits don't miss
 	var saw_windup: bool = false
 	for i in 90:
@@ -175,7 +194,8 @@ func run(_options: Dictionary) -> void:
 func _hit_with_player(player: Player, enemy: Enemy, rolls: Array[float] = [0.99, 0.99]) -> void:
 	# The headless mouse sits at (0, 0), so aim manually and freeze the auto-aim during the swing.
 	player.global_position = Vector2(300, 250)
-	enemy.global_position = Vector2(320, 250)
+	# Offsets in reference pixels: at 32 px tiles the bodies are bigger and must not overlap.
+	enemy.global_position = player.global_position + GameScale.world_vector(Vector2(20, 0))
 	await get_tree().physics_frame
 	player._swing_left = 1.0
 	player.attack_pivot.rotation = 0.0

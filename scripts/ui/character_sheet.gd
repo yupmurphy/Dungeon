@@ -18,6 +18,8 @@ const BUTTON_COLOR: Color = Color(0.22, 0.2, 0.25)
 const XP_COLOR: Color = Color(0.45, 0.7, 1.0)
 
 # Layout, in base pixels (the game is 480 x 270).
+## The page is laid out in this size and centered on screen.
+const PAGE_SIZE: Vector2 = Vector2(480, 270)
 const PANEL_RECT: Rect2 = Rect2(16, 10, 448, 250)
 const LEFT_X: float = 28.0
 const RIGHT_X: float = 238.0
@@ -32,7 +34,7 @@ const TOOLTIP_WIDTH: float = 190.0
 const STAT_BUTTONS: Array[Array] = [["-", -1], ["+", 1], ["+10", 10]]
 
 var player: Player
-## Tools/tests: pretend the mouse is here (x < 0 = use the real mouse).
+## Tools/tests: pretend the mouse is here, in page coordinates (x < 0 = use the real mouse).
 var forced_mouse: Vector2 = Vector2(-1, -1)
 
 var _stat_values: Array[Label] = []
@@ -47,6 +49,7 @@ var _derived_tooltips: Array[String] = []
 var _level_label: Label
 var _xp_label: Label
 var _xp_bar: StatBar
+var _page: Control
 var _hover: ColorRect
 var _tooltip: PanelContainer
 var _tooltip_label: Label
@@ -112,7 +115,7 @@ func refresh() -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
-	var mouse: Vector2 = forced_mouse if forced_mouse.x >= 0.0 else get_local_mouse_position()
+	var mouse: Vector2 = forced_mouse if forced_mouse.x >= 0.0 else _page.get_local_mouse_position()
 	var text: String = ""
 	var row: Rect2 = Rect2()
 	for stat in _stat_rows.size():
@@ -139,7 +142,7 @@ func _show_tooltip(text: String, row: Rect2) -> void:
 	var at := Vector2(RIGHT_X, row.position.y)
 	if row.position.x >= RIGHT_X - 4.0:
 		at.x = RIGHT_X - _tooltip.size.x - 8.0
-	at.y = clampf(at.y, 4.0, size.y - 4.0 - _tooltip.size.y)
+	at.y = clampf(at.y, 4.0, PAGE_SIZE.y - 4.0 - _tooltip.size.y)
 	_tooltip.position = at
 
 
@@ -151,16 +154,25 @@ func _build() -> void:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
+	# Everything else lives on a fixed-size page centered on the screen (any resolution).
+	_page = Control.new()
+	_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_page.set_anchors_preset(Control.PRESET_CENTER)
+	_page.offset_left = -PAGE_SIZE.x / 2.0
+	_page.offset_top = -PAGE_SIZE.y / 2.0
+	_page.offset_right = PAGE_SIZE.x / 2.0
+	_page.offset_bottom = PAGE_SIZE.y / 2.0
+	add_child(_page)
 	var panel := Panel.new()
 	panel.position = PANEL_RECT.position
 	panel.size = PANEL_RECT.size
 	panel.add_theme_stylebox_override("panel", _box(PANEL_COLOR, BORDER_COLOR))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(panel)
+	_page.add_child(panel)
 	_hover = ColorRect.new()
 	_hover.color = HOVER_COLOR
 	_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_hover)
+	_page.add_child(_hover)
 
 	# Top: title, level, XP bar, debug XP button.
 	_label(tr(&"SHEET_TITLE"), Vector2(LEFT_X, 16), FONT_SIZE + 2, TITLE_COLOR)
@@ -168,7 +180,7 @@ func _build() -> void:
 	_xp_bar = preload("res://scenes/ui/stat_bar.tscn").instantiate()
 	_xp_bar.fill_color = XP_COLOR
 	_xp_bar.back_color = BUTTON_COLOR
-	add_child(_xp_bar)
+	_page.add_child(_xp_bar)
 	_xp_bar.position = Vector2(205, 21)
 	_xp_bar.size = Vector2(140, 6)
 	_xp_label = _label("", Vector2(350, 17), SMALL_FONT_SIZE, TEXT_COLOR)
@@ -180,7 +192,7 @@ func _build() -> void:
 	line.color = BORDER_COLOR.darkened(0.3)
 	line.position = Vector2(LEFT_X, 34)
 	line.size = Vector2(PANEL_RECT.size.x - 2.0 * (LEFT_X - PANEL_RECT.position.x), 1)
-	add_child(line)
+	_page.add_child(line)
 
 	# Left: main stats with debug buttons.
 	_label(tr(&"SHEET_STATS"), Vector2(LEFT_X, COLUMN_TITLE_Y), FONT_SIZE + 1, TITLE_COLOR)
@@ -226,7 +238,7 @@ func _build() -> void:
 	_tooltip_label.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
 	_tooltip_label.add_theme_color_override("font_color", TEXT_COLOR)
 	_tooltip.add_child(_tooltip_label)
-	add_child(_tooltip)
+	_page.add_child(_tooltip)
 	_tooltip.hide()
 
 
@@ -243,7 +255,7 @@ func _label(text: String, at: Vector2, font_size: int, color: Color) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(label)
+	_page.add_child(label)
 	return label
 
 
@@ -265,7 +277,7 @@ func _button(text: String, at: Vector2, button_size: Vector2) -> Button:
 		button.add_theme_stylebox_override(state, box)
 		button.add_theme_stylebox_override(state + "_mirrored", box)
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	add_child(button)
+	_page.add_child(button)
 	button.size = button_size
 	return button
 

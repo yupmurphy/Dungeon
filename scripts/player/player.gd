@@ -10,9 +10,11 @@ enum State { NORMAL, DODGE, DEAD }
 
 const ATTACK_ACTIVE_TIME: float = 0.12
 const ATTACK_SLOW_TIME: float = 0.2
+## How long the slash / thrust animation plays.
+const ATTACK_ANIMATION_TIME: float = 0.3
 const KNOCKBACK_DECAY: float = 900.0
-## Sword swing arc, in radians, on each side of the aim direction.
-const SWING_HALF_ARC: float = 1.3
+## Below this speed (reference pixels / s) the character stands (idle animation).
+const WALK_THRESHOLD: float = 8.0
 const GHOST_INTERVAL: float = 0.03
 const GHOST_TINT: Color = Color(0.5, 0.8, 1.0, 0.6)
 const DAMAGE_TAKEN_COLOR: Color = Color(1.0, 0.35, 0.3)
@@ -23,8 +25,6 @@ const HURT_SHAKE: float = 6.0
 var progression: Progression = Progression.new()
 
 @export_group("Size")
-## How wide the character looks on screen.
-@export var visual_size: float = 16.0
 @export var body_radius: float = 6.0
 ## Distance from the player's center to the center of the sword hitbox.
 @export var attack_reach: float = 18.0
@@ -56,7 +56,6 @@ var is_dead: bool:
 var _attack_cooldown_left: float = 0.0
 var _attack_slow_left: float = 0.0
 var _swing_left: float = 0.0
-var _swing_side: float = 1.0
 var _dodge_cooldown_left: float = 0.0
 var _dodge_time_left: float = 0.0
 var _invulnerable_left: float = 0.0
@@ -69,12 +68,11 @@ var _flash_tween: Tween
 @onready var stamina: StaminaComponent = $StaminaComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
 @onready var attack_pivot: Node2D = $AttackPivot
-@onready var weapon_pivot: Node2D = $AttackPivot/WeaponPivot
 @onready var hitbox: Hitbox = $AttackPivot/Hitbox
 @onready var slash_visual: Polygon2D = $AttackPivot/Hitbox/SlashVisual
 @onready var visual: Node2D = $Visual
-@onready var sprite: AnimatedSprite2D = $Visual/Sprite
-@onready var animator: SpriteAnimator = $SpriteAnimator
+## The LPC look: stacked layers (body, clothes, weapon...) animated together.
+@onready var character: LpcCharacter = $Visual/Character
 
 
 func _ready() -> void:
@@ -95,19 +93,15 @@ func _ready() -> void:
 	hitbox.deactivated.connect(slash_visual.hide)
 
 
-## Builds collision shapes, weapon placement and light size from the exported sizes.
+## Builds collision shapes, hitbox placement and light size from the exported sizes.
 func _apply_sizes() -> void:
-	animator.fit_to(visual_size)
 	($CollisionShape2D.shape as CircleShape2D).radius = GameScale.world(body_radius)
 	($Hurtbox/CollisionShape2D.shape as CircleShape2D).radius = GameScale.world(body_radius + 1.0)
 	hitbox.position.x = GameScale.world(attack_reach)
 	($AttackPivot/Hitbox/CollisionShape2D.shape as RectangleShape2D).size = GameScale.world_vector(attack_size)
-	# The slash polygon and sword are drawn for an 18 px reach; scale them with the actual reach.
+	# The slash polygon is drawn for an 18 px reach; scale it with the actual reach.
 	var reach_factor: float = GameScale.world(attack_reach) / 18.0
 	slash_visual.scale = Vector2(reach_factor, reach_factor)
-	var sword := $AttackPivot/WeaponPivot/Sword as Sprite2D
-	sword.position.x = GameScale.world(attack_reach * 0.6)
-	sword.scale = GameScale.fit_scale(sword.texture.get_size(), visual_size)
 	_apply_light()
 
 
@@ -135,9 +129,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if state != State.DEAD:
-		animator.face(get_global_mouse_position().x - global_position.x)
-		animator.update_motion(velocity, delta)
-		_update_weapon()
+		_update_animation()
 
 
 func _physics_normal() -> void:
@@ -163,7 +155,9 @@ func _physics_dodge(delta: float) -> void:
 	_ghost_left -= delta
 	if _ghost_left <= 0.0:
 		_ghost_left = GHOST_INTERVAL
-		GameFeel.spawn_ghost(sprite, GHOST_TINT)
+		for layer in character.layers():
+			if layer.visible:
+				GameFeel.spawn_ghost(layer, GHOST_TINT)
 	if _dodge_time_left <= 0.0:
 		_end_dodge()
 
@@ -174,13 +168,16 @@ func _aim_at_mouse() -> void:
 		attack_pivot.rotation = aim.angle()
 
 
-## Sword rests slightly to one side of the aim; during a swing it sweeps across the arc.
-func _update_weapon() -> void:
-	if _swing_left > 0.0:
-		var progress: float = 1.0 - _swing_left / ATTACK_ACTIVE_TIME
-		weapon_pivot.rotation = lerpf(-SWING_HALF_ARC, SWING_HALF_ARC, progress) * _swing_side
+## Walk / idle facing where you move (or the mouse when standing). An attack animation plays to its end.
+func _update_animation() -> void:
+	if character.is_busy():
+		return
+	var moving: Vector2 = velocity - _knockback
+	var walk_speed: float = GameScale.world(base_move_speed)
+	if moving.length() > GameScale.world(WALK_THRESHOLD):
+		character.loop("walk", LpcCharacter.direction_of(moving), moving.length() / walk_speed)
 	else:
-		weapon_pivot.rotation = SWING_HALF_ARC * 0.5 * _swing_side
+		character.loop("idle", LpcCharacter.direction_of(get_global_mouse_position() - global_position))
 
 
 func _try_attack() -> void:
@@ -191,10 +188,10 @@ func _try_attack() -> void:
 	hitbox.knockback_force = GameScale.world(attack_knockback) * stats.get_knockback_multiplier()
 	hitbox.activate(ATTACK_ACTIVE_TIME)
 	_swing_left = ATTACK_ACTIVE_TIME
-	_swing_side = -_swing_side
 	_attack_slow_left = ATTACK_SLOW_TIME
 	_attack_cooldown_left = base_attack_cooldown / stats.get_attack_speed_multiplier()
-	animator.play_attack(ATTACK_SLOW_TIME)
+	var aim: Vector2 = Vector2.from_angle(attack_pivot.rotation)
+	character.play(character.attack_action(), LpcCharacter.direction_of(aim), ATTACK_ANIMATION_TIME)
 
 
 func _try_dodge(input_dir: Vector2) -> void:
@@ -235,7 +232,7 @@ func _on_hit_missed() -> void:
 
 
 func _set_flash(amount: float) -> void:
-	(sprite.material as ShaderMaterial).set_shader_parameter("flash_amount", amount)
+	(character.layer_material as ShaderMaterial).set_shader_parameter("flash_amount", amount)
 
 
 func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void:
@@ -254,9 +251,9 @@ func _on_died() -> void:
 	state = State.DEAD
 	hurtbox.invulnerable = true
 	hitbox.deactivate()
-	visual.modulate = Color(0.55, 0.55, 0.6, 1.0)
-	visual.rotation = PI / 2.0
-	weapon_pivot.hide()
+	visual.modulate = Color(0.75, 0.75, 0.8, 1.0)
+	# LPC "hurt" is the fall to the ground.
+	character.play("hurt", character.direction)
 	_set_flash(0.0)
 	died.emit()
 

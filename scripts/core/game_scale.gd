@@ -3,14 +3,12 @@ class_name GameScale
 ##
 ## Gameplay numbers in scripts and .tres files (speeds, ranges, radii, offsets) are written in
 ## "reference pixels": pixels of a world built from 16 px tiles. world() turns them into real pixels.
-## Moving to 32 px art later:
-##   - 32 px tiles and characters: set TILE_SIZE = 32 (and TileAtlas to the new sheet). Everything scales.
-##   - only 32 px character sprites: change nothing; sprites are fitted to their visual_size automatically.
+## The game uses 32 px tiles and 64 px LPC characters (TILE_SIZE = 32), so world() doubles every number.
 
 ## Size of one tile in the reference world. Do not change; it is what the numbers are written for.
 const REFERENCE_TILE: int = 16
 ## Size of one map tile in actual pixels.
-const TILE_SIZE: int = 16
+const TILE_SIZE: int = 32
 ## Default on-screen size of a character, in reference pixels (one tile).
 const CHARACTER_SIZE: float = 16.0
 

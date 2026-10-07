@@ -6,22 +6,15 @@
 [ext_resource type="Script" path="res://scripts/components/stamina_component.gd" id="4_stamina"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="5_hurtbox"]
 [ext_resource type="Script" path="res://scripts/components/hitbox.gd" id="6_hitbox"]
-[ext_resource type="SpriteFrames" path="res://resources/sprites/player_frames.tres" id="7_frames"]
 [ext_resource type="Shader" path="res://resources/shaders/flash.gdshader" id="8_flash"]
-[ext_resource type="Script" path="res://scripts/components/sprite_animator.gd" id="9_animator"]
 [ext_resource type="Script" path="res://scripts/components/camera_shake.gd" id="10_camera"]
-[ext_resource type="Texture2D" path="res://assets/Tilemap/tilemap_packed.png" id="11_sheet"]
+[ext_resource type="Script" path="res://scripts/components/lpc_character.gd" id="11_lpc"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
 resource_local_to_scene = true
 shader = ExtResource("8_flash")
 shader_parameter/flash_color = Color(1, 1, 1, 1)
 shader_parameter/flash_amount = 0.0
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_sword"]
-atlas = ExtResource("11_sheet")
-region = Rect2(128, 128, 16, 16)
-filter_clip = true
 
 [sub_resource type="Gradient" id="Gradient_light"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
@@ -52,15 +45,10 @@ stats = ExtResource("2_stats")
 
 [node name="Visual" type="Node2D" parent="."]
 
-[node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
-material = SubResource("ShaderMaterial_flash")
-sprite_frames = ExtResource("7_frames")
-animation = &"idle"
-autoplay = "idle"
-
-[node name="SpriteAnimator" type="Node" parent="." node_paths=PackedStringArray("sprite")]
-script = ExtResource("9_animator")
-sprite = NodePath("../Visual/Sprite")
+[node name="Character" type="Node2D" parent="Visual"]
+script = ExtResource("11_lpc")
+items = Array[String](["body", "head_human_male", "hair_plain", "torso_longsleeve", "legs_pants", "feet_shoes", "weapon_sword"])
+layer_material = SubResource("ShaderMaterial_flash")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_body")
@@ -83,14 +71,6 @@ invulnerable_after_hit = 0.5
 shape = SubResource("CircleShape2D_hurt")
 
 [node name="AttackPivot" type="Node2D" parent="."]
-
-[node name="WeaponPivot" type="Node2D" parent="AttackPivot"]
-z_index = 1
-
-[node name="Sword" type="Sprite2D" parent="AttackPivot/WeaponPivot"]
-position = Vector2(11, 0)
-rotation = 1.5708
-texture = SubResource("AtlasTexture_sword")
 
 [node name="Hitbox" type="Area2D" parent="AttackPivot"]
 position = Vector2(18, 0)

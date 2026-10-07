@@ -49,8 +49,10 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - **Sizes go through `GameScale`** (scripts/core/game_scale.gd). Distances, speeds, radii and offsets in scripts and
   `.tres` are "reference pixels" (a 16 px tile world) and are converted with `GameScale.world()`; grid math uses
   `GameScale.TILE_SIZE`; sprites are fitted to a `visual_size` with `SpriteAnimator.fit_to()`. Never hardcode 16.
-  Verified: with `TILE_SIZE = 32` both test suites still pass. `TileAtlas.TILE_SIZE` is only the art sheet's tile size.
-- Resolution: 480 x 270 base, `canvas_items` stretch with **integer** scale (pixel perfect; 1440x810 window = 3x).
+  `TILE_SIZE = 32` (world() doubles every number). `TileAtlas.TILE_SIZE` is only the 16 px art sheet's tile size;
+  `FloorTiles.upscale()` enlarges 16 px tile atlases 2x (nearest) until 32 px tilesets replace them.
+- Resolution: 640 x 360 base, `canvas_items` stretch with **integer** scale (1280x720 window = 2x, 1920x1080 = 3x).
+  UI pages built in fixed coordinates (CharacterSheet) sit on a centered 480 x 270 page.
 - Physics layers are named in `project.godot`: 1 world, 2 player_body, 3 enemy_body, 4 player_hurtbox,
   5 enemy_hurtbox, 6 player_hitbox, 7 enemy_hitbox. A hitbox's mask lists the hurtbox layer it can damage.
 
@@ -104,6 +106,14 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health/stamina follow).
 
 ## Art
+- **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).
+  `tools/lpc_import.gd` (`-- --lpc-import=D:/DungeonHunters/lpc-generator`, a clone of the Universal LPC generator
+  kept OUTSIDE the project) copies the pieces listed in its ITEMS into `assets/lpc/` (same folder structure) and writes
+  `assets/lpc/catalog.json` (item -> slot, layers with z order, sheet per animation per body type), `assets/CREDITS.csv`
+  (license row per file) and `CREDITS.md` (authors, sources, and which pieces are free to use and how). Keep credits!
+  `LpcCatalog` cuts sheets into SpriteFrames; `LpcCharacter` stacks one AnimatedSprite2D per layer and drives the
+  same frame on all of them (idle, walk, slash, thrust, hurt; layers without the animation hide).
+- Monsters still use Kenney sprites (no LPC monsters downloaded yet).
 - Pack: Kenney **Tiny Dungeon** (CC0) in `assets/`. Use `assets/Tilemap/tilemap_packed.png`: 12 x 11 tiles of 16 px,
   no spacing. Tile index = row * 12 + column; `TileAtlas` (scripts/levels/tile_atlas.gd) converts it.
 - The pack has **one frame per character** (no animation sheets) and **no skulls or torches**. Characters use

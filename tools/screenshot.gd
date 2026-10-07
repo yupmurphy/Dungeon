@@ -30,8 +30,8 @@ func run(options: Dictionary) -> void:
 			# Spider freshly hit by the player, bat in the middle of its red wind-up.
 			var spider := room.get_node("World/Spider") as Enemy
 			var bat := room.get_node("World/Bat") as Enemy
-			spider.global_position = player.global_position + Vector2(22, 0)
-			bat.global_position = player.global_position + Vector2(-26, -8)
+			spider.global_position = player.global_position + GameScale.world_vector(Vector2(22, 0))
+			bat.global_position = player.global_position + GameScale.world_vector(Vector2(-26, -8))
 			for i in 10:
 				await get_tree().physics_frame
 			bat._attack_dir = Vector2.RIGHT
@@ -45,6 +45,7 @@ func run(options: Dictionary) -> void:
 			elif options.has("--miss"):
 				Combat.forced_rolls.assign([0.0, 0.99])
 			player.hitbox.activate(0.12)
+			player.character.play(player.character.attack_action(), LpcCatalog.Direction.RIGHT, Player.ATTACK_ANIMATION_TIME)
 			# Wait until the hit actually lands, then a few frames for the effects to appear.
 			for i in 60:
 				if spider.health.current_health < spider.health.max_health or GameFeel._layer.get_child_count() > 0:

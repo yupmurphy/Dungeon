@@ -7,6 +7,7 @@ extends Node
 ##   -- --screenshot=<file.png> [--mode=idle|fight|dodge]   save one rendered frame (not headless)
 ##   -- --build-room                                  regenerate tileset + test room tiles
 ##   -- --terrain-map=<folder> [--seeds=<first>:<n>]  save floor terrain pictures (works headless)
+##   -- --lpc-import=<LPC generator clone>             copy the LPC pieces we use into assets/lpc/ + credits
 ## Tools run inside the real game (with autoloads), which a plain `--script` run does not provide.
 
 const TOOLS: Dictionary = {
@@ -16,6 +17,7 @@ const TOOLS: Dictionary = {
 	"--screenshot": "res://tools/screenshot.gd",
 	"--build-room": "res://tools/room_builder.gd",
 	"--terrain-map": "res://tools/terrain_map.gd",
+	"--lpc-import": "res://tools/lpc_import.gd",
 }
 
 
