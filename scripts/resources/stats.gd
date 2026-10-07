@@ -1,24 +1,24 @@
 class_name Stats
 extends Resource
-## The six main stats of a character or monster (player and monsters use the same system).
+## The five main stats of a character or monster (player and monsters use the same system).
 ## Only the main stats are stored; every derived value (health, stamina, mana, speeds...) is computed
 ## from them by the getters below, so rebalancing = editing the constants here or a .tres file.
 
-enum Stat { STRENGTH, AGILITY, VITALITY, INTELLIGENCE, PERCEPTION, LUCK }
+enum Stat { STRENGTH, AGILITY, INTELLIGENCE, PERCEPTION, LUCK }
 
 ## Every stat starts here for a new character (and is the default for monsters).
 const STARTING_VALUE: int = 5
 const MIN_VALUE: int = 0
 
 ## Property name of each stat, indexed by Stat.
-const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"vitality", &"intelligence",
+const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"intelligence",
 	&"perception", &"luck"]
 
-# --- Pools ---
+# --- Pools: health and stamina from Strength, mana from Intelligence ---
 const HEALTH_BASE: float = 50.0
-const HEALTH_PER_VITALITY: float = 10.0
+const HEALTH_PER_STRENGTH: float = 10.0
 const STAMINA_BASE: float = 50.0
-const STAMINA_PER_VITALITY: float = 4.0
+const STAMINA_PER_STRENGTH: float = 4.0
 const MANA_BASE: float = 20.0
 const MANA_PER_INTELLIGENCE: float = 5.0
 
@@ -46,9 +46,9 @@ const EVADE_MAX: float = 0.8
 const DODGE_INVULNERABILITY_BASE: float = 0.13
 const DODGE_INVULNERABILITY_PER_AGILITY: float = 0.01
 
-# --- Vitality ---
+# --- Strength: toughness ---
 ## Poison lasts x (1 - this per point), never less than POISON_DURATION_MIN.
-const POISON_DURATION_PER_VITALITY: float = 0.03
+const POISON_DURATION_PER_STRENGTH: float = 0.03
 const POISON_DURATION_MIN: float = 0.1
 
 # --- Perception ---
@@ -81,10 +81,6 @@ const DEFENSE_SCALE: float = 100.0
 	set(value):
 		agility = maxi(value, MIN_VALUE)
 		emit_changed()
-@export var vitality: int = STARTING_VALUE:
-	set(value):
-		vitality = maxi(value, MIN_VALUE)
-		emit_changed()
 @export var intelligence: int = STARTING_VALUE:
 	set(value):
 		intelligence = maxi(value, MIN_VALUE)
@@ -115,11 +111,11 @@ func add_stat(stat: Stat, amount: int) -> void:
 # --- Derived values ---
 
 func get_max_health() -> float:
-	return maxf(1.0, HEALTH_BASE + vitality * HEALTH_PER_VITALITY)
+	return maxf(1.0, HEALTH_BASE + strength * HEALTH_PER_STRENGTH)
 
 
 func get_max_stamina() -> float:
-	return maxf(1.0, STAMINA_BASE + vitality * STAMINA_PER_VITALITY)
+	return maxf(1.0, STAMINA_BASE + strength * STAMINA_PER_STRENGTH)
 
 
 func get_max_mana() -> float:
@@ -163,7 +159,7 @@ func get_dodge_invulnerability() -> float:
 
 ## Multiplier for how long poison lasts (no poison yet; ready for it).
 func get_poison_duration_multiplier() -> float:
-	return maxf(1.0 - vitality * POISON_DURATION_PER_VITALITY, POISON_DURATION_MIN)
+	return maxf(1.0 - strength * POISON_DURATION_PER_STRENGTH, POISON_DURATION_MIN)
 
 
 ## Chance (0..1) that this character's hit is critical.

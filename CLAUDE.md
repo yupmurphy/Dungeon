@@ -24,7 +24,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   (`HealthComponent`, `StaminaComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, camera shake). Player and enemies share them.
 - **Game data is separated from logic** as `Resource` classes (`scripts/resources/`) with instances in `resources/`
   (`.tres`). Adding a monster or changing balance = new/edited `.tres`, no logic rewrite.
-  - `Stats`: 6 main stats (strength, agility, vitality, intelligence, perception, luck), all start at 5
+  - `Stats`: 5 main stats (strength, agility, intelligence, perception, luck), all start at 5. Strength also
+    covers toughness (health, stamina, poison); there is no separate Vitality (user decision).
     (`STARTING_VALUE`); only they are saved. It owns every derived formula (health, stamina, mana, damage, speeds...)
     as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.

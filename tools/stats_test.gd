@@ -32,15 +32,15 @@ func run(_options: Dictionary) -> void:
 				"resource_name", "resource_path"]:
 			saved.append(property["name"])
 	saved.sort()
-	_check(saved == ["agility", "intelligence", "luck", "perception", "strength", "vitality"],
-		"saved properties are exactly the 6 main stats (%s)" % ", ".join(saved))
+	_check(saved == ["agility", "intelligence", "luck", "perception", "strength"],
+		"saved properties are exactly the 5 main stats (%s)" % ", ".join(saved))
 
 	print("--- pools")
-	_check_value(_with(Stats.Stat.VITALITY, 5).get_max_health(), 100.0, "Vitality 5 -> 100 health")
-	_check_value(_with(Stats.Stat.VITALITY, 0).get_max_health(), 50.0, "Vitality 0 -> 50 health")
-	_check_value(_with(Stats.Stat.VITALITY, 20).get_max_health(), 250.0, "Vitality 20 -> 250 health")
-	_check_value(_with(Stats.Stat.VITALITY, 5).get_max_stamina(), 70.0, "Vitality 5 -> 70 stamina")
-	_check_value(_with(Stats.Stat.VITALITY, 15).get_max_stamina(), 110.0, "Vitality 15 -> 110 stamina")
+	_check_value(_with(Stats.Stat.STRENGTH, 5).get_max_health(), 100.0, "Strength 5 -> 100 health")
+	_check_value(_with(Stats.Stat.STRENGTH, 0).get_max_health(), 50.0, "Strength 0 -> 50 health")
+	_check_value(_with(Stats.Stat.STRENGTH, 20).get_max_health(), 250.0, "Strength 20 -> 250 health")
+	_check_value(_with(Stats.Stat.STRENGTH, 5).get_max_stamina(), 70.0, "Strength 5 -> 70 stamina")
+	_check_value(_with(Stats.Stat.STRENGTH, 15).get_max_stamina(), 110.0, "Strength 15 -> 110 stamina")
 	_check_value(_with(Stats.Stat.INTELLIGENCE, 5).get_max_mana(), 45.0, "Intelligence 5 -> 45 mana")
 	_check_value(_with(Stats.Stat.INTELLIGENCE, 0).get_max_mana(), 20.0, "Intelligence 0 -> 20 mana")
 
@@ -59,8 +59,8 @@ func run(_options: Dictionary) -> void:
 	_check_value(_with(Stats.Stat.AGILITY, 100).get_evade_chance(), 0.8, "Agility 100 -> still 80% miss (cap)")
 	_check_value(_with(Stats.Stat.AGILITY, 5).get_dodge_invulnerability(), 0.18, "Agility 5 -> 0.18 s dodge invulnerability")
 	_check_value(_with(Stats.Stat.AGILITY, 15).get_dodge_invulnerability(), 0.28, "Agility 15 -> 0.28 s")
-	_check_value(_with(Stats.Stat.VITALITY, 10).get_poison_duration_multiplier(), 0.7, "Vitality 10 -> poison lasts 70%")
-	_check_value(_with(Stats.Stat.VITALITY, 100).get_poison_duration_multiplier(), 0.1, "Vitality 100 -> poison 10% (floor)")
+	_check_value(_with(Stats.Stat.STRENGTH, 10).get_poison_duration_multiplier(), 0.7, "Strength 10 -> poison lasts 70%")
+	_check_value(_with(Stats.Stat.STRENGTH, 100).get_poison_duration_multiplier(), 0.1, "Strength 100 -> poison 10% (floor)")
 	_check_value(_with(Stats.Stat.PERCEPTION, 5).get_crit_chance(), 0.05, "Perception 5 -> 5% critical")
 	_check_value(_with(Stats.Stat.PERCEPTION, 150).get_crit_chance(), 1.0, "Perception 150 -> 100% critical (cap)")
 	_check(_with(Stats.Stat.PERCEPTION, 20).get_sight_radius() > _with(Stats.Stat.PERCEPTION, 5).get_sight_radius(),
@@ -97,17 +97,17 @@ func run(_options: Dictionary) -> void:
 	_check(misses > 1500 and misses < 1700, "Agility 100: ~80%% of 2000 random hits miss (%d)" % misses)
 
 	print("--- character sheet texts (localization/texts.csv + exact numbers)")
-	var vitality_tip: String = StatTexts.stat_tooltip(Stats.new(), Stats.Stat.VITALITY)
-	_check(vitality_tip.begins_with("Vitality 5:") and vitality_tip.contains("+50 health")
-		and vitality_tip.contains("+20 stamina"), "Vitality 5 tooltip: +50 health, +20 stamina")
+	var toughness_tip: String = StatTexts.stat_tooltip(Stats.new(), Stats.Stat.STRENGTH)
+	_check(toughness_tip.begins_with("Strength 5:") and toughness_tip.contains("+50 health")
+		and toughness_tip.contains("+20 stamina"), "Strength 5 tooltip: +50 health, +20 stamina")
 	var strength_tip: String = StatTexts.stat_tooltip(_with(Stats.Stat.STRENGTH, 10), Stats.Stat.STRENGTH)
 	_check(strength_tip.contains("+5 defense") and strength_tip.contains("+30 carry weight"),
 		"Strength 10 tooltip: +5 defense, +30 carry weight")
 	_check(StatTexts.stat_tooltip(_with(Stats.Stat.AGILITY, 100), Stats.Stat.AGILITY).contains("+80% chance"),
 		"Agility 100 tooltip: miss chance shown capped at 80%")
 	var lines: Array[StatTexts.Derived] = StatTexts.derived(Stats.new())
-	_check(lines[0].name == "Health" and lines[0].value == "100" and lines[0].tooltip.contains("Vitality"),
-		"derived: Health 100, comes from Vitality")
+	_check(lines[0].name == "Health" and lines[0].value == "100" and lines[0].tooltip.contains("Strength"),
+		"derived: Health 100, comes from Strength")
 	_check(lines[4].value == "+20%" and lines[4].tooltip.contains("Perception"), "derived: Damage bonus +20%")
 	for line in lines:
 		_check(not line.name.begins_with("DERIVED_") and not line.tooltip.contains("{"),

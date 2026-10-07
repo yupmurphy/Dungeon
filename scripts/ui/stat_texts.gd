@@ -11,14 +11,14 @@ class Derived:
 	var tooltip: String
 
 
-const STAT_KEYS: Array[String] = ["STRENGTH", "AGILITY", "VITALITY", "INTELLIGENCE", "PERCEPTION", "LUCK"]
+const STAT_KEYS: Array[String] = ["STRENGTH", "AGILITY", "INTELLIGENCE", "PERCEPTION", "LUCK"]
 
 
 static func stat_name(stat: Stats.Stat) -> String:
 	return TranslationServer.translate("STAT_" + STAT_KEYS[stat])
 
 
-## "Vitality 5:" + what the stat does + what these points give, e.g. "+50 health", "+20 stamina".
+## "Strength 5:" + what the stat does + what these points give, e.g. "+50 health", "+20 stamina".
 static func stat_tooltip(stats: Stats, stat: Stats.Stat) -> String:
 	var value: int = stats.get_stat(stat)
 	var lines: PackedStringArray = [
@@ -36,6 +36,10 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 	match stat:
 		Stats.Stat.STRENGTH:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_STRENGTH * 100.0)}))
+			lines.append(_text("EFFECT_HEALTH", {"value": _num(value * Stats.HEALTH_PER_STRENGTH)}))
+			lines.append(_text("EFFECT_STAMINA", {"value": _num(value * Stats.STAMINA_PER_STRENGTH)}))
+			lines.append(_text("EFFECT_POISON", {"value": _num(minf(value * Stats.POISON_DURATION_PER_STRENGTH,
+				1.0 - Stats.POISON_DURATION_MIN) * 100.0)}))
 			lines.append(_text("EFFECT_DEFENSE", {"value": _num(value * Stats.DEFENSE_PER_STRENGTH)}))
 			lines.append(_text("EFFECT_KNOCKBACK", {"value": _num(value * Stats.KNOCKBACK_PER_STRENGTH * 100.0)}))
 			lines.append(_text("EFFECT_CARRY", {"value": _num(value * Stats.CARRY_WEIGHT_PER_STRENGTH)}))
@@ -46,11 +50,6 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 			lines.append(_text("EFFECT_EVADE", {"value": _num(minf(value * Stats.EVADE_PER_AGILITY, Stats.EVADE_MAX) * 100.0),
 				"max": _num(Stats.EVADE_MAX * 100.0)}))
 			lines.append(_text("EFFECT_DODGE", {"value": _num(value * Stats.DODGE_INVULNERABILITY_PER_AGILITY)}))
-		Stats.Stat.VITALITY:
-			lines.append(_text("EFFECT_HEALTH", {"value": _num(value * Stats.HEALTH_PER_VITALITY)}))
-			lines.append(_text("EFFECT_STAMINA", {"value": _num(value * Stats.STAMINA_PER_VITALITY)}))
-			lines.append(_text("EFFECT_POISON", {"value": _num(minf(value * Stats.POISON_DURATION_PER_VITALITY,
-				1.0 - Stats.POISON_DURATION_MIN) * 100.0)}))
 		Stats.Stat.INTELLIGENCE:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_INTELLIGENCE * 100.0)}))
 			lines.append(_text("EFFECT_MANA", {"value": _num(value * Stats.MANA_PER_INTELLIGENCE)}))
@@ -74,10 +73,10 @@ static func derived(stats: Stats) -> Array[Derived]:
 	var list: Array[Derived] = []
 	var health: float = stats.get_max_health()
 	list.append(_derived("HEALTH", _num(health), {"base": _num(Stats.HEALTH_BASE),
-		"per": _num(Stats.HEALTH_PER_VITALITY), "stat": stats.vitality, "value": _num(health)}))
+		"per": _num(Stats.HEALTH_PER_STRENGTH), "stat": stats.strength, "value": _num(health)}))
 	var stamina: float = stats.get_max_stamina()
 	list.append(_derived("STAMINA", _num(stamina), {"base": _num(Stats.STAMINA_BASE),
-		"per": _num(Stats.STAMINA_PER_VITALITY), "stat": stats.vitality, "value": _num(stamina)}))
+		"per": _num(Stats.STAMINA_PER_STRENGTH), "stat": stats.strength, "value": _num(stamina)}))
 	var mana: float = stats.get_max_mana()
 	list.append(_derived("MANA", _num(mana), {"base": _num(Stats.MANA_BASE),
 		"per": _num(Stats.MANA_PER_INTELLIGENCE), "stat": stats.intelligence, "value": _num(mana)}))
@@ -113,7 +112,7 @@ static func derived(stats: Stats) -> Array[Derived]:
 	list.append(_derived("CARRY", _num(stats.get_carry_weight()),
 		{"base": _num(Stats.CARRY_WEIGHT_BASE), "per": _num(Stats.CARRY_WEIGHT_PER_STRENGTH)}))
 	list.append(_derived("POISON", "%s%%" % _num(stats.get_poison_duration_multiplier() * 100.0),
-		{"per": _num(Stats.POISON_DURATION_PER_VITALITY * 100.0), "min": _num(Stats.POISON_DURATION_MIN * 100.0)}))
+		{"per": _num(Stats.POISON_DURATION_PER_STRENGTH * 100.0), "min": _num(Stats.POISON_DURATION_MIN * 100.0)}))
 	return list
 
 

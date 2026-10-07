@@ -4,9 +4,8 @@
 
 [resource]
 script = ExtResource("1_stats")
-strength = 5
+strength = 3
 agility = 1
-vitality = 3
 intelligence = 0
 perception = 2
 luck = 5

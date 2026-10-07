@@ -43,7 +43,7 @@ func _process(delta: float) -> void:
 		stamina_changed.emit(current_stamina, max_stamina)
 
 
-## Max stamina changed (e.g. Vitality went up): a gain is added to current stamina too, a loss only caps it.
+## Max stamina changed (e.g. Strength went up): a gain is added to current stamina too, a loss only caps it.
 func set_max_stamina(new_max: float) -> void:
 	current_stamina = clampf(current_stamina + maxf(new_max - max_stamina, 0.0), 0.0, new_max)
 	max_stamina = new_max

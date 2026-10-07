@@ -23,7 +23,7 @@ func run(_options: Dictionary) -> void:
 			"input action '%s' mapped" % action)
 	_check(player.health.current_health == 100.0, "player starts with 100 HP")
 	_check(player.stamina.current_stamina == player.stats.get_max_stamina() and player.stamina.max_stamina == 70.0,
-		"player starts with full stamina (70 = 50 + 4 x Vitality 5)")
+		"player starts with full stamina (70 = 50 + 4 x Strength 5)")
 	var frames: Array = [slime.sprite.sprite_frames, bat.sprite.sprite_frames, spider.sprite.sprite_frames]
 	_check(frames[0] != frames[1] and frames[1] != frames[2] and frames[0] != frames[2],
 		"each enemy uses different sprites")
@@ -44,17 +44,17 @@ func run(_options: Dictionary) -> void:
 	_check(sheet.visible and get_tree().paused, "C opens the character sheet and pauses the game")
 	var health_row: Label = sheet._derived_values[0]
 	_check(health_row.text == "100", "sheet shows health 100 (%s)" % health_row.text)
-	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, 1)].pressed.emit()
-	_check(player.stats.vitality == 6 and player.health.max_health == 110.0 and player.health.current_health == 110.0,
-		"Vitality + -> 6, health 110 at once (%s / %s)" % [player.health.current_health, player.health.max_health])
+	sheet._stat_buttons[Vector2i(Stats.Stat.STRENGTH, 1)].pressed.emit()
+	_check(player.stats.strength == 6 and player.health.max_health == 110.0 and player.health.current_health == 110.0,
+		"Strength + -> 6, health 110 at once (%s / %s)" % [player.health.current_health, player.health.max_health])
 	_check(health_row.text == "110", "sheet updates right away (%s)" % health_row.text)
-	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, 10)].pressed.emit()
-	_check(player.stats.vitality == 16 and player.health.max_health == 210.0, "Vitality +10 -> 16, health 210")
-	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, 10)].pressed.emit()
-	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, -1)].pressed.emit()
-	_check(player.stats.vitality == 25, "Vitality - -> 25")
-	player.stats.vitality = 5
-	_check(player.health.max_health == 100.0 and player.health.current_health == 100.0, "back to Vitality 5: health 100")
+	sheet._stat_buttons[Vector2i(Stats.Stat.STRENGTH, 10)].pressed.emit()
+	_check(player.stats.strength == 16 and player.health.max_health == 210.0, "Strength +10 -> 16, health 210")
+	sheet._stat_buttons[Vector2i(Stats.Stat.STRENGTH, 10)].pressed.emit()
+	sheet._stat_buttons[Vector2i(Stats.Stat.STRENGTH, -1)].pressed.emit()
+	_check(player.stats.strength == 25, "Strength - -> 25")
+	player.stats.strength = 5
+	_check(player.health.max_health == 100.0 and player.health.current_health == 100.0, "back to Strength 5: health 100")
 	sheet._stat_buttons[Vector2i(Stats.Stat.AGILITY, 10)].pressed.emit()
 	_check(sheet._derived_values[7].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[7].text)
 	player.stats.agility = 5
@@ -69,11 +69,11 @@ func run(_options: Dictionary) -> void:
 	sheet._xp_button.pressed.emit()
 	_check(player.progression.level == 2 and player.progression.xp == 0, "2 x +50 XP -> level 2")
 	_check(sheet._level_label.text == "Level 2", "sheet shows %s" % sheet._level_label.text)
-	sheet.forced_mouse = sheet._stat_rows[Stats.Stat.VITALITY].get_center()
+	sheet.forced_mouse = sheet._stat_rows[Stats.Stat.STRENGTH].get_center()
 	await get_tree().process_frame
-	_check(sheet._tooltip.visible and sheet._tooltip_label.text.contains("Vitality 5:")
+	_check(sheet._tooltip.visible and sheet._tooltip_label.text.contains("Strength 5:")
 		and sheet._tooltip_label.text.contains("+50 health") and sheet._tooltip_label.text.contains("+20 stamina"),
-		"hovering Vitality explains it: +50 health, +20 stamina")
+		"hovering Strength explains it: +50 health, +20 stamina")
 	sheet.forced_mouse = sheet._derived_rows[3].get_center()
 	await get_tree().process_frame
 	_check(sheet._tooltip_label.text.contains("From Strength"), "hovering Defense: comes from Strength")
@@ -114,9 +114,9 @@ func run(_options: Dictionary) -> void:
 	print("--- player hits spider")
 	spider.process_mode = Node.PROCESS_MODE_INHERIT
 	await _hit_with_player(player, spider)
-	# 20 weapon damage x 1.2 (bonus: 4 stats at 5) x 100 / (100 + spider defense 1.5)
+	# 20 weapon damage x 1.2 (bonus: 4 stats at 5) x 100 / (100 + spider defense 0.5)
 	var expected: float = Combat.damage_taken(Combat.damage_dealt(player.stats, 20.0, false), spider.data.stats)
-	_check(is_equal_approx(expected, 24.0 * 100.0 / 101.5), "formula: 20 x 1.2 x 100 / 101.5 = %.2f" % expected)
+	_check(is_equal_approx(expected, 24.0 * 100.0 / 100.5), "formula: 20 x 1.2 x 100 / 100.5 = %.2f" % expected)
 	_check(is_equal_approx(spider.health.current_health, 60.0 - expected),
 		"spider took %.1f damage (60 -> %.1f)" % [expected, spider.health.current_health])
 	_check(_has_child_of(effects, DamageNumber), "damage number spawned")

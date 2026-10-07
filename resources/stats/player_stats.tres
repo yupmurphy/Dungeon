@@ -6,7 +6,6 @@
 script = ExtResource("1_stats")
 strength = 5
 agility = 5
-vitality = 5
 intelligence = 5
 perception = 5
 luck = 5
