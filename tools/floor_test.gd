@@ -140,7 +140,7 @@ func _ecology_problems(layout: FloorLayout, shares: Dictionary) -> Array[String]
 					problems.append("galleries: caves, goblin camp, mine and chieftain hall")
 			ZoneBuilder.Biome.FOREST:
 				if zone[Terrain.Type.WATER_DEEP] < 0.003 or places.get(&"bridge", 0) + places.get(&"ford", 0) < 2 \
-						or zone[Terrain.Type.TREE] < 0.15 or zone[Terrain.Type.GRASS] < 0.05 \
+						or zone[Terrain.Type.TREE] < 0.03 or zone[Terrain.Type.GRASS] < 0.05 \
 						or places.get(&"old_tree", 0) < 3 or places.get(&"spider_nest", 0) < 3:
 					problems.append("forest: a river with 2+ crossings, thick woods and clearings, old trees, 3+ spider nests")
 			ZoneBuilder.Biome.SWAMP:

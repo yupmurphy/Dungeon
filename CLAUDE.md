@@ -71,7 +71,9 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   (camp, mine, nests, bridges, oasis, bones... used by the elements map and future spawners).
   `FloorLayout.speed_factor_at()` slows player and monsters (shallow water, reeds, quicksand, webs).
 - Art for nature is procedural placeholder pixel art (`NatureArt`: one tile atlas + prop textures), added to
-  the floor TileSet as source 1 by `FloorTiles`; trees and deep water collide. Rock and cave floor still use
+  the floor TileSet as source 1 by `FloorTiles`; deep water collides, a TREE cell only with its trunk. Trees are
+  big: a TREE cell is just the trunk spot (max one per 3x3 block); its 48x56 crown is source 2 on the y-sorted
+  "Canopies" TileMapLayer inside World, so characters walk behind/in front of trees correctly. Rock and cave floor still use
   the Kenney tiles (tinted per zone); nature tiles go on an untinted "Nature" layer. `Prop` shows either a
   Kenney tile (`tile_index`) or a NatureArt prop (`art`, multi-tile footprint, optional light).
 - `-- --terrain-map=<folder> --seeds=<first>:<n>` saves terrain pictures (headless) to eyeball generation.

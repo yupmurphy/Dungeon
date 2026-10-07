@@ -6,10 +6,13 @@ extends ZoneBuilder
 ## Always dark: only torches, the camp fire and the crystals give light.
 
 const START_RADIUS: float = 9.0
-const HALL_RADIUS: Vector2 = Vector2(18.0, 23.0)
-const CHAMBER_RADIUS: Vector2 = Vector2(6.0, 13.0)
+const HALL_RADIUS: Vector2 = Vector2(28.0, 34.0)
+## Most chambers are big; a few small ones stay here and there.
+const CHAMBER_RADIUS: Vector2 = Vector2(15.0, 24.0)
+const SMALL_CHAMBER_RADIUS: Vector2 = Vector2(6.0, 10.0)
+const SMALL_CHAMBER_CHANCE: float = 0.2
 ## Gap kept between chambers (tiles), so tunnels have room to wind.
-const CHAMBER_GAP: float = 9.0
+const CHAMBER_GAP: float = 6.0
 ## Chambers stay this far inside the ring.
 const RING_MARGIN: float = 10.0
 const CHAMBER_TRIES: int = 1500
@@ -87,7 +90,8 @@ func _place_chambers() -> void:
 		var angle: float = rng.randf() * TAU
 		var edge: float = FloorGenerator.hub_radius(hub_edge, angle) - RING_MARGIN
 		var distance: float = sqrt(rng.randf()) * edge
-		var radius: float = rng.randf_range(CHAMBER_RADIUS.x, CHAMBER_RADIUS.y)
+		var size_range: Vector2 = SMALL_CHAMBER_RADIUS if rng.randf() < SMALL_CHAMBER_CHANCE else CHAMBER_RADIUS
+		var radius: float = rng.randf_range(size_range.x, size_range.y)
 		if distance + radius > edge:
 			continue
 		var at: Vector2 = c + Vector2.from_angle(angle) * distance

@@ -9,7 +9,7 @@ const ATLAS_COLUMNS: int = 16
 
 ## name -> {size: Vector2i pixels, footprint: Vector2i tiles that block, solid, light (Color or null)}
 const PROPS: Dictionary = {
-	"old_tree": {"size": Vector2i(32, 40), "footprint": Vector2i(2, 2), "solid": true},
+	"old_tree": {"size": Vector2i(64, 72), "footprint": Vector2i(2, 2), "solid": true},
 	"dead_tree": {"size": Vector2i(16, 32), "footprint": Vector2i(1, 1), "solid": true},
 	"palm": {"size": Vector2i(32, 40), "footprint": Vector2i(1, 1), "solid": true},
 	"skull": {"size": Vector2i(32, 32), "footprint": Vector2i(2, 2), "solid": true},
@@ -35,7 +35,11 @@ const PROPS: Dictionary = {
 
 const OUTLINE: Color = Color(0.08, 0.06, 0.08)
 
+const CANOPY_SIZE: Vector2i = Vector2i(48, 56)
+const CANOPY_VARIANTS: int = 4
+
 static var _atlas: ImageTexture
+static var _canopy: ImageTexture
 static var _props: Dictionary = {}
 
 
@@ -59,6 +63,47 @@ static func prop_texture(prop_name: String) -> ImageTexture:
 
 static func prop_info(prop_name: String) -> Dictionary:
 	return PROPS[prop_name]
+
+
+## Forest trees: big sprites (crown about 3 tiles wide) whose trunk stands on one tree cell.
+## One row of CANOPY_VARIANTS pictures, CANOPY_SIZE each.
+static func canopy_texture() -> ImageTexture:
+	if _canopy == null:
+		var image := Image.create(CANOPY_SIZE.x * CANOPY_VARIANTS, CANOPY_SIZE.y, false, Image.FORMAT_RGBA8)
+		image.fill(Color.TRANSPARENT)
+		for v in CANOPY_VARIANTS:
+			var tree := Image.create(CANOPY_SIZE.x, CANOPY_SIZE.y, false, Image.FORMAT_RGBA8)
+			tree.fill(Color.TRANSPARENT)
+			_draw_canopy(tree, v)
+			image.blit_rect(tree, Rect2i(Vector2i.ZERO, CANOPY_SIZE), Vector2i(CANOPY_SIZE.x * v, 0))
+		_canopy = ImageTexture.create_from_image(image)
+	return _canopy
+
+
+static func _draw_canopy(img: Image, v: int) -> void:
+	var w: float = CANOPY_SIZE.x
+	var bark := Color(0.36, 0.23, 0.12)
+	# Trunk down to the bottom edge (that's where the tree stands).
+	_rect(img, Rect2i(int(w / 2) - 3, 34, 6, CANOPY_SIZE.y - 34), bark)
+	_rect(img, Rect2i(int(w / 2) - 1, 36, 1, CANOPY_SIZE.y - 38), bark.lightened(0.15))
+	if v == 3:
+		# Pine: stacked triangles.
+		var needles := Color(0.1, 0.3, 0.18)
+		for layer in 3:
+			var top: int = 2 + layer * 11
+			for y in range(top, top + 18):
+				var half_width: int = int((y - top) * (0.75 + layer * 0.1))
+				_rect(img, Rect2i(int(w / 2) - half_width, y, half_width * 2 + 1, 1),
+					needles if (y - top) % 5 else needles.lightened(0.12))
+	else:
+		var crown: Color = [Color(0.16, 0.42, 0.16), Color(0.13, 0.36, 0.17), Color(0.22, 0.47, 0.15)][v]
+		_disc(img, Vector2(w / 2.0, 21), 19.0, crown.darkened(0.3))
+		_disc(img, Vector2(w / 2.0 - 9, 26), 10.0, crown.darkened(0.15))
+		_disc(img, Vector2(w / 2.0 + 9, 26), 10.0, crown.darkened(0.1))
+		_disc(img, Vector2(w / 2.0, 17), 14.0, crown)
+		_disc(img, Vector2(w / 2.0 - 6, 11), 6.0, crown.lightened(0.18))
+		_dots(img, [crown.darkened(0.25), crown.lightened(0.1)], 60, 70 + v, Rect2i(5, 2, 38, 36), true)
+	_outline(img)
 
 
 # --- Atlas ---
@@ -91,14 +136,11 @@ static func _draw_tile(img: Image, type: int, v: int) -> void:
 			if v == 2:
 				_line(img, Vector2i(3, 11), Vector2i(10, 8), Color(0.4, 0.27, 0.14))
 		Terrain.Type.TREE:
-			_speckle(img, Color(0.2, 0.3, 0.14), 0.08, s)
-			var crown: Color = [Color(0.16, 0.42, 0.16), Color(0.13, 0.36, 0.17), Color(0.2, 0.46, 0.14),
-				Color(0.1, 0.3, 0.16)][v]
-			_disc(img, Vector2(8, 9.5), 6.0, Color(0.08, 0.16, 0.07, 0.8))  # shadow
-			_disc(img, Vector2(7.5, 7.5), 7.0, crown.darkened(0.35))
-			_disc(img, Vector2(7.5, 7.0), 6.0, crown)
-			_disc(img, Vector2(5.5, 5.0), 2.5, crown.lightened(0.25))
-			_dots(img, [crown.darkened(0.2)], 6, s, Rect2i(3, 3, 10, 10))
+			# Only the ground under a tree (shade and roots); the tree itself is a big canopy sprite.
+			_speckle(img, Color(0.17, 0.25, 0.12), 0.07, s)
+			_disc(img, Vector2(7.5, 8.5), 5.5, Color(0.12, 0.18, 0.09))
+			for root: Vector2i in [Vector2i(3, 12), Vector2i(12, 12), Vector2i(8, 14)]:
+				_line(img, Vector2i(8, 9), root, Color(0.3, 0.2, 0.11))
 		Terrain.Type.WATER_SHALLOW:
 			_speckle(img, Color(0.32, 0.58, 0.78), 0.04, s)
 			_waves(img, Color(0.55, 0.78, 0.92), 2, s)
@@ -146,13 +188,20 @@ static func _draw_tile(img: Image, type: int, v: int) -> void:
 			_speckle(img, Color(0.38, 0.68, 0.3), 0.08, s)
 			_blades(img, Color(0.55, 0.85, 0.4), 7, s)
 		Terrain.Type.WEB:
+			# Forest floor with a few thin, broken silk threads (not a full grid, so it doesn't read as ice).
 			_speckle(img, Color(0.24, 0.34, 0.18), 0.08, s)
-			var web := Color(0.92, 0.92, 0.96, 0.85)
-			var c := Vector2i(7 + v, 8)
-			for corner: Vector2i in [Vector2i(0, 0), Vector2i(15, 0), Vector2i(0, 15), Vector2i(15, 15)]:
-				_line(img, c, corner, web)
-			_ring(img, Vector2(c), 3.5, web)
-			_ring(img, Vector2(c), 6.5, web)
+			var silk := Color(0.9, 0.9, 0.93, 0.55)
+			var rng := _rng(s + 5)
+			for k in 2 + v:
+				var from := Vector2i(rng.randi_range(0, 15), rng.randi_range(0, 15))
+				var to := Vector2i(rng.randi_range(0, 15), rng.randi_range(0, 15))
+				var steps: int = maxi(absi(to.x - from.x), absi(to.y - from.y))
+				for i in steps + 1:
+					if i % 4 != 3:  # broken thread
+						var p: Vector2 = Vector2(from).lerp(Vector2(to), float(i) / maxf(steps, 1))
+						img.set_pixel(roundi(p.x), roundi(p.y), silk)
+			if v == 1:
+				_dots(img, [Color(0.95, 0.95, 0.9)], 2, s)  # tiny egg sacs
 
 
 # --- Props ---
@@ -165,14 +214,19 @@ static func _build_prop(prop_name: String) -> Image:
 	var h: float = size.y
 	match prop_name:
 		"old_tree":
-			_rect(img, Rect2i(13, 26, 6, 13), Color(0.36, 0.22, 0.12))
-			_rect(img, Rect2i(11, 36, 10, 3), Color(0.3, 0.18, 0.1))
-			_disc(img, Vector2(16, 15), 14.0, Color(0.12, 0.32, 0.12))
-			_disc(img, Vector2(9, 18), 7.0, Color(0.15, 0.38, 0.14))
-			_disc(img, Vector2(23, 18), 7.0, Color(0.14, 0.36, 0.14))
-			_disc(img, Vector2(16, 12), 10.0, Color(0.18, 0.44, 0.16))
-			_disc(img, Vector2(12, 8), 4.0, Color(0.3, 0.58, 0.24))
-			_dots(img, [Color(0.1, 0.28, 0.1)], 30, 11, Rect2i(4, 3, 24, 22), true)
+			# Twice the size of a normal tree: thick trunk with roots, huge layered crown.
+			var bark := Color(0.34, 0.21, 0.11)
+			_rect(img, Rect2i(26, 48, 12, 22), bark)
+			for root: Array in [[Vector2i(28, 66), Vector2i(18, 71)], [Vector2i(36, 66), Vector2i(46, 71)],
+					[Vector2i(32, 66), Vector2i(32, 71)]]:
+				_thick_line(img, root[0], root[1], bark.darkened(0.15))
+			_disc(img, Vector2(32, 28), 28.0, Color(0.1, 0.27, 0.1))
+			_disc(img, Vector2(16, 34), 14.0, Color(0.13, 0.33, 0.12))
+			_disc(img, Vector2(48, 34), 14.0, Color(0.12, 0.31, 0.12))
+			_disc(img, Vector2(32, 22), 20.0, Color(0.16, 0.4, 0.15))
+			_disc(img, Vector2(24, 14), 9.0, Color(0.24, 0.5, 0.2))
+			_disc(img, Vector2(21, 11), 4.0, Color(0.34, 0.6, 0.26))
+			_dots(img, [Color(0.08, 0.24, 0.09), Color(0.2, 0.45, 0.17)], 120, 11, Rect2i(5, 2, 54, 52), true)
 		"dead_tree":
 			var bark := Color(0.38, 0.33, 0.28)
 			_rect(img, Rect2i(7, 10, 3, 22), bark)
@@ -269,14 +323,14 @@ static func _build_prop(prop_name: String) -> Image:
 			for corner: Vector2i in [Vector2i(0, 4), Vector2i(31, 3), Vector2i(1, 31), Vector2i(31, 30)]:
 				_line(img, Vector2i(16, 17), corner, Color(1, 1, 1, 0.8))
 		"bush":
-			_disc(img, Vector2(8, 9), 6.0, Color(0.2, 0.45, 0.18))
-			_disc(img, Vector2(6, 7), 2.5, Color(0.32, 0.58, 0.26))
-			_dots(img, [Color(0.8, 0.2, 0.25)], 3, 3, Rect2i(4, 5, 8, 8))
+			_disc(img, Vector2(8, 11), 4.5, Color(0.2, 0.45, 0.18))
+			_disc(img, Vector2(6.5, 9.5), 2.0, Color(0.32, 0.58, 0.26))
+			_dots(img, [Color(0.8, 0.2, 0.25)], 2, 3, Rect2i(5, 8, 6, 5))
 		"mushroom":
-			_rect(img, Rect2i(7, 8, 2, 6), Color(0.9, 0.86, 0.75))
-			_disc(img, Vector2(8, 7), 4.5, Color(0.75, 0.2, 0.15))
-			img.set_pixel(6, 5, Color.WHITE)
-			img.set_pixel(10, 6, Color.WHITE)
+			# Small: a little cluster at ground level, much smaller than a character.
+			for cap: Vector2 in [Vector2(7, 11), Vector2(10, 13)]:
+				_rect(img, Rect2i(int(cap.x), int(cap.y) + 1, 1, 2), Color(0.9, 0.86, 0.75))
+				_disc(img, cap, 1.6, Color(0.75, 0.2, 0.15))
 		"cactus":
 			var green := Color(0.3, 0.55, 0.25)
 			_rect(img, Rect2i(6, 3, 4, 21), green)

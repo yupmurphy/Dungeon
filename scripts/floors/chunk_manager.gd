@@ -25,6 +25,8 @@ const NATURE_SOURCE: int = FloorTiles.NATURE_SOURCE
 ## One tinted layer per zone for rock and cave floor (dungeon tiles); one untinted layer for nature.
 var _layers: Array[TileMapLayer] = []
 var _nature: TileMapLayer
+## Tree canopies (big pictures), y-sorted with the player and monsters.
+var _canopies: TileMapLayer
 var _world: Node2D
 var _slot_tints: Array[Color] = []
 var _player_chunk: Vector2i = Vector2i(-99999, -99999)
@@ -37,11 +39,12 @@ var _alive: Dictionary = {}
 var _dead: Dictionary = {}
 
 
-func setup(new_layout: FloorLayout, layers: Array[TileMapLayer], nature: TileMapLayer, world: Node2D,
-		slot_tints: Array[Color], player_position: Vector2) -> void:
+func setup(new_layout: FloorLayout, layers: Array[TileMapLayer], nature: TileMapLayer, canopies: TileMapLayer,
+		world: Node2D, slot_tints: Array[Color], player_position: Vector2) -> void:
 	layout = new_layout
 	_layers = layers
 	_nature = nature
+	_canopies = canopies
 	_world = world
 	_slot_tints = slot_tints
 	update_player(player_position)
@@ -138,8 +141,11 @@ func _load(chunk: Vector2i) -> void:
 				_layers[slots[i]].set_cell(cell, 0, TileAtlas.coords(index))
 			else:
 				# Nature ground from the procedural atlas, not tinted.
-				var tile: int = Terrain.art_tile(type, _cell_roll(x, y))
-				_nature.set_cell(cell, NATURE_SOURCE, NatureArt.atlas_coords(tile))
+				var roll: float = _cell_roll(x, y)
+				_nature.set_cell(cell, NATURE_SOURCE, NatureArt.atlas_coords(Terrain.art_tile(type, roll)))
+				if type == Terrain.Type.TREE:
+					var variant: int = int(roll * 1000.0) % NatureArt.CANOPY_VARIANTS
+					_canopies.set_cell(cell, FloorTiles.CANOPY_SOURCE, Vector2i(variant, 0))
 
 	var nodes: Array[Node] = []
 	for spawn_id: int in layout.spawns_by_chunk.get(chunk, []):
@@ -179,6 +185,7 @@ func _unload(chunk: Vector2i) -> void:
 		for x in range(rect.position.x, rect.end.x):
 			_layers[slots[y * w + x]].erase_cell(Vector2i(x, y))
 			_nature.erase_cell(Vector2i(x, y))
+			_canopies.erase_cell(Vector2i(x, y))
 	for node: Node in _loaded[chunk]:
 		if is_instance_valid(node):
 			node.queue_free()

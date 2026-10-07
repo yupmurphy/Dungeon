@@ -13,9 +13,11 @@ const BANK_BAND: float = 2.5
 const DENSITY_FREQUENCY: float = 0.014
 const DENSE: float = 0.6
 const SPARSE: float = 0.4
-const DENSE_TREE_CHANCE: float = 0.62
-const SPARSE_TREE_CHANCE: float = 0.12
-const CLEARING_TREE_CHANCE: float = 0.015
+## Share of TREE_GRID blocks that hold a tree.
+const TREE_GRID: int = 3
+const DENSE_TREE_CHANCE: float = 0.9
+const SPARSE_TREE_CHANCE: float = 0.3
+const CLEARING_TREE_CHANCE: float = 0.03
 const NEST_COUNT: Vector2i = Vector2i(5, 8)
 const NEST_CLEARING: float = 4.5
 const OLD_TREES_PER_10K: float = 3.0
@@ -47,12 +49,25 @@ func paint(x: int, y: int, i: int) -> int:
 		1:
 			return Terrain.Type.GRASS
 	var density: float = _density[i] / 255.0
-	var r: float = roll(x, y, 41)
+	var ground_type: int = Terrain.Type.GRASS if density <= SPARSE else Terrain.Type.FOREST_FLOOR
+	var chance: float = CLEARING_TREE_CHANCE
 	if density > DENSE:
-		return Terrain.Type.TREE if r < DENSE_TREE_CHANCE else Terrain.Type.FOREST_FLOOR
-	if density > SPARSE:
-		return Terrain.Type.TREE if r < SPARSE_TREE_CHANCE else Terrain.Type.FOREST_FLOOR
-	return Terrain.Type.TREE if r < CLEARING_TREE_CHANCE else Terrain.Type.GRASS
+		chance = DENSE_TREE_CHANCE
+	elif density > SPARSE:
+		chance = SPARSE_TREE_CHANCE
+	return Terrain.Type.TREE if _tree_spot(x, y, chance) else ground_type
+
+
+## Trees are big (crown ~3 tiles), so at most one trunk per TREE_GRID x TREE_GRID block, at a random spot.
+## `chance` = how many blocks have a tree.
+@warning_ignore("integer_division")
+func _tree_spot(x: int, y: int, chance: float) -> bool:
+	var bx: int = x / TREE_GRID
+	var by: int = y / TREE_GRID
+	var pick: int = posmod(hash(Vector3i(bx, by, seed_value + 47)), TREE_GRID * TREE_GRID)
+	if x % TREE_GRID != pick % TREE_GRID or y % TREE_GRID != pick / TREE_GRID:
+		return false
+	return roll(bx, by, 48) < chance
 
 
 func ground() -> int:

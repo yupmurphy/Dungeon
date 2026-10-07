@@ -43,7 +43,13 @@ func _ready() -> void:
 	nature.name = "Nature"
 	nature.tile_set = FloorTiles.tile_set()
 	_tiles.add_child(nature)
-	chunks.setup(layout, _create_layers(), nature, _world, _slot_tints(), _player.global_position)
+	# Tree canopies live among the characters, so you walk behind a tree above its trunk and in front below.
+	var canopies := TileMapLayer.new()
+	canopies.name = "Canopies"
+	canopies.tile_set = FloorTiles.tile_set()
+	canopies.y_sort_enabled = true
+	_world.add_child(canopies)
+	chunks.setup(layout, _create_layers(), nature, canopies, _world, _slot_tints(), _player.global_position)
 	portal = PORTAL_SCENE.instantiate()
 	portal.position = _cell_center(layout.portal_cell)
 	_world.add_child(portal)
