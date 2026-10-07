@@ -49,6 +49,8 @@ var _stat_values: Array[Label] = []
 ## Debug buttons by Vector2i(stat, amount), and the +XP button (tests press them).
 var _stat_buttons: Dictionary = {}
 var _xp_button: Button
+## Debug: unlocks Magic (shown only while it is locked).
+var _unlock_button: Button
 var _stat_rows: Array[Rect2] = []
 var _derived_names: Array[Label] = []
 var _derived_values: Array[Label] = []
@@ -115,6 +117,12 @@ func refresh() -> void:
 	var stats: Stats = player.stats
 	for stat in Stats.Stat.values():
 		_stat_values[stat].text = str(stats.get_stat(stat))
+	var magic_locked: bool = not stats.magic_unlocked
+	if magic_locked:
+		_stat_values[Stats.Stat.MAGIC].text = tr(&"SHEET_LOCKED")
+	for spec in STAT_BUTTONS:
+		_stat_buttons[Vector2i(Stats.Stat.MAGIC, spec[1])].visible = not magic_locked
+	_unlock_button.visible = magic_locked
 	var lines: Array[StatTexts.Derived] = StatTexts.derived(stats)
 	for i in lines.size():
 		_derived_names[i].text = lines[i].name
@@ -227,6 +235,10 @@ func _build() -> void:
 			_stat_buttons[Vector2i(stat, spec[1])] = button
 			x += width + 3.0
 		_stat_rows.append(Rect2(LEFT_X - 2, y - 2, 180, STAT_ROW_HEIGHT - 2))
+	# Locked Magic: the debug buttons are replaced by an Unlock button (the story event, later).
+	_unlock_button = _button(tr(&"SHEET_UNLOCK"), Vector2(LEFT_X + 106, STATS_Y + Stats.Stat.MAGIC * STAT_ROW_HEIGHT),
+		Vector2(46, 13))
+	_unlock_button.pressed.connect(func() -> void: player.stats.magic_unlocked = true)
 
 	# Right: derived values.
 	_label(tr(&"SHEET_DETAILS"), Vector2(RIGHT_X, COLUMN_TITLE_Y), FONT_SIZE + 1, TITLE_COLOR)

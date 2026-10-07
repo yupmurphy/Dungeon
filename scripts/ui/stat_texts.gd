@@ -11,7 +11,7 @@ class Derived:
 	var tooltip: String
 
 
-const STAT_KEYS: Array[String] = ["STRENGTH", "AGILITY", "VITALITY", "INTELLIGENCE", "PERCEPTION", "LUCK"]
+const STAT_KEYS: Array[String] = ["STRENGTH", "AGILITY", "VITALITY", "MAGIC", "INTELLIGENCE", "PERCEPTION", "LUCK"]
 
 
 static func stat_name(stat: Stats.Stat) -> String:
@@ -25,6 +25,8 @@ static func stat_tooltip(stats: Stats, stat: Stats.Stat) -> String:
 		_text("STAT_HEADER", {"name": stat_name(stat), "value": value}),
 		_text("STAT_%s_DESC" % STAT_KEYS[stat]),
 	]
+	if stat == Stats.Stat.MAGIC and not stats.magic_unlocked:
+		lines.append(_text("MAGIC_LOCKED_DESC"))
 	for effect in stat_effects(stat, value):
 		lines.append(effect)
 	return "\n".join(lines)
@@ -51,9 +53,12 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 		Stats.Stat.VITALITY:
 			lines.append(_text("EFFECT_EXHAUSTION", {"value": _num(minf(value * Stats.EXHAUSTION_GAIN_PER_VITALITY,
 				1.0 - Stats.EXHAUSTION_GAIN_MIN) * 100.0)}))
+		Stats.Stat.MAGIC:
+			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_MAGIC * 100.0)}))
+			lines.append(_text("EFFECT_MAGIC_DAMAGE", {"value": _num(value * Stats.MAGIC_DAMAGE_PER_MAGIC * 100.0)}))
+			lines.append(_text("EFFECT_MANA", {"value": _num(value * Stats.MANA_PER_MAGIC)}))
 		Stats.Stat.INTELLIGENCE:
-			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_INTELLIGENCE * 100.0)}))
-			lines.append(_text("EFFECT_MANA", {"value": _num(value * Stats.MANA_PER_INTELLIGENCE)}))
+			lines.append(_text("EFFECT_INTELLIGENCE"))
 		Stats.Stat.PERCEPTION:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_PERCEPTION * 100.0)}))
 			lines.append(_text("EFFECT_CRIT", {"value": _num(minf(value * Stats.CRIT_CHANCE_PER_PERCEPTION,
@@ -77,15 +82,17 @@ static func derived(stats: Stats) -> Array[Derived]:
 		"per": _num(Stats.HEALTH_PER_STRENGTH), "stat": stats.strength, "value": _num(health)}))
 	var mana: float = stats.get_max_mana()
 	list.append(_derived("MANA", _num(mana), {"base": _num(Stats.MANA_BASE),
-		"per": _num(Stats.MANA_PER_INTELLIGENCE), "stat": stats.intelligence, "value": _num(mana)}))
+		"per": _num(Stats.MANA_PER_MAGIC), "stat": stats.magic, "value": _num(mana)}))
 	var defense: float = stats.get_defense()
 	list.append(_derived("DEFENSE", _num(defense), {"per": _num(Stats.DEFENSE_PER_STRENGTH),
 		"taken": _num(Combat.damage_taken(100.0, stats))}))
 	list.append(_derived("DAMAGE", "+%s%%" % _num(stats.get_damage_bonus() * 100.0), {
 		"strength": _num(stats.strength * Stats.DAMAGE_BONUS_PER_STRENGTH * 100.0),
 		"agility": _num(stats.agility * Stats.DAMAGE_BONUS_PER_AGILITY * 100.0),
-		"intelligence": _num(stats.intelligence * Stats.DAMAGE_BONUS_PER_INTELLIGENCE * 100.0),
+		"magic": _num(stats.magic * Stats.DAMAGE_BONUS_PER_MAGIC * 100.0),
 		"perception": _num(stats.perception * Stats.DAMAGE_BONUS_PER_PERCEPTION * 100.0)}))
+	list.append(_derived("MAGIC_DAMAGE", "+%s%%" % _num(stats.get_magic_damage_bonus() * 100.0),
+		{"per": _num(Stats.MAGIC_DAMAGE_PER_MAGIC * 100.0)}))
 	list.append(_derived("ATTACK_SPEED", _percent_over(stats.get_attack_speed_multiplier()),
 		{"per": _num(Stats.ATTACK_SPEED_PER_AGILITY * 100.0)}))
 	list.append(_derived("MOVE_SPEED", _percent_over(stats.get_move_speed_multiplier()),

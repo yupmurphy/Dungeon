@@ -10,6 +10,8 @@ SHEET_DEBUG_XP,+{amount} XP
 SHEET_EQUIPMENT,Equipment
 SHEET_BODY,Body
 SHEET_NONE,None
+SHEET_LOCKED,Locked
+SHEET_UNLOCK,Unlock
 BODY_MALE,Male
 BODY_FEMALE,Female
 SLOT_HAIR,Hair
@@ -21,13 +23,16 @@ SLOT_WEAPON,Weapon
 STAT_STRENGTH,Strength
 STAT_AGILITY,Agility
 STAT_VITALITY,Vitality
+STAT_MAGIC,Magic
 STAT_INTELLIGENCE,Intelligence
 STAT_PERCEPTION,Perception
 STAT_LUCK,Luck
 STAT_STRENGTH_DESC,"Raw power and toughness. More health, harder hits that push enemies farther, less damage taken, more carry weight, and poison wears off sooner."
 STAT_AGILITY_DESC,"Speed and reflexes. You attack and move faster, and enemies miss you more often."
 STAT_VITALITY_DESC,"Endurance. Sprinting and attacking tire you less."
-STAT_INTELLIGENCE_DESC,"Mind. More mana for abilities, and a bit more damage."
+STAT_MAGIC_DESC,"Arcane power. Stronger spells, more mana and a bit more damage."
+MAGIC_LOCKED_DESC,"Locked: your magic has not awakened yet. It cannot be raised and gives no mana."
+STAT_INTELLIGENCE_DESC,"Mind. No effect in combat."
 STAT_PERCEPTION_DESC,"Sharp eyes. More critical hits, a wider light around you, more of the map revealed, and you spot monsters and traps from farther away."
 STAT_LUCK_DESC,"Fortune. It does nothing yet; its effects come later."
 STAT_HEADER,{name} {value}:
@@ -41,6 +46,8 @@ EFFECT_EVADE,+{value}% chance that enemies miss you (max {max}%)
 EFFECT_HEALTH,+{value} health
 EFFECT_EXHAUSTION,-{value}% exhaustion gained
 EFFECT_POISON,-{value}% poison duration
+EFFECT_MAGIC_DAMAGE,+{value}% magic damage
+EFFECT_INTELLIGENCE,"Later: judging the value of items and learning spells."
 EFFECT_MANA,+{value} mana
 EFFECT_CRIT,+{value}% critical chance
 EFFECT_SIGHT,+{value} tiles radius in which you see monsters
@@ -51,6 +58,7 @@ DERIVED_HEALTH,Health
 DERIVED_MANA,Mana
 DERIVED_DEFENSE,Defense
 DERIVED_DAMAGE,Damage bonus
+DERIVED_MAGIC_DAMAGE,Magic damage
 DERIVED_ATTACK_SPEED,Attack speed
 DERIVED_MOVE_SPEED,Movement speed
 DERIVED_EVADE,Enemies miss you
@@ -63,9 +71,10 @@ DERIVED_CARRY,Carry weight
 DERIVED_POISON,Poison duration
 DERIVED_EXHAUSTION,Exhaustion gained
 DERIVED_HEALTH_FROM,"From Strength: {base} + {per} per point. Strength {stat} gives {value}."
-DERIVED_MANA_FROM,"From Intelligence: {base} + {per} per point. Intelligence {stat} gives {value}."
+DERIVED_MANA_FROM,"From Magic: {base} + {per} per point, 0 while Magic is locked. Magic {stat} gives {value}."
 DERIVED_DEFENSE_FROM,"From Strength: {per} per point. You take {taken}% of the damage (damage x 100 / (100 + defense))."
-DERIVED_DAMAGE_FROM,"From Strength (+{strength}%), Agility (+{agility}%), Intelligence (+{intelligence}%) and Perception (+{perception}%)."
+DERIVED_DAMAGE_FROM,"From Strength (+{strength}%), Agility (+{agility}%), Magic (+{magic}%) and Perception (+{perception}%)."
+DERIVED_MAGIC_DAMAGE_FROM,"From Magic: +{per}% per point. Applies to spells."
 DERIVED_ATTACK_SPEED_FROM,"From Agility: +{per}% per point."
 DERIVED_MOVE_SPEED_FROM,"From Agility: +{per}% per point, no limit."
 DERIVED_EVADE_FROM,"From Agility: {per}% per point, at most {max}%."

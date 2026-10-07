@@ -12,10 +12,12 @@ func run(_options: Dictionary) -> void:
 	print("--- main stats")
 	var fresh := Stats.new()
 	for stat in Stats.Stat.values():
-		_check(fresh.get_stat(stat) == 5, "%s starts at 5" % Stats.PROPERTY_NAMES[stat])
+		var start: int = 0 if stat == Stats.Stat.MAGIC else 5
+		_check(fresh.get_stat(stat) == start, "%s starts at %d" % [Stats.PROPERTY_NAMES[stat], start])
 	var player_stats: Stats = load("res://resources/stats/player_stats.tres")
 	for stat in Stats.Stat.values():
-		_check(player_stats.get_stat(stat) == 5, "player file: %s = 5" % Stats.PROPERTY_NAMES[stat])
+		var start: int = 0 if stat == Stats.Stat.MAGIC else 5
+		_check(player_stats.get_stat(stat) == start, "player file: %s = %d" % [Stats.PROPERTY_NAMES[stat], start])
 	fresh.luck = 12
 	_check(fresh.luck == 12, "luck is stored as a value")
 	fresh.add_stat(Stats.Stat.STRENGTH, -100)
@@ -32,19 +34,28 @@ func run(_options: Dictionary) -> void:
 				"resource_name", "resource_path"]:
 			saved.append(property["name"])
 	saved.sort()
-	_check(saved == ["agility", "intelligence", "luck", "perception", "strength", "vitality"],
+	_check(saved == ["agility", "intelligence", "luck", "magic", "magic_unlocked", "perception", "strength", "vitality"],
 		"saved properties are exactly the main stats (%s)" % ", ".join(saved))
 
 	print("--- pools")
 	_check_value(_with(Stats.Stat.STRENGTH, 5).get_max_health(), 100.0, "Strength 5 -> 100 health")
 	_check_value(_with(Stats.Stat.STRENGTH, 0).get_max_health(), 50.0, "Strength 0 -> 50 health")
 	_check_value(_with(Stats.Stat.STRENGTH, 20).get_max_health(), 250.0, "Strength 20 -> 250 health")
-	_check_value(_with(Stats.Stat.INTELLIGENCE, 5).get_max_mana(), 45.0, "Intelligence 5 -> 45 mana")
-	_check_value(_with(Stats.Stat.INTELLIGENCE, 0).get_max_mana(), 20.0, "Intelligence 0 -> 20 mana")
+	_check_value(Stats.new().magic, 0.0, "Magic starts at 0")
+	_check_value(Stats.new().get_max_mana(), 0.0, "locked Magic -> 0 mana")
+	var mage := Stats.new()
+	mage.add_stat(Stats.Stat.MAGIC, 5)
+	_check(mage.magic == 0, "locked Magic cannot be raised")
+	mage.magic_unlocked = true
+	mage.add_stat(Stats.Stat.MAGIC, 5)
+	_check_value(mage.get_max_mana(), 45.0, "unlocked Magic 5 -> 45 mana")
+	_check_value(mage.get_magic_damage_bonus(), 0.2, "Magic 5 -> +20% magic damage")
+	_check_value(mage.get_damage_bonus(), 0.2, "Magic 5 adds +5% general damage (20% total)")
 
 	print("--- what each stat does")
-	_check_value(Stats.new().get_damage_bonus(), 0.2, "all stats 5 -> +20% damage (4 stats x 5 x 1%)")
-	_check_value(_with(Stats.Stat.LUCK, 50).get_damage_bonus(), 0.2, "Luck does not add damage")
+	_check_value(Stats.new().get_damage_bonus(), 0.15, "new character -> +15% damage (Str, Agi, Per 5 x 1%; Magic 0)")
+	_check_value(_with(Stats.Stat.INTELLIGENCE, 50).get_damage_bonus(), 0.15, "Intelligence does not add damage")
+	_check_value(_with(Stats.Stat.LUCK, 50).get_damage_bonus(), 0.15, "Luck does not add damage")
 	_check_value(_with(Stats.Stat.STRENGTH, 10).get_defense(), 5.0, "Strength 10 -> 5 defense")
 	_check_value(_with(Stats.Stat.STRENGTH, 5).get_carry_weight(), 35.0, "Strength 5 -> carry 35")
 	_check(_with(Stats.Stat.STRENGTH, 20).get_knockback_multiplier() > _with(Stats.Stat.STRENGTH, 5).get_knockback_multiplier(),
@@ -72,8 +83,8 @@ func run(_options: Dictionary) -> void:
 
 	print("--- damage formulas")
 	var average := Stats.new()
-	_check_value(Combat.damage_dealt(average, 20.0, false), 24.0, "weapon 20, stats 5 -> deals 24")
-	_check_value(Combat.damage_dealt(average, 20.0, true), 36.0, "critical -> 150% = 36")
+	_check_value(Combat.damage_dealt(average, 20.0, false), 23.0, "weapon 20, new character (+15%) -> deals 23")
+	_check_value(Combat.damage_dealt(average, 20.0, true), 34.5, "critical -> 150% = 34.5")
 	_check_value(Combat.damage_dealt(null, 20.0, false), 20.0, "no stats -> weapon damage only")
 	_check_value(Combat.damage_taken(50.0, _with(Stats.Stat.STRENGTH, 0)), 50.0, "defense 0 -> takes all 50")
 	_check_value(Combat.damage_taken(50.0, _with(Stats.Stat.STRENGTH, 200)), 25.0, "defense 100 -> takes half (25)")
@@ -82,8 +93,8 @@ func run(_options: Dictionary) -> void:
 	_check(hit.missed and hit.damage == 0.0, "miss roll 0.04 < 5% evade -> missed, no damage")
 	Combat.forced_rolls.assign([0.06, 0.04])
 	hit = Combat.resolve(average, _with(Stats.Stat.STRENGTH, 0), 20.0)
-	_check(not hit.missed and hit.critical and is_equal_approx(hit.damage, 36.0),
-		"miss roll 0.06 hits, crit roll 0.04 < 5%% -> critical 36 (got %s)" % hit.damage)
+	_check(not hit.missed and hit.critical and is_equal_approx(hit.damage, 34.5),
+		"miss roll 0.06 hits, crit roll 0.04 < 5%% -> critical 34.5 (got %s)" % hit.damage)
 	Combat.forced_rolls.assign([0.85, 0.99])
 	hit = Combat.resolve(average, _with(Stats.Stat.AGILITY, 100), 20.0)
 	_check(not hit.missed, "Agility 100: a 0.85 roll still hits (evade capped at 80%, not 100%)")
@@ -106,7 +117,7 @@ func run(_options: Dictionary) -> void:
 	var lines: Array[StatTexts.Derived] = StatTexts.derived(Stats.new())
 	_check(lines[0].name == "Health" and lines[0].value == "100" and lines[0].tooltip.contains("Strength"),
 		"derived: Health 100, comes from Strength")
-	_check(lines[3].value == "+20%" and lines[3].tooltip.contains("Perception"), "derived: Damage bonus +20%")
+	_check(lines[3].value == "+15%" and lines[3].tooltip.contains("Perception"), "derived: Damage bonus +15%")
 	for line in lines:
 		_check(not line.name.begins_with("DERIVED_") and not line.tooltip.contains("{"),
 			"%s: text found, every number filled in" % line.name)

@@ -4,27 +4,33 @@ extends Resource
 ## Only the main stats are stored; every derived value (health, mana, speeds...) is computed
 ## from them by the getters below, so rebalancing = editing the constants here or a .tres file.
 
-enum Stat { STRENGTH, AGILITY, VITALITY, INTELLIGENCE, PERCEPTION, LUCK }
+enum Stat { STRENGTH, AGILITY, VITALITY, MAGIC, INTELLIGENCE, PERCEPTION, LUCK }
 
 ## Every stat starts here for a new character (and is the default for monsters).
 const STARTING_VALUE: int = 5
 const MIN_VALUE: int = 0
 
 ## Property name of each stat, indexed by Stat.
-const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"vitality", &"intelligence",
+const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"vitality", &"magic", &"intelligence",
 	&"perception", &"luck"]
 
-# --- Pools: health from Strength, mana from Intelligence ---
+# --- Pools: health from Strength, mana from Magic (0 while Magic is locked) ---
 const HEALTH_BASE: float = 50.0
 const HEALTH_PER_STRENGTH: float = 10.0
 const MANA_BASE: float = 20.0
-const MANA_PER_INTELLIGENCE: float = 5.0
+const MANA_PER_MAGIC: float = 5.0
 
 # --- General damage bonus: each of these stats adds this much damage per point (0.01 = +1%) ---
 const DAMAGE_BONUS_PER_STRENGTH: float = 0.01
 const DAMAGE_BONUS_PER_AGILITY: float = 0.01
-const DAMAGE_BONUS_PER_INTELLIGENCE: float = 0.01
+const DAMAGE_BONUS_PER_MAGIC: float = 0.01
 const DAMAGE_BONUS_PER_PERCEPTION: float = 0.01
+
+# --- Magic (locked until a story event) ---
+## Magic starts here, even for a new character.
+const MAGIC_STARTING_VALUE: int = 0
+## Magic damage (spells, later): +4% per point.
+const MAGIC_DAMAGE_PER_MAGIC: float = 0.04
 
 # --- Strength ---
 const DEFENSE_PER_STRENGTH: float = 0.5
@@ -85,6 +91,16 @@ const DEFENSE_SCALE: float = 100.0
 	set(value):
 		vitality = maxi(value, MIN_VALUE)
 		emit_changed()
+@export var magic: int = MAGIC_STARTING_VALUE:
+	set(value):
+		magic = maxi(value, MIN_VALUE)
+		emit_changed()
+## False until a story event; while locked Magic cannot be raised and gives no mana.
+@export var magic_unlocked: bool = false:
+	set(value):
+		magic_unlocked = value
+		emit_changed()
+## Passive: no combat effect (later: item appraisal, learning spells).
 @export var intelligence: int = STARTING_VALUE:
 	set(value):
 		intelligence = maxi(value, MIN_VALUE)
@@ -108,7 +124,10 @@ func set_stat(stat: Stat, value: int) -> void:
 	set(PROPERTY_NAMES[stat], value)
 
 
+## Locked Magic cannot be raised.
 func add_stat(stat: Stat, amount: int) -> void:
+	if stat == Stat.MAGIC and not magic_unlocked:
+		return
 	set_stat(stat, get_stat(stat) + amount)
 
 
@@ -119,13 +138,20 @@ func get_max_health() -> float:
 
 
 func get_max_mana() -> float:
-	return maxf(0.0, MANA_BASE + intelligence * MANA_PER_INTELLIGENCE)
+	if not magic_unlocked:
+		return 0.0
+	return maxf(0.0, MANA_BASE + magic * MANA_PER_MAGIC)
 
 
-## General damage bonus (0.2 = +20%), from Strength, Agility, Intelligence and Perception.
+## General damage bonus (0.2 = +20%), from Strength, Agility, Magic and Perception.
 func get_damage_bonus() -> float:
 	return strength * DAMAGE_BONUS_PER_STRENGTH + agility * DAMAGE_BONUS_PER_AGILITY \
-		+ intelligence * DAMAGE_BONUS_PER_INTELLIGENCE + perception * DAMAGE_BONUS_PER_PERCEPTION
+		+ magic * DAMAGE_BONUS_PER_MAGIC + perception * DAMAGE_BONUS_PER_PERCEPTION
+
+
+## Magic damage bonus (0.2 = +20%), for spells (later).
+func get_magic_damage_bonus() -> float:
+	return magic * MAGIC_DAMAGE_PER_MAGIC
 
 
 func get_defense() -> float:

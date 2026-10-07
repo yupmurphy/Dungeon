@@ -63,7 +63,20 @@ func run(_options: Dictionary) -> void:
 	player.stats.strength = 5
 	_check(player.health.max_health == 100.0 and player.health.current_health == 100.0, "back to Strength 5: health 100")
 	sheet._stat_buttons[Vector2i(Stats.Stat.AGILITY, 10)].pressed.emit()
-	_check(sheet._derived_values[6].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[6].text)
+	_check(sheet._derived_values[7].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[7].text)
+	var magic_plus: Button = sheet._stat_buttons[Vector2i(Stats.Stat.MAGIC, 1)]
+	_check(sheet._stat_values[Stats.Stat.MAGIC].text == "Locked" and not magic_plus.visible and sheet._unlock_button.visible,
+		"Magic shows Locked, no + buttons, an Unlock button")
+	sheet.player_add_stat(Stats.Stat.MAGIC, 10)
+	_check(player.stats.magic == 0, "locked Magic cannot be raised")
+	sheet._unlock_button.pressed.emit()
+	_check(player.stats.magic_unlocked and magic_plus.visible and not sheet._unlock_button.visible
+		and sheet._stat_values[Stats.Stat.MAGIC].text == "0", "Unlock: Magic 0 with + buttons")
+	magic_plus.pressed.emit()
+	_check(player.stats.magic == 1 and sheet._derived_values[1].text == "25", "Magic +1 -> mana 25 (%s)"
+		% sheet._derived_values[1].text)
+	player.stats.magic = 0
+	player.stats.magic_unlocked = false
 	player.stats.agility = 5
 	var torch := player.get_node("Torch") as PointLight2D
 	var torch_before: float = torch.texture_scale
@@ -160,9 +173,9 @@ func run(_options: Dictionary) -> void:
 	print("--- player hits spider")
 	spider.process_mode = Node.PROCESS_MODE_INHERIT
 	await _hit_with_player(player, spider)
-	# 20 weapon damage x 1.2 (bonus: 4 stats at 5) x 100 / (100 + spider defense 0.5)
+	# 20 weapon damage x 1.15 (bonus: Str, Agi, Per at 5) x 100 / (100 + spider defense 0.5)
 	var expected: float = Combat.damage_taken(Combat.damage_dealt(player.stats, 20.0, false), spider.data.stats)
-	_check(is_equal_approx(expected, 24.0 * 100.0 / 100.5), "formula: 20 x 1.2 x 100 / 100.5 = %.2f" % expected)
+	_check(is_equal_approx(expected, 23.0 * 100.0 / 100.5), "formula: 20 x 1.15 x 100 / 100.5 = %.2f" % expected)
 	_check(is_equal_approx(spider.health.current_health, 60.0 - expected),
 		"spider took %.1f damage (60 -> %.1f)" % [expected, spider.health.current_health])
 	_check(_has_child_of(effects, DamageNumber), "damage number spawned")
