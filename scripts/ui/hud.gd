@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Health and exhaustion bars, minimap, big map (M), character sheet (C), region name, debug info and the death message.
-## Binds to the node in group "player" and, on dungeon floors, to the one in group "exploration".
+## Binds to the node in group "player" and to the map (group "map_source": ExplorationMap or TownMap).
 
 const REGION_FADE_IN: float = 0.3
 const REGION_HOLD: float = 1.8
@@ -45,7 +45,7 @@ func _bind() -> void:
 	_on_exhaustion_changed(player.exhaustion.current, ExhaustionComponent.MAX)
 	_character_sheet.player = player
 
-	var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
+	var exploration := get_tree().get_first_node_in_group("map_source") as MapSource
 	_minimap.exploration = exploration
 	_minimap.player = player
 	_map_overlay.exploration = exploration
@@ -63,6 +63,11 @@ func setup_floor(floor_name: String, seed_value: int) -> void:
 	_map_overlay.title = "%s - Map" % floor_name
 	_seed = seed_value
 	_refresh_debug()
+
+
+## Title of the big map (M).
+func set_map_title(title: String) -> void:
+	_map_overlay.title = title
 
 
 ## Region name fades in under the bars when the player walks into a new region.

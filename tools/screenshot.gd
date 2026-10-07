@@ -4,7 +4,7 @@ extends Node
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
 ## Modes on the dungeon floor: idle, map (whole map revealed, big map open), sheet (character page, --hover=stat:2), overview,
 ## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
-## Modes in the combat test room: fight, room. Town: town (--at=<x>,<y> in tiles, --zoom, --night).
+## Modes in the combat test room: fight, room. Town: town (--at=<x>,<y> in tiles, --zoom, --night, --map).
 
 const SETTLE_FRAMES: int = 40
 const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
@@ -109,6 +109,8 @@ func run(options: Dictionary) -> void:
 				town_camera.limit_bottom = 100000
 			if options.has("--night"):
 				(room.get_node("Lighting") as TownLighting).night = true
+			if options.has("--map"):
+				(room.get_node("HUD/Root/MapOverlay") as Control).visible = true
 			for i in 150:
 				await get_tree().physics_frame
 		"sheet":

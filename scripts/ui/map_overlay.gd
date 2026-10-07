@@ -8,7 +8,7 @@ const MAP_TOP: float = 24.0
 ## Room kept on the right for the legend.
 const LEGEND_WIDTH: float = 150.0
 
-var exploration: ExplorationMap
+var exploration: MapSource
 var player: Node2D
 var title: String = ""
 
@@ -23,10 +23,10 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND)
-	if exploration == null or exploration.layout == null:
+	if exploration == null or exploration.map_texture == null:
 		return
 	var font: Font = ThemeDB.fallback_font
-	var map_size: Vector2 = Vector2(exploration.layout.size)
+	var map_size: Vector2 = Vector2(exploration.map_size())
 	# Fit the map next to the legend. Big floors are shrunk (linear filtering keeps thin corridors visible).
 	var scale_factor: float = minf((size.x - LEGEND_WIDTH) / map_size.x, (size.y - MAP_TOP - 8.0) / map_size.y)
 	if scale_factor >= 1.0:
@@ -47,12 +47,8 @@ func _draw() -> void:
 		draw_rect(Rect2(x, y - 7.0, 8.0, 8.0), entry["color"])
 		draw_string(font, Vector2(x + 13.0, y), entry["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 		y += 15.0
-	draw_rect(Rect2(x, y - 7.0, 8.0, 8.0), ExplorationMap.PORTAL_MAP_COLOR)
-	draw_string(font, Vector2(x + 13.0, y), "Portal", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
-	y += 15.0
-	draw_rect(Rect2(x, y - 7.0, 8.0, 8.0), ExplorationMap.GATE_MAP_COLOR)
-	draw_string(font, Vector2(x + 13.0, y), "Gates", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
-	y += 24.0
-	var explored: String = "Explored: %d%%" % roundi(exploration.explored_ratio() * 100.0)
-	draw_string(font, Vector2(x, y), explored, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
-	draw_string(font, Vector2(x, y + 15.0), "M - close", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
+	y += 9.0
+	for line in exploration.status_lines():
+		draw_string(font, Vector2(x, y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
+		y += 15.0
+	draw_string(font, Vector2(x, y), "M - close", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)

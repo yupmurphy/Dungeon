@@ -6,14 +6,14 @@ const PIXELS_PER_TILE: float = 2.0
 const BACKGROUND: Color = Color(0, 0, 0, 0.65)
 const BORDER: Color = Color(1, 1, 1, 0.35)
 
-var exploration: ExplorationMap
+var exploration: MapSource
 var player: Node2D
 ## Hidden while the big map is open.
 var suppressed: bool = false
 
 
 func _process(_delta: float) -> void:
-	visible = exploration != null and exploration.layout != null and not suppressed
+	visible = exploration != null and exploration.map_texture != null and not suppressed
 	if visible:
 		queue_redraw()
 

@@ -76,6 +76,13 @@ func run(_options: Dictionary) -> void:
 	_check(_free(Vector2(9.5, 38.5) * T), "the bridge crosses the stream")
 	_check(_blocked(player, Vector2(31.5, 26), Vector2(0, -3)), "a building blocks")
 
+	print("--- map (minimap and M)")
+	var town_map := get_tree().get_first_node_in_group(&"map_source") as TownMap
+	_check(town_map != null and town_map.map_size() == Vector2i(84, 62), "the town has a map the size of the town")
+	_check(town_map != null and town_map.legend.size() == LANDMARKS.size() + 2, "the map legend lists the landmarks, the dungeon road and the gates")
+	var map_overlay := town.get_node("HUD/Root/MapOverlay") as MapOverlay
+	_check(map_overlay.exploration == town_map and map_overlay.title == "Town - Map", "the big map (M) shows the town map")
+
 	print("--- details and night")
 	var smoke: int = 0
 	var chimneys: int = 0

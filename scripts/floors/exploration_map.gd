@@ -1,5 +1,5 @@
 class_name ExplorationMap
-extends Node2D
+extends MapSource
 ## Fog of war + map data. Keeps which tiles the player has seen and draws two textures from it:
 ## - fog: black over unseen tiles (child Sprite2D, one pixel per tile, scaled up to tile size)
 ## - map_texture: explored tiles in region colors, used by the minimap and the big map (M).
@@ -13,9 +13,6 @@ const PORTAL_MAP_COLOR: Color = Color(0.8, 0.4, 1.0)
 const GATE_MAP_COLOR: Color = Color(1.0, 0.95, 0.55)
 
 var layout: FloorLayout
-var map_texture: ImageTexture
-## [{name, color}] per region slot, for the big map legend.
-var legend: Array[Dictionary] = []
 ## Tiles revealed around the player; FloorLevel sets it from Perception (Stats.get_reveal_radius).
 var reveal_radius: int = 9:
 	set(value):
@@ -40,7 +37,9 @@ func _ready() -> void:
 func setup(new_layout: FloorLayout, slot_colors: Array[Color], new_legend: Array[Dictionary]) -> void:
 	layout = new_layout
 	_slot_colors = slot_colors
-	legend = new_legend
+	legend = new_legend.duplicate()
+	legend.append({"name": "Portal", "color": PORTAL_MAP_COLOR})
+	legend.append({"name": "Gates", "color": GATE_MAP_COLOR})
 	var w: int = layout.size.x
 	var h: int = layout.size.y
 	_explored.resize(w * h)
@@ -89,6 +88,9 @@ func is_explored(cell: Vector2i) -> bool:
 
 func explored_ratio() -> float:
 	return float(_explored_floor) / maxf(layout.floor_cell_count(), 1.0)
+
+func status_lines() -> PackedStringArray:
+	return PackedStringArray(["Explored: %d%%" % roundi(explored_ratio() * 100.0)])
 
 ## Bresenham walk; every cell strictly between a and b must be floor. The target itself may be a wall,
 ## so walls facing the player get revealed.

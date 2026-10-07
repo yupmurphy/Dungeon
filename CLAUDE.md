@@ -126,6 +126,9 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - `TownArt` is the single list of sheet rectangles for town art (`assets/town/`, LPC packs + LPC Base Assets).
   `TownLighting` (CanvasModulate) fades day / night and switches every "town_lights" node (`lit`) and the player torch.
   `TownSmoke` = chimney / forge particles; `town_water.gdshader` = glints on the stream.
+- Map: minimap + big map (M) read any `MapSource` (group "map_source"): `ExplorationMap` on floors (fog of war),
+  `TownMap` in town (drawn once at start from the scene: ground layers, walls, buildings in roof colors, landmarks
+  with their own color + legend, so hand edits show up on the map).
 
 ## Art
 - **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).

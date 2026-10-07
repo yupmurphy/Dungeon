@@ -1,7 +1,7 @@
 extends Node2D
 ## A static, hand-built town (scenes/town/town.tscn). Everything is placed in the editor: ground on the
 ## TileMapLayers, buildings / walls / props as nodes in the y-sorted World. This script only wires runtime
-## things: camera limits, the map edge, the exit to the dungeon, chimney smoke, R to restart.
+## things: camera limits, the map edge, the exit to the dungeon, the town map (M), chimney smoke, R to restart.
 
 const DUNGEON_SCENE: String = "res://scenes/floors/floor.tscn"
 const TILE: int = 32
@@ -20,6 +20,14 @@ func _ready() -> void:
 	var exit := get_node_or_null("DungeonExit") as Area2D
 	if exit != null:
 		exit.body_entered.connect(_on_dungeon_exit)
+	# Map for the minimap and the big map (M), drawn from the scene as it is.
+	var town_map := TownMap.new()
+	town_map.name = "TownMap"
+	add_child(town_map)
+	town_map.build(self)
+	var hud := get_node_or_null("HUD")
+	if hud != null:
+		hud.set_map_title(tr(&"TOWN_MAP_TITLE"))
 	# Chimney smoke on every building with a chimney, and over the forge.
 	for node in _world.find_children("*", "", true, false):
 		if node is TownBuilding:
