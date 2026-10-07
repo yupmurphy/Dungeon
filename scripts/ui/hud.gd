@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Health and stamina bars, minimap, big map (M), region name, debug info and the death message.
+## Health and stamina bars, minimap, big map (M), character sheet (C), region name, debug info and the death message.
 ## Binds to the node in group "player" and, on dungeon floors, to the one in group "exploration".
 
 const REGION_FADE_IN: float = 0.3
@@ -18,6 +18,7 @@ var _region_tween: Tween
 @onready var _map_overlay: MapOverlay = $Root/MapOverlay
 @onready var _region_label: Label = $Root/RegionLabel
 @onready var _debug_label: Label = $Root/DebugLabel
+@onready var _character_sheet: CharacterSheet = $Root/CharacterSheet
 
 
 func _ready() -> void:
@@ -40,6 +41,7 @@ func _bind() -> void:
 	player.died.connect(_death_panel.show)
 	_on_health_changed(player.health.current_health, player.health.max_health)
 	_on_stamina_changed(player.stamina.current_stamina, player.stamina.max_stamina)
+	_character_sheet.player = player
 
 	var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
 	_minimap.exploration = exploration

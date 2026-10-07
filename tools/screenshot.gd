@@ -2,7 +2,7 @@ extends Node
 ## Debug tool: saves one rendered frame, optionally with a staged situation.
 ## Run (NOT headless, it needs a GPU):
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
-## Modes on the dungeon floor: idle, map (whole map revealed, big map open), overview,
+## Modes on the dungeon floor: idle, map (whole map revealed, big map open), sheet (character page, --hover=stat:2), overview,
 ## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
 ## Modes in the combat test room: fight, dodge, room.
 
@@ -88,6 +88,16 @@ func run(options: Dictionary) -> void:
 			(room.get_node("Exploration/Fog") as CanvasItem).visible = false
 			for i in 60:
 				await get_tree().physics_frame
+		"sheet":
+			# Character sheet open; --hover=stat:<0-5> or derived:<n> shows that line's tooltip.
+			var sheet := room.get_node("HUD/Root/CharacterSheet") as CharacterSheet
+			sheet.open()
+			var hover: PackedStringArray = String(options.get("--hover", "stat:2")).split(":")
+			var index: int = int(hover[1])
+			var rows: Array[Rect2] = sheet._stat_rows if hover[0] == "stat" else sheet._derived_rows
+			sheet.forced_mouse = rows[index].get_center() + Vector2(20, 0)
+			for i in 5:
+				await get_tree().process_frame
 		"map":
 			var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
 			exploration.reveal_all()

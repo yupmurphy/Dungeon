@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/stat_bar.tscn" id="2_bar"]
 [ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="3_minimap"]
 [ext_resource type="Script" path="res://scripts/ui/map_overlay.gd" id="4_map"]
+[ext_resource type="PackedScene" path="res://scenes/ui/character_sheet.tscn" id="5_sheet"]
 
 [node name="HUD" type="CanvasLayer"]
 layer = 10
@@ -110,3 +111,6 @@ theme_override_font_sizes/font_size = 20
 text = "You died - press R"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="CharacterSheet" parent="Root" instance=ExtResource("5_sheet")]
+layout_mode = 1

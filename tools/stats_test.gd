@@ -90,6 +90,30 @@ func run(_options: Dictionary) -> void:
 			misses += 1
 	_check(misses > 1500 and misses < 1700, "Agility 100: ~80%% of 2000 random hits miss (%d)" % misses)
 
+	print("--- character sheet texts (localization/texts.csv + exact numbers)")
+	var vitality_tip: String = StatTexts.stat_tooltip(Stats.new(), Stats.Stat.VITALITY)
+	_check(vitality_tip.begins_with("Vitality 5:") and vitality_tip.contains("+50 health")
+		and vitality_tip.contains("+20 stamina"), "Vitality 5 tooltip: +50 health, +20 stamina")
+	var strength_tip: String = StatTexts.stat_tooltip(_with(Stats.Stat.STRENGTH, 10), Stats.Stat.STRENGTH)
+	_check(strength_tip.contains("+5 defense") and strength_tip.contains("+30 carry weight"),
+		"Strength 10 tooltip: +5 defense, +30 carry weight")
+	_check(StatTexts.stat_tooltip(_with(Stats.Stat.AGILITY, 100), Stats.Stat.AGILITY).contains("+80% chance"),
+		"Agility 100 tooltip: miss chance shown capped at 80%")
+	var lines: Array[StatTexts.Derived] = StatTexts.derived(Stats.new())
+	_check(lines[0].name == "Health" and lines[0].value == "100" and lines[0].tooltip.contains("Vitality"),
+		"derived: Health 100, comes from Vitality")
+	_check(lines[4].value == "+20%" and lines[4].tooltip.contains("Perception"), "derived: Damage bonus +20%")
+	for line in lines:
+		_check(not line.name.begins_with("DERIVED_") and not line.tooltip.contains("{"),
+			"%s: text found, every number filled in" % line.name)
+
+	print("--- level and XP")
+	var progression := Progression.new()
+	_check(progression.level == 1 and progression.xp_needed() == 100, "level 1, 100 XP to level 2")
+	progression.add_xp(120)
+	_check(progression.level == 2 and progression.xp == 20 and progression.xp_needed() == 150,
+		"120 XP -> level 2 with 20 / 150")
+
 	print("--- monsters use the same system")
 	for path in MONSTER_STATS:
 		var stats: Stats = load(path)

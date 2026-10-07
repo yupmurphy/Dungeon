@@ -34,3 +34,10 @@ func heal(amount: float) -> void:
 		return
 	current_health = minf(current_health + amount, max_health)
 	health_changed.emit(current_health, max_health)
+
+
+## Max health changed (e.g. Vitality went up): a gain is added to current health too, a loss only caps it.
+func set_max_health(new_max: float) -> void:
+	current_health = clampf(current_health + maxf(new_max - max_health, 0.0), 0.0, new_max)
+	max_health = new_max
+	health_changed.emit(current_health, max_health)

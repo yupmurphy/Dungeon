@@ -19,6 +19,8 @@ const DAMAGE_TAKEN_COLOR: Color = Color(1.0, 0.35, 0.3)
 const HURT_SHAKE: float = 6.0
 
 @export var stats: Stats
+## Level and XP (shown on the character sheet).
+var progression: Progression = Progression.new()
 
 @export_group("Size")
 ## How wide the character looks on screen.
@@ -90,6 +92,7 @@ func _ready() -> void:
 	hurtbox.hit_missed.connect(_on_hit_missed)
 	hurtbox.defender = stats
 	hitbox.attacker = stats
+	stats.changed.connect(_on_stats_changed)
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
 
@@ -253,3 +256,9 @@ func _on_died() -> void:
 	weapon_pivot.hide()
 	_set_flash(0.0)
 	died.emit()
+
+
+## Stats changed in game (character sheet debug buttons, later level ups): refresh what is cached.
+func _on_stats_changed() -> void:
+	health.set_max_health(stats.get_max_health())
+	stamina.set_max_stamina(stats.get_max_stamina())

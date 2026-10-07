@@ -35,6 +35,47 @@ func run(_options: Dictionary) -> void:
 	_check(dungeon.get_cell_tile_data(Vector2i(0, 0)).get_collision_polygons_count(0) > 0, "wall tiles have collision")
 	_check(dungeon.get_cell_tile_data(Vector2i(10, 10)).get_collision_polygons_count(0) == 0, "floor tiles have no collision")
 
+	print("--- character sheet (C)")
+	var sheet := room.get_node("HUD/Root/CharacterSheet") as CharacterSheet
+	_check(InputMap.has_action("character_sheet"), "input action 'character_sheet' mapped")
+	_send_key(KEY_C, true)
+	await get_tree().process_frame
+	_send_key(KEY_C, false)
+	_check(sheet.visible and get_tree().paused, "C opens the character sheet and pauses the game")
+	var health_row: Label = sheet._derived_values[0]
+	_check(health_row.text == "100", "sheet shows health 100 (%s)" % health_row.text)
+	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, 1)].pressed.emit()
+	_check(player.stats.vitality == 6 and player.health.max_health == 110.0 and player.health.current_health == 110.0,
+		"Vitality + -> 6, health 110 at once (%s / %s)" % [player.health.current_health, player.health.max_health])
+	_check(health_row.text == "110", "sheet updates right away (%s)" % health_row.text)
+	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, 10)].pressed.emit()
+	_check(player.stats.vitality == 16 and player.health.max_health == 210.0, "Vitality +10 -> 16, health 210")
+	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, 10)].pressed.emit()
+	sheet._stat_buttons[Vector2i(Stats.Stat.VITALITY, -1)].pressed.emit()
+	_check(player.stats.vitality == 25, "Vitality - -> 25")
+	player.stats.vitality = 5
+	_check(player.health.max_health == 100.0 and player.health.current_health == 100.0, "back to Vitality 5: health 100")
+	sheet._stat_buttons[Vector2i(Stats.Stat.AGILITY, 10)].pressed.emit()
+	_check(sheet._derived_values[7].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[7].text)
+	player.stats.agility = 5
+	sheet._xp_button.pressed.emit()
+	sheet._xp_button.pressed.emit()
+	_check(player.progression.level == 2 and player.progression.xp == 0, "2 x +50 XP -> level 2")
+	_check(sheet._level_label.text == "Level 2", "sheet shows %s" % sheet._level_label.text)
+	sheet.forced_mouse = sheet._stat_rows[Stats.Stat.VITALITY].get_center()
+	await get_tree().process_frame
+	_check(sheet._tooltip.visible and sheet._tooltip_label.text.contains("Vitality 5:")
+		and sheet._tooltip_label.text.contains("+50 health") and sheet._tooltip_label.text.contains("+20 stamina"),
+		"hovering Vitality explains it: +50 health, +20 stamina")
+	sheet.forced_mouse = sheet._derived_rows[3].get_center()
+	await get_tree().process_frame
+	_check(sheet._tooltip_label.text.contains("From Strength"), "hovering Defense: comes from Strength")
+	sheet.forced_mouse = Vector2(-1, -1)
+	_send_key(KEY_C, true)
+	await get_tree().process_frame
+	_send_key(KEY_C, false)
+	_check(not sheet.visible and not get_tree().paused, "C again closes it and the game runs")
+
 	# Only the enemy under test may act.
 	for enemy in [slime, bat, spider]:
 		enemy.process_mode = Node.PROCESS_MODE_DISABLED

@@ -97,6 +97,9 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   than 30 tiles. Dying enemies leave the "enemy" group so they are never paused mid fade-out.
 - Seed: static `FloorLevel.next_seed` survives reloads (R = same layout, F1 = new seed), or `-- --seed=<n>`.
 - Debug keys: F1 new seed, F2 reveal map, F3 invincible, F4 show seed + copy to clipboard. M = big map.
+- Character sheet (C, pauses the game: CharacterSheet in the HUD, process_mode ALWAYS): level + XP bar
+  (`Progression` on the player), main stats with debug -, +, +10 buttons, derived values; hover = tooltip built by
+  `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health/stamina follow).
 
 ## Art
 - Pack: Kenney **Tiny Dungeon** (CC0) in `assets/`. Use `assets/Tilemap/tilemap_packed.png`: 12 x 11 tiles of 16 px,
@@ -117,7 +120,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - `tools/` dev tools started through the `DebugRunner` autoload
 
 ## Input map
-`move_up/down/left/right` = WASD, `attack` = left mouse, `dodge` = Space, `restart` = R, `map` = M,
+`move_up/down/left/right` = WASD, `attack` = left mouse, `dodge` = Space, `restart` = R, `map` = M, `character_sheet` = C,
 `debug_new_seed` F1, `debug_reveal_map` F2, `debug_invincible` F3, `debug_show_seed` F4.
 
 ## Running / checking
@@ -132,7 +135,7 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . -- --floor-test                # generator (8 seeds) + floor scene + streaming + debug keys
     <godot> --headless --path . -- --floor-test --seeds=100:25 --generator-only   # generator rules on more seeds
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless
-            # floor modes: idle, map, overview, gate, arena, start / test room modes: fight, dodge, room
+            # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place / test room: fight (--crit, --miss), dodge, room
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
 
 The user runs the game from the editor's embedded Game tab: if keys do nothing, the Game tab toolbar is
