@@ -133,6 +133,36 @@ func run(_options: Dictionary) -> void:
 		var facing: String = LpcCatalog.DIRECTION_NAMES[LpcCharacter.direction_of(case[0])]
 		_check(facing == case[1], "moving %s faces %s (%s)" % [case[0], case[1], facing])
 
+	print("--- perception thresholds: monster health bars and names")
+	var slime_info: EnemyInfo = null
+	for child in effects.get_children():
+		if child is EnemyInfo and child.enemy == slime:
+			slime_info = child
+	_check(slime_info != null, "every monster gets a health bar / name overlay")
+	await get_tree().process_frame
+	# Next to the slime, so it is inside the sight radius.
+	var before_info: Vector2 = player.global_position
+	player.global_position = slime.global_position + GameScale.world_vector(Vector2(0, 30))
+	slime._update_visibility()
+	_check(not slime_info.visible, "Perception 5: no health bar, no name")
+	player.stats.perception = 10
+	await get_tree().process_frame
+	_check(slime_info.visible and not slime_info._name_label.visible, "Perception 10: health bar, no name")
+	player.stats.perception = 20
+	await get_tree().process_frame
+	_check(slime_info._name_label.visible and slime_info._name_label.text == "Slime", "Perception 20: name shown")
+	_check(slime_info.power_color() == EnemyInfo.EQUAL_COLOR, "slime vs new player (Perception 20): about equal (yellow)")
+	var bat_info: EnemyInfo = null
+	for child in effects.get_children():
+		if child is EnemyInfo and child.enemy == bat:
+			bat_info = child
+	_check(bat_info.power_color() == EnemyInfo.WEAK_COLOR, "bat: much weaker (white)")
+	player.stats.strength = 0
+	_check(slime_info.power_color() == EnemyInfo.STRONG_COLOR, "slime vs Strength 0 player: stronger (red)")
+	player.stats.strength = 5
+	player.stats.perception = 5
+	player.global_position = before_info
+
 	print("--- exhaustion")
 	var tired: ExhaustionComponent = player.exhaustion
 	var start_position: Vector2 = player.global_position

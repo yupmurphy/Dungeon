@@ -77,6 +77,10 @@ func _ready() -> void:
 	hurtbox.hit_missed.connect(_on_hit_missed)
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
+	# Health bar and name, shown by the player's Perception.
+	var info := EnemyInfo.new()
+	info.enemy = self
+	GameFeel.add_overlay(info)
 	_update_visibility()
 
 

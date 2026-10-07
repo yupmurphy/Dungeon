@@ -109,7 +109,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health follows).
 - Exhaustion replaces stamina (user decision): 0..100, grows with sprint (Shift) and attacks, recovers after a
   pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70. No dash/dodge.
-- Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player.
+- Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
+  (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
 
 ## Art
 - **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).

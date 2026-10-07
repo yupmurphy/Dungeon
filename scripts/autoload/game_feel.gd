@@ -76,3 +76,8 @@ func spawn_ghost(sprite: AnimatedSprite2D, tint: Color) -> void:
 	var tween: Tween = ghost.create_tween()
 	tween.tween_property(ghost, "modulate:a", 0.0, GHOST_FADE_TIME)
 	tween.tween_callback(ghost.queue_free)
+
+
+## Adds something drawn above the darkness in world coordinates (e.g. monster health bars and names).
+func add_overlay(node: Node2D) -> void:
+	_layer.add_child(node)

@@ -75,6 +75,9 @@ const LIGHT_RADIUS_MAX: float = 192.0
 const REVEAL_RADIUS_BASE: float = 7.0
 const REVEAL_RADIUS_PER_PERCEPTION: float = 0.4
 const REVEAL_RADIUS_MAX: int = 16
+## From this much Perception you see monster health bars, then also their names (colored by power).
+const MONSTER_HEALTH_BAR_PERCEPTION: int = 10
+const MONSTER_NAME_PERCEPTION: int = 20
 
 # --- Damage taken = damage x DEFENSE_SCALE / (DEFENSE_SCALE + defense) ---
 const DEFENSE_SCALE: float = 100.0
@@ -207,3 +210,11 @@ func get_light_radius() -> float:
 ## Map tiles revealed around the player.
 func get_reveal_radius() -> int:
 	return mini(floori(REVEAL_RADIUS_BASE + perception * REVEAL_RADIUS_PER_PERCEPTION), REVEAL_RADIUS_MAX)
+
+
+func shows_monster_health_bars() -> bool:
+	return perception >= MONSTER_HEALTH_BAR_PERCEPTION
+
+
+func shows_monster_names() -> bool:
+	return perception >= MONSTER_NAME_PERCEPTION

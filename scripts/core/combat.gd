@@ -51,3 +51,8 @@ static func _roll() -> float:
 	if not forced_rolls.is_empty():
 		return forced_rolls.pop_front()
 	return randf()
+
+
+## Rough strength of a fighter, to compare monsters with the player: max health x damage of one normal hit.
+static func power_rating(stats: Stats, weapon_damage: float) -> float:
+	return stats.get_max_health() * damage_dealt(stats, weapon_damage, false)
