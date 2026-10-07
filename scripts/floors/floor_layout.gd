@@ -7,7 +7,7 @@ extends RefCounted
 ##
 ## Zone "slots": 0..N-1 = FloorData.regions in order, N = boss arena.
 
-enum SpawnKind { MONSTER, PROP, TORCH }
+enum SpawnKind { MONSTER, PROP, TORCH, WALL_DECOR }
 
 
 class Spawn:
@@ -16,10 +16,16 @@ class Spawn:
 	var cell: Vector2i
 	var slot: int
 	var monster: MonsterData
+	## Members of one ecological group share the first member's spawn id.
+	var group_id: int = -1
+	var origin_feature: StringName = &""
+	var origin_cell: Vector2i = Vector2i.ZERO
 	## Prop art: a Tiny Dungeon tile (tile_index) or, if `art` is set, a NatureArt prop.
 	var tile_index: int
 	var art: String = ""
 	var solid: bool
+	## Wall details point toward their adjacent open floor cell.
+	var wall_direction: Vector2i = Vector2i.DOWN
 
 
 ## A notable place: camp, mine, nest, oasis, bridge... (shown on the elements map, used by spawners later).
@@ -70,6 +76,8 @@ var _cells: PackedByteArray
 var _terrain: PackedByteArray
 var _slots: PackedByteArray
 ## 1 = must stay as it is (gate passages, arena entrance): no props, no digging.
+## Visual-only reinforcement marks. Never changes terrain, movement or sight.
+var _masonry: PackedByteArray
 var _protected: PackedByteArray
 var _floor_count: int = -1
 
@@ -89,6 +97,8 @@ func setup(map_size: Vector2i, new_seed: int, regions: int) -> void:
 	_slots.fill(255)
 	_protected.resize(cells)
 	_protected.fill(0)
+	_masonry.resize(cells)
+	_masonry.fill(0)
 
 
 var boss_slot: int:
@@ -138,6 +148,15 @@ func paint(x: int, y: int, type: int) -> void:
 ## Rock (or outside the map): what WallTiler draws as walls.
 func is_rock(x: int, y: int) -> bool:
 	return terrain_at(x, y) == Terrain.Type.ROCK
+
+
+func is_masonry(x: int, y: int) -> bool:
+	return in_bounds(x, y) and _masonry[y * size.x + x] == 1
+
+
+func mark_masonry(x: int, y: int) -> void:
+	if in_bounds(x, y) and is_rock(x, y):
+		_masonry[y * size.x + x] = 1
 
 
 func blocks_sight(x: int, y: int) -> bool:
@@ -269,4 +288,4 @@ func count_spawns(kind: int) -> int:
 
 ## Same seed must give the same map; this fingerprint makes that easy to check.
 func fingerprint() -> int:
-	return hash([_cells, _terrain, _slots, portal_cell, start_cell, spawns.size(), features.size()])
+	return hash([_cells, _terrain, _slots, _masonry, portal_cell, start_cell, spawns.size(), features.size()])

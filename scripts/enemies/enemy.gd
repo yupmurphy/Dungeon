@@ -18,6 +18,12 @@ const DAMAGE_DEALT_COLOR: Color = Color(1.0, 0.95, 0.6)
 const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
 ## Reference pixels: monsters fade in over this distance at the edge of the player's sight radius (Perception).
 const SIGHT_FADE: float = 20.0
+const LPC_FRAME_SIZE: float = 64.0
+const LPC_RUN_THRESHOLD: float = 1.0
+const LPC_DEATH_HOLD: float = 0.65
+const DEFAULT_BEHAVIORS: Array[StringName] = [&"chase", &"melee"]
+const CHASE_BEHAVIOR: Script = preload("res://scripts/components/enemy_chase_behavior.gd")
+const MELEE_BEHAVIOR: Script = preload("res://scripts/components/enemy_melee_behavior.gd")
 
 @export var data: MonsterData
 
@@ -31,6 +37,9 @@ var _flash_left: float = 0.0
 var _shader: ShaderMaterial
 ## Whoever looks at us (the player), for the Perception sight radius.
 var _viewer: Player
+var chase_behavior: EnemyChaseBehavior
+var melee_behavior: EnemyMeleeBehavior
+var character: LpcCharacter
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
@@ -47,8 +56,7 @@ var _viewer: Player
 func _ready() -> void:
 	if data == null:
 		data = MonsterData.new()
-	if data.stats == null:
-		data.stats = Stats.new()
+	data = data.runtime_copy()
 
 	# Sizes come from the data in reference pixels (see GameScale).
 	var radius: float = GameScale.world(data.body_radius)
@@ -61,6 +69,8 @@ func _ready() -> void:
 	sprite.modulate = data.sprite_tint
 	animator.art_faces_right = data.art_faces_right
 	_shader = sprite.material as ShaderMaterial
+	_setup_character()
+	_setup_behaviors()
 	var attack_size: Vector2 = GameScale.world_vector(data.attack_size)
 	(hitbox.get_node("CollisionShape2D").shape as RectangleShape2D).size = attack_size
 	hitbox.position.x = radius + attack_size.x / 2.0 - GameScale.world(1.0)
@@ -106,24 +116,16 @@ func _on_hit_missed() -> void:
 func _physics_process(delta: float) -> void:
 	_knockback = _knockback.move_toward(Vector2.ZERO, GameScale.world(KNOCKBACK_DECAY) * delta)
 	_flash_left = maxf(_flash_left - delta, 0.0)
-	_state_left -= delta
-
 	var move: Vector2 = Vector2.ZERO
 	match state:
 		State.IDLE:
 			_tick_idle()
 		State.CHASE:
 			move = _tick_chase()
-		State.WINDUP:
-			if _state_left <= 0.0:
-				_begin_attack()
-		State.ATTACK:
-			move = _attack_dir * GameScale.world(data.lunge_speed)
-			if _state_left <= 0.0:
-				_set_state(State.RECOVER, data.recovery_time / data.stats.get_attack_speed_multiplier())
-		State.RECOVER:
-			if _state_left <= 0.0:
-				_set_state(State.CHASE, 0.0)
+		State.WINDUP, State.ATTACK, State.RECOVER:
+			if melee_behavior != null:
+				move = melee_behavior.tick(delta)
+				_state_left = melee_behavior.time_left
 		State.DEAD:
 			pass
 
@@ -131,7 +133,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if state != State.DEAD:
 		_update_facing()
-		animator.update_motion(move, delta)
+		if character == null:
+			animator.update_motion(move, delta)
+		else:
+			_update_lpc_motion(move)
 	_update_tint()
 
 
@@ -148,39 +153,109 @@ func _find_target() -> Player:
 
 
 func _tick_idle() -> void:
-	_target = _find_target()
-	if _target != null and global_position.distance_to(_target.global_position) <= GameScale.world(data.detect_range):
-		_set_state(State.CHASE, 0.0)
+	if chase_behavior != null:
+		chase_behavior.scan()
 
 
 func _tick_chase() -> Vector2:
-	if not is_instance_valid(_target) or _target.is_dead:
-		_target = null
-		_set_state(State.IDLE, 0.0)
-		return Vector2.ZERO
-	var to_target: Vector2 = _target.global_position - global_position
-	var distance: float = to_target.length()
-	if distance > GameScale.world(data.lose_range):
-		_target = null
-		_set_state(State.IDLE, 0.0)
-		return Vector2.ZERO
-	if distance <= GameScale.world(data.attack_range):
-		# Direction is locked now, so a player who moves away can dodge the attack.
-		_attack_dir = to_target.normalized()
-		_set_state(State.WINDUP, data.windup_time)
-		return Vector2.ZERO
-	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
-		* FloorLayout.speed_factor_at(global_position)
+	return chase_behavior.movement(_target) if chase_behavior != null else Vector2.ZERO
 
 
-func _begin_attack() -> void:
-	attack_pivot.rotation = _attack_dir.angle()
-	hitbox.activate(data.attack_active_time)
-	animator.play_attack(data.attack_active_time)
-	_set_state(State.ATTACK, data.attack_active_time)
+func _setup_behaviors() -> void:
+	var ids: Array[StringName] = DEFAULT_BEHAVIORS if data.behaviors.is_empty() else data.behaviors
+	for id in ids:
+		match id:
+			&"chase":
+				if chase_behavior != null:
+					continue
+				chase_behavior = CHASE_BEHAVIOR.new() as EnemyChaseBehavior
+				chase_behavior.name = "ChaseBehavior"
+				add_child(chase_behavior)
+				chase_behavior.setup(self, data)
+				chase_behavior.target_found.connect(_on_target_found)
+				chase_behavior.target_lost.connect(_on_target_lost)
+				chase_behavior.attack_requested.connect(_on_attack_requested)
+			&"melee":
+				if melee_behavior != null:
+					continue
+				melee_behavior = MELEE_BEHAVIOR.new() as EnemyMeleeBehavior
+				melee_behavior.name = "MeleeBehavior"
+				add_child(melee_behavior)
+				melee_behavior.setup(data)
+				melee_behavior.windup_started.connect(_on_windup_started)
+				melee_behavior.attack_started.connect(_on_attack_started)
+				melee_behavior.recovery_started.connect(_on_recovery_started)
+				melee_behavior.cycle_finished.connect(_on_attack_cycle_finished)
+			_:
+				push_warning("Unknown monster behavior: %s" % id)
+
+
+func _on_target_found(target: Player) -> void:
+	_target = target
+	_set_state(State.CHASE, 0.0)
+
+
+func _on_target_lost() -> void:
+	_target = null
+	_set_state(State.IDLE, 0.0)
+
+
+func _on_attack_requested(direction: Vector2) -> void:
+	if melee_behavior != null:
+		melee_behavior.begin_windup(direction)
+
+
+func _on_windup_started(direction: Vector2, duration: float) -> void:
+	_attack_dir = direction
+	_set_state(State.WINDUP, duration)
+
+
+func _on_attack_started(direction: Vector2, duration: float) -> void:
+	attack_pivot.rotation = direction.angle()
+	hitbox.activate(duration)
+	if character == null:
+		animator.play_attack(duration)
+	else:
+		character.play(character.attack_action(), LpcCharacter.direction_of(direction), duration)
+	_set_state(State.ATTACK, duration)
+
+
+func _on_recovery_started(duration: float) -> void:
+	_set_state(State.RECOVER, duration)
+
+
+func _on_attack_cycle_finished() -> void:
+	_set_state(State.CHASE, 0.0)
+
+
+func _setup_character() -> void:
+	if data.lpc_items.is_empty():
+		return
+	character = LpcCharacter.new()
+	character.name = "LpcCharacter"
+	character.body_type = data.lpc_body_type
+	character.items = data.lpc_items
+	character.item_tints = data.lpc_item_tints
+	character.layer_material = _shader
+	character.scale = Vector2.ONE * GameScale.world(data.visual_size) / LPC_FRAME_SIZE
+	visual.add_child(character)
+	sprite.hide()
+
+
+func _update_lpc_motion(move: Vector2) -> void:
+	if character.is_busy():
+		return
+	var action: String = "walk" if move.length() > GameScale.world(LPC_RUN_THRESHOLD) else "idle"
+	var facing: Vector2 = _attack_dir if state == State.WINDUP else move
+	if facing.is_zero_approx() and is_instance_valid(_target):
+		facing = _target.global_position - global_position
+	var direction: LpcCatalog.Direction = character.direction if facing.is_zero_approx() else LpcCharacter.direction_of(facing)
+	character.loop(action, direction, data.stats.get_move_speed_multiplier())
 
 
 func _update_facing() -> void:
+	if character != null:
+		return
 	if state in [State.WINDUP, State.ATTACK]:
 		animator.face(_attack_dir.x)
 	elif is_instance_valid(_target):
@@ -200,6 +275,8 @@ func _update_tint() -> void:
 
 
 func _set_tint(color: Color, amount: float) -> void:
+	if _shader == null:
+		return
 	_shader.set_shader_parameter("flash_color", color)
 	_shader.set_shader_parameter("flash_amount", amount)
 
@@ -213,8 +290,10 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 	_flash_left = HIT_FLASH_TIME
 	if state == State.DEAD:
 		return
+	if character != null:
+		character.play("flinch", character.direction)
 	if state == State.WINDUP:
-		_set_state(State.RECOVER, STAGGER_TIME)
+		melee_behavior.interrupt(STAGGER_TIME)
 	elif state == State.IDLE:
 		_target = _find_target()
 		_set_state(State.CHASE, 0.0)
@@ -222,6 +301,10 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 
 func _on_died() -> void:
 	_set_state(State.DEAD, 0.0)
+	if melee_behavior != null:
+		melee_behavior.stop()
+	if character != null:
+		character.play("death", character.direction)
 	# Out of the "enemy" group so EnemyActivator can't pause it mid fade-out (it would never be freed).
 	remove_from_group("enemy")
 	process_mode = Node.PROCESS_MODE_INHERIT
@@ -234,5 +317,7 @@ func _on_died() -> void:
 	GameFeel.spawn_burst(global_position, data.body_color, 18, 120.0)
 	died.emit(self)
 	var tween: Tween = create_tween()
+	if character != null:
+		tween.tween_interval(LPC_DEATH_HOLD)
 	tween.tween_property(visual, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(queue_free)

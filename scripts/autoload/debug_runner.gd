@@ -11,6 +11,7 @@ extends Node
 ## Tools run inside the real game (with autoloads), which a plain `--script` run does not provide.
 
 const TOOLS: Dictionary = {
+	"--town": "res://tools/town_preview.gd",
 	"--smoke-test": "res://tools/smoke_test.gd",
 	"--floor-test": "res://tools/floor_test.gd",
 	"--stats-test": "res://tools/stats_test.gd",

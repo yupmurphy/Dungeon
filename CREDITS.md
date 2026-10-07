@@ -15,6 +15,7 @@ All art below costs nothing. What differs is what the license asks in return:
 | Body | body | OGA-BY, CC-BY-SA, GPL | Free, credit the authors (fine for commercial games, Steam, consoles) |
 | Human head (male) | head | OGA-BY, CC-BY-SA, GPL | Free, credit the authors (fine for commercial games, Steam, consoles) |
 | Human head (female) | head | OGA-BY, CC-BY-SA, GPL | Free, credit the authors (fine for commercial games, Steam, consoles) |
+| Goblin head | head | OGA-BY, CC-BY, GPL | Free, credit the authors (fine for commercial games, Steam, consoles) |
 | Short hair | hair | OGA-BY, CC-BY-SA, GPL | Free, credit the authors (fine for commercial games, Steam, consoles) |
 | Buzzcut | hair | OGA-BY | Free, credit the authors (fine for commercial games, Steam, consoles) |
 | Bob | hair | CC0 | Free, no conditions |
@@ -42,6 +43,7 @@ Other art:
 |---|---|---|---|
 | Dungeon tiles, props, monsters (`assets/Tilemap`) | Kenney, Tiny Dungeon - https://kenney.nl/assets/tiny-dungeon | CC0 | Free, no conditions |
 | Nature tiles, trees, props (`NatureArt`) | Drawn by code in this project | ours | yes |
+| Human town buildings, ground, terrace walls/steps, market stalls, decorations and trees (`TownArt`) | Original code-generated art in this project; no external asset source | ours | yes, no third-party asset attribution required |
 | Engine | Godot Engine - https://godotengine.org/license | MIT | Free, keep the Godot license text with the game |
 
 ## LPC pieces: authors and sources
@@ -86,6 +88,15 @@ The LPC art comes from the Universal LPC Spritesheet Character Generator
 - Sources:
   - https://opengameart.org/content/
   - https://opengameart.org/content/lpc-character-bases
+
+### Goblin head (`head_goblin`)
+
+- Authors: bluecarrot16, Stephen Challener (Redshrike), William.Thomsponj
+- Licenses (pick one valid for every file): OGA-BY, CC-BY, GPL
+- Notes: original goblin by Redshrike, commisioned by William.Thomsponj; modular head extracted and enlarged by bluecarrot16
+- Sources:
+  - https://opengameart.org/content/lpc-goblin
+  - https://opengameart.org/content/lpc-folk
 
 ### Short hair (`hair_plain`)
 

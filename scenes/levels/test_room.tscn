@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/levels/wall_torch.tscn" id="7_torch"]
 [ext_resource type="Resource" path="res://resources/monsters/slime.tres" id="8_slime"]
 [ext_resource type="Resource" path="res://resources/monsters/bat.tres" id="9_bat"]
+[ext_resource type="Resource" path="res://resources/monsters/goblin.tres" id="10_goblin"]
 
 [node name="TestRoom" type="Node2D" unique_id=1202491886]
 script = ExtResource("1_room")
@@ -85,5 +86,17 @@ data = ExtResource("9_bat")
 
 [node name="Spider" parent="World" unique_id=1431721742 instance=ExtResource("4_enemy")]
 position = Vector2(616, 392)
+
+[node name="Goblin1" parent="World" instance=ExtResource("4_enemy")]
+position = Vector2(536, 248)
+data = ExtResource("10_goblin")
+
+[node name="Goblin2" parent="World" instance=ExtResource("4_enemy")]
+position = Vector2(568, 264)
+data = ExtResource("10_goblin")
+
+[node name="Goblin3" parent="World" instance=ExtResource("4_enemy")]
+position = Vector2(568, 232)
+data = ExtResource("10_goblin")
 
 [node name="HUD" parent="." unique_id=1217407687 instance=ExtResource("5_hud")]

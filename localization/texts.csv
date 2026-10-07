@@ -83,3 +83,16 @@ DERIVED_REVEAL_FROM,"From Perception: {base} + {per} tiles per point, rounded do
 DERIVED_KNOCKBACK_FROM,"From Strength: +{per}% per point."
 DERIVED_CARRY_FROM,"From Strength: {base} + {per} per point."
 DERIVED_EXHAUSTION_FROM,"From Vitality: -{per}% per point, at least {min}%. Sprint adds {sprint} per second, an attack {attack}; it drops after a short rest. Above {tired} you are slower; at 100 you cannot sprint and deal less damage until it drops below {tired}."
+MONSTER_GOBLIN,Goblin
+TOWN_TITLE,Human Town
+TOWN_HALL,Town Hall
+TOWN_BLACKSMITH,Blacksmith
+TOWN_BOOKSHOP,Bookshop
+TOWN_HOUSE,House
+TOWN_HOUSE_NUMBER,House {number}
+TOWN_RESERVED,Reserved plot {number}
+TOWN_CONTROLS,WASD - move | Shift - sprint | E - door | M - overview | C - character
+TOWN_DOOR_HINT,{name} - E: interior planned for the next stage
+TOWN_INTERIOR_PENDING,This interior is not available yet.
+TOWN_DUNGEON_ROAD,Dungeon road - connection coming later
+TOWN_TAVERN,Tavern

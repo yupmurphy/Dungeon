@@ -543,6 +543,61 @@
 		"name": "Ponytail",
 		"slot": "hair"
 	},
+	"head_goblin": {
+		"layers": [
+			{
+				"bodies": {
+					"female": {
+						"hurt": {
+							"file": "lpc/head/heads/goblin/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/head/heads/goblin/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/head/heads/goblin/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/head/heads/goblin/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/head/heads/goblin/adult/walk.png",
+							"frame": 64
+						}
+					},
+					"male": {
+						"hurt": {
+							"file": "lpc/head/heads/goblin/adult/hurt.png",
+							"frame": 64
+						},
+						"idle": {
+							"file": "lpc/head/heads/goblin/adult/idle.png",
+							"frame": 64
+						},
+						"slash": {
+							"file": "lpc/head/heads/goblin/adult/slash.png",
+							"frame": 64
+						},
+						"thrust": {
+							"file": "lpc/head/heads/goblin/adult/thrust.png",
+							"frame": 64
+						},
+						"walk": {
+							"file": "lpc/head/heads/goblin/adult/walk.png",
+							"frame": 64
+						}
+					}
+				},
+				"z": 100
+			}
+		],
+		"name": "Goblin head",
+		"slot": "head"
+	},
 	"head_human_female": {
 		"layers": [
 			{

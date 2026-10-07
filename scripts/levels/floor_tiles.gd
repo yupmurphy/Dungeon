@@ -6,6 +6,8 @@ class_name FloorTiles
 const DUNGEON_TILESET: TileSet = preload("res://resources/tilesets/dungeon_tileset.tres")
 const NATURE_SOURCE: int = 1
 const CANOPY_SOURCE: int = 2
+const CAVE_WALL_SOURCE: int = 3
+const CAVE_FLOOR_SOURCE: int = 4
 
 static var _tile_set: TileSet
 
@@ -42,6 +44,8 @@ static func tile_set() -> TileSet:
 		var tile: TileData = canopies.get_tile_data(Vector2i(v, 0), 0)
 		@warning_ignore("integer_division")
 		tile.texture_origin = Vector2i(0, NatureArt.CANOPY_SIZE.y / 2 - NatureArt.TILE / 2 - 2)
+	_add_cave_source(CAVE_WALL_SOURCE, CaveArt.walls_texture(), CaveArt.WALL_TILES, true)
+	_add_cave_source(CAVE_FLOOR_SOURCE, CaveArt.floors_texture(), CaveArt.FLOOR_MASKS * CaveArt.FLOOR_VARIANTS, false)
 	upscale(_tile_set)
 	return _tile_set
 
@@ -81,3 +85,20 @@ static func upscale(tile_set: TileSet) -> void:
 					for k in points.size():
 						points[k] *= factor
 					tile.set_collision_polygon_points(layer, p, points)
+
+
+## Same full-cell wall collision as before; floor shadows are art only.
+static func _add_cave_source(id: int, texture: Texture2D, count: int, solid: bool) -> void:
+	var source := TileSetAtlasSource.new()
+	source.texture = texture
+	source.texture_region_size = Vector2i(CaveArt.TILE, CaveArt.TILE)
+	_tile_set.add_source(source, id)
+	var half: float = CaveArt.TILE / 2.0
+	var square := PackedVector2Array([Vector2(-half, -half), Vector2(half, -half), Vector2(half, half), Vector2(-half, half)])
+	for index in count:
+		var coords: Vector2i = CaveArt.atlas_coords(index)
+		source.create_tile(coords)
+		if solid:
+			var tile: TileData = source.get_tile_data(coords, 0)
+			tile.add_collision_polygon(0)
+			tile.set_collision_polygon_points(0, 0, square)

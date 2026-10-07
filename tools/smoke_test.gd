@@ -2,6 +2,23 @@ extends Node
 ## Automated combat checks on the real test room.
 ## Run:  <godot.exe> --headless --path . -- --smoke-test     (exit code 0 = all passed)
 
+const GOBLIN_HEALTH: float = 35.0
+const GOBLIN_BASE_DAMAGE: float = 12.0
+const GOBLIN_DEFENSE: float = 0.0
+const GOBLIN_XP: int = 1
+const GOBLIN_NORMAL_DAMAGE: float = 12.72
+const GOBLIN_STRENGTH_TEST: int = 2
+const GOBLIN_STRENGTH_HEALTH: float = 55.0
+const GOBLIN_STRENGTH_DEFENSE: float = 1.0
+const GOBLIN_TEST_DELTA: float = 0.01
+const CAMP_TEST_MAP_SIZE: Vector2i = Vector2i(11, 11)
+const CAMP_TEST_ORIGIN: Vector2i = Vector2i(5, 5)
+const CAMP_TEST_OPEN_MIN: int = 3
+const CAMP_TEST_OPEN_MAX: int = 7
+const CAMP_TEST_ISLAND: Vector2i = Vector2i(9, 5)
+const GOBLIN_HEAD_ID: String = "head_goblin"
+const GOBLIN_PREVIEW_NAMES: Array[String] = ["Goblin1", "Goblin2", "Goblin3"]
+
 var _failures: int = 0
 
 
@@ -16,8 +33,13 @@ func run(_options: Dictionary) -> void:
 	var bat := room.get_node("World/Bat") as Enemy
 	var spider := room.get_node("World/Spider") as Enemy
 	var effects: CanvasLayer = GameFeel.get_child(0)
+	# Preview group is for manual play; keep it out of deterministic legacy combat checks.
+	for goblin_name in GOBLIN_PREVIEW_NAMES:
+		room.get_node("World/" + goblin_name).process_mode = Node.PROCESS_MODE_DISABLED
 
 	print("--- setup")
+	_check(WallAtmosphereChecks._projecting_mounts_ok(room),
+		"wall torches: full front handle clears the floor; other three mounts remain correct")
 	for action in ["move_up", "move_down", "move_left", "move_right", "attack", "sprint", "restart"]:
 		_check(InputMap.has_action(action) and InputMap.action_get_events(action).size() > 0,
 			"input action '%s' mapped" % action)
@@ -294,11 +316,15 @@ func run(_options: Dictionary) -> void:
 	player.equipment.equip(Equipment.find(&"torso_longsleeve"))
 	sheet.close()
 
+	await _check_goblin(room, player)
+
 	print("--- hurt and death animations")
 	player.hurtbox.receive_hit(Combat.Hit.new(5.0), Vector2.RIGHT, 0.0)
 	_check(player.character.action == "flinch", "a hit makes the player flinch (%s)" % player.character.action)
 	player.health.take_damage(1000.0)
 	_check(player.character.action == "death", "dying plays the fall (%s)" % player.character.action)
+
+	await _check_town_exterior()
 
 	print("--- result: %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	get_tree().quit(0 if _failures == 0 else 1)
@@ -353,3 +379,111 @@ func _clear(parent: Node) -> void:
 	for child in parent.get_children():
 		child.queue_free()
 	await get_tree().process_frame
+
+
+func _check_goblin(room: Node, player: Player) -> void:
+	_check_camp_territory()
+	print("--- goblin and reusable behaviors")
+	for node in get_tree().get_nodes_in_group("enemy"):
+		(node as Enemy).process_mode = Node.PROCESS_MODE_DISABLED
+	var source := load("res://resources/monsters/goblin.tres") as MonsterData
+	var enemy_scene := load("res://scenes/enemies/enemy.tscn") as PackedScene
+	var goblin := enemy_scene.instantiate() as Enemy
+	goblin.data = source
+	goblin.position = player.global_position + GameScale.world_vector(Vector2(50, 0))
+	room.get_node("World").add_child(goblin)
+	goblin.set_physics_process(false)  # Exercise phases explicitly, not random/frame-rate-dependent AI.
+	_check(goblin.health.max_health == GOBLIN_HEALTH and goblin.data.stats.get_max_health() == GOBLIN_HEALTH,
+		"goblin health and Stats agree: 35 HP")
+	_check(goblin.data.stats.get_defense() == GOBLIN_DEFENSE and goblin.hitbox.damage == GOBLIN_BASE_DAMAGE
+		and goblin.data.xp_reward == GOBLIN_XP, "goblin: base damage 12 / defense 0 / first-kill reward data 1")
+	_check(goblin.data != source and goblin.data.stats != source.stats and source.stats.get_max_health() == Stats.HEALTH_BASE,
+		"runtime species bases do not mutate shared stats/resources")
+	var stronger: Stats = source.runtime_copy().stats
+	stronger.strength = GOBLIN_STRENGTH_TEST
+	_check(stronger.get_max_health() == GOBLIN_STRENGTH_HEALTH and stronger.get_defense() == GOBLIN_STRENGTH_DEFENSE,
+		"species bases still use the existing Strength health/defense bonuses")
+	_check(goblin.chase_behavior != null and goblin.melee_behavior != null
+		and goblin.chase_behavior.get_parent() == goblin and goblin.melee_behavior.get_parent() == goblin,
+		"chase and melee are reusable child components")
+	_check(LpcCatalog.has_item(GOBLIN_HEAD_ID) and not LpcCatalog.item(GOBLIN_HEAD_ID).get("layers", []).is_empty(),
+		"goblin head imported into the LPC catalog")
+	_check(goblin.character != null and GOBLIN_HEAD_ID in goblin.character.items and not goblin.sprite.visible,
+		"goblin uses LPC paper doll, not a placeholder sprite")
+	for action in ["idle", "walk", "slash", "flinch", "death"]:
+		_check(goblin.character.has_action(action), "goblin has LPC '%s' action" % action)
+	_check(goblin.data.localized_name() == "Goblin", "goblin name comes from English localization")
+	Combat.forced_rolls.assign([0.99, 0.99])
+	var normal: Combat.Hit = Combat.resolve(goblin.data.stats, null, goblin.data.attack_damage)
+	_check(not normal.missed and not normal.critical and is_equal_approx(normal.damage, GOBLIN_NORMAL_DAMAGE),
+		"Combat applies stat bonus to base damage 12 (normal 12.72 before target defense)")
+
+	goblin._on_target_found(player)
+	var _movement: Vector2 = goblin.chase_behavior.movement(player)
+	_check(goblin.state == Enemy.State.CHASE, "outside attack range, goblin stays in chase")
+	goblin.global_position = player.global_position + GameScale.world_vector(Vector2(20, 0))
+	_movement = goblin.chase_behavior.movement(player)
+	_check(goblin.state == Enemy.State.WINDUP and not goblin.hitbox.monitoring, "in range: telegraph starts before any active hitbox")
+	var locked: Vector2 = goblin.melee_behavior.direction
+	player.global_position += GameScale.world_vector(Vector2(0, 50))
+	goblin.melee_behavior.tick(source.windup_time - GOBLIN_TEST_DELTA)
+	_check(goblin.state == Enemy.State.WINDUP and goblin.melee_behavior.direction == locked,
+		"telegraph keeps its locked aim when player moves")
+	goblin.melee_behavior.interrupt(Enemy.STAGGER_TIME)
+	_check(goblin.state == Enemy.State.RECOVER and not goblin.hitbox.monitoring,
+		"interrupting windup cancels the attack")
+	goblin.melee_behavior.tick(Enemy.STAGGER_TIME + GOBLIN_TEST_DELTA)
+	_check(goblin.state == Enemy.State.CHASE, "stagger recovery ends in chase")
+	goblin.melee_behavior.begin_windup(Vector2.RIGHT)
+	goblin.melee_behavior.tick(source.windup_time + GOBLIN_TEST_DELTA)
+	_check(goblin.state == Enemy.State.ATTACK and goblin.character.action == "slash",
+		"complete telegraph starts melee and LPC slash")
+	goblin.hitbox.deactivate()
+	goblin.melee_behavior.tick(source.attack_active_time + GOBLIN_TEST_DELTA)
+	_check(goblin.state == Enemy.State.RECOVER, "attack is followed by recovery")
+	goblin.melee_behavior.stop()
+	goblin._set_state(Enemy.State.IDLE, 0.0)
+	Combat.forced_rolls.clear()
+
+	await _hit_with_player(player, goblin)
+	var taken: float = Combat.damage_taken(Combat.damage_dealt(player.stats, player.base_attack_damage, false), goblin.data.stats)
+	_check(is_equal_approx(goblin.health.current_health, GOBLIN_HEALTH - taken), "player damages goblin through shared Combat/Hurtbox")
+	goblin.health.take_damage(GOBLIN_HEALTH)
+	_check(goblin.state == Enemy.State.DEAD and goblin.character.action == "death"
+		and not goblin.is_in_group("enemy") and goblin.melee_behavior.phase == EnemyMeleeBehavior.Phase.NONE,
+		"goblin death stops behaviors and plays LPC fall")
+	goblin.queue_free()
+	await get_tree().process_frame
+
+
+func _check_camp_territory() -> void:
+	var layout := FloorLayout.new()
+	layout.setup(CAMP_TEST_MAP_SIZE, 1, 1)
+	for y in range(CAMP_TEST_OPEN_MIN, CAMP_TEST_OPEN_MAX + 1):
+		for x in range(CAMP_TEST_OPEN_MIN, CAMP_TEST_OPEN_MAX + 1):
+			layout.set_slot(x, y, 0)
+			layout.paint(x, y, Terrain.Type.CAVE)
+	layout.set_floor(CAMP_TEST_ORIGIN.x, CAMP_TEST_ORIGIN.y, false)
+	layout.set_slot(CAMP_TEST_ISLAND.x, CAMP_TEST_ISLAND.y, 0)
+	layout.paint(CAMP_TEST_ISLAND.x, CAMP_TEST_ISLAND.y, Terrain.Type.CAVE)
+	var monster: MonsterData = load("res://resources/monsters/goblin.tres") as MonsterData
+	var territory: Dictionary = FloorPopulator._feature_territory(layout, 0, CAMP_TEST_ORIGIN, monster, {})
+	var expected: int = (CAMP_TEST_OPEN_MAX - CAMP_TEST_OPEN_MIN + 1) ** 2 - 1
+	_check(territory.size() == expected and not territory.has(CAMP_TEST_ORIGIN)
+		and not territory.has(CAMP_TEST_ISLAND), "camp territory survives a solid center, stays connected and excludes isolated floor")
+
+
+func _check_town_exterior() -> void:
+	print("--- town exterior")
+	var unit: Dictionary = TownChecks.unit_results()
+	for title: String in unit:
+		_check(unit[title], title)
+	get_tree().change_scene_to_file.call_deferred("res://scenes/town/town.tscn")
+	for frame in TownChecks.SETTLE_FRAMES:
+		await get_tree().physics_frame
+	var town := get_tree().current_scene as TownLevel
+	_check(town != null, "town scene loads independently from dungeon")
+	if town != null:
+		var results: Dictionary = TownChecks.scene_results(town)
+		for title: String in results:
+			_check(results[title], title)

@@ -7,6 +7,9 @@ const FLOOR_DATA: FloorData = preload("res://resources/floors/floor_1.tres")
 const SEED_COUNT: int = 8
 ## Seeds that are generated twice to check that the same seed gives the same map.
 const DETERMINISM_SEEDS: int = 2
+const GOBLIN_GROUP_CHECK: String = "goblins: groups of 2-4 in connected camp territory, no protected/start cells"
+const GOBLIN_GROUP_MIN: int = 2
+const GOBLIN_GROUP_MAX: int = 4
 
 var _failures: int = 0
 var _first_seed: int = 1
@@ -18,6 +21,10 @@ func run(options: Dictionary) -> void:
 	if seeds.contains(":"):
 		_first_seed = int(seeds.get_slice(":", 0))
 		_seed_count = maxi(int(seeds.get_slice(":", 1)), 1)
+	var visual_results: Dictionary = CaveVisualChecks.run()
+	visual_results.merge(WallAtmosphereChecks.unit_results())
+	for label: String in visual_results:
+		_check(visual_results[label], label)
 	_check_generator()
 	if not options.has("--generator-only"):
 		await _check_scene()
@@ -26,6 +33,9 @@ func run(options: Dictionary) -> void:
 
 
 const GENERATOR_CHECKS: Array[String] = [
+	GOBLIN_GROUP_CHECK,
+	CaveVisualChecks.REINFORCEMENT_CHECK,
+	WallAtmosphereChecks.PLACEMENT_CHECK,
 	"map has the size from FloorData",
 	"every tile belongs to a zone (no empty space)",
 	"map edge is rock",
@@ -64,14 +74,21 @@ func _check_generator() -> void:
 		if sample == null:
 			sample = layout
 		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
+		if not CaveVisualChecks.reinforcement_ok(layout):
+			problems[CaveVisualChecks.REINFORCEMENT_CHECK] = seed_value
+		if not WallAtmosphereChecks.placement_ok(layout, FLOOR_DATA):
+			problems[WallAtmosphereChecks.PLACEMENT_CHECK] = seed_value
 		var shares: Dictionary = _terrain_shares(layout)
-		for label in _generator_problems(layout) + _ecology_problems(layout, shares):
+		for label in _generator_problems(layout) + _ecology_problems(layout, shares) + _goblin_problems(layout):
 			if not problems.has(label):
 				problems[label] = seed_value
 		if seed_value == _first_seed:
 			_print_ecology(layout, shares)
-		if seed_value < _first_seed + DETERMINISM_SEEDS and FloorGenerator.generate(FLOOR_DATA, seed_value).fingerprint() != layout.fingerprint():
-			problems["same seed gives the same map"] = seed_value
+		if seed_value < _first_seed + DETERMINISM_SEEDS:
+			var repeated: FloorLayout = FloorGenerator.generate(FLOOR_DATA, seed_value)
+			if repeated.fingerprint() != layout.fingerprint() or _goblin_signature(repeated) != _goblin_signature(layout) \
+					or WallAtmosphereChecks.signature(repeated) != WallAtmosphereChecks.signature(layout):
+				problems["same seed gives the same map"] = seed_value
 		arrangements[_arrangement(layout)] = true
 	var phases: Array[String] = []
 	for phase: String in phase_ms:
@@ -294,6 +311,8 @@ func _check_scene() -> void:
 	_check(FloorLayout.speed_factor_at(shallow_at) < 1.0 and FloorLayout.speed_factor_at(quicksand_at) < 0.5
 		and FloorLayout.speed_factor_at(player.global_position) == 1.0,
 		"shallow water and quicksand slow movement, cave floor doesn't")
+	_check(CaveVisualChecks.streamed_materials_ok(floor_level), CaveVisualChecks.MATERIAL_CHECK)
+	_check(WallAtmosphereChecks.scene_ok(floor_level), WallAtmosphereChecks.SCENE_CHECK)
 	var chunks: ChunkManager = floor_level.chunks
 	var enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
 	var stream_reach: float = (chunks.unload_radius + 1) * layout.chunk_size * GameScale.TILE_SIZE
@@ -546,3 +565,47 @@ func _check(condition: bool, label: String) -> void:
 	else:
 		_failures += 1
 		print("  FAIL  ", label)
+
+
+func _goblin_signature(layout: FloorLayout) -> int:
+	var entries: Array = []
+	for spawn in layout.spawns:
+		if spawn.monster != null and spawn.monster.id == &"goblin":
+			entries.append([spawn.cell, spawn.group_id, spawn.origin_feature, spawn.origin_cell])
+	return hash(entries)
+
+
+func _goblin_problems(layout: FloorLayout) -> Array[String]:
+	var groups: Dictionary = {}
+	var occupied: Dictionary = {}
+	var origins: Dictionary = {}
+	var allowed: Dictionary = {}
+	var monster: MonsterData = load("res://resources/monsters/goblin.tres") as MonsterData
+	for feature in layout.features:
+		if feature.kind == monster.spawn_feature:
+			origins[feature.cell] = feature.slot
+			var territory: Dictionary = FloorPopulator._feature_territory(layout, feature.slot, feature.cell, monster, {})
+			allowed[feature.cell] = territory
+	for spawn in layout.spawns:
+		if spawn.monster == null or spawn.monster.id != &"goblin":
+			continue
+		if spawn.group_id < 0 or spawn.origin_feature != monster.spawn_feature \
+				or not origins.has(spawn.origin_cell) or origins.get(spawn.origin_cell, -1) != spawn.slot \
+				or occupied.has(spawn.cell) or layout.is_protected(spawn.cell.x, spawn.cell.y) \
+				or not layout.is_floor(spawn.cell.x, spawn.cell.y) \
+				or layout.slot_at(spawn.cell.x, spawn.cell.y) != spawn.slot \
+				or Vector2(spawn.cell).distance_to(Vector2(layout.start_cell)) < FLOOR_DATA.safe_start_radius \
+				or not (allowed.get(spawn.origin_cell, {}) as Dictionary).has(spawn.cell):
+			print("    goblin invalid spawn: cell=%s origin=%s group=%s slot=%s allowed=%s" % [spawn.cell, spawn.origin_cell, spawn.group_id, spawn.slot, (allowed.get(spawn.origin_cell, {}) as Dictionary).has(spawn.cell)])
+			return [GOBLIN_GROUP_CHECK]
+		occupied[spawn.cell] = true
+		groups[spawn.group_id] = groups.get(spawn.group_id, 0) + 1
+	if groups.is_empty():
+		for origin: Vector2i in origins:
+			print("    goblin empty groups: origin=%s floor=%s slot=%s territory=%s start_distance=%s" % [origin, layout.is_floor(origin.x, origin.y), origins[origin], (allowed[origin] as Dictionary).size(), Vector2(origin).distance_to(Vector2(layout.start_cell))])
+		return [GOBLIN_GROUP_CHECK]
+	for count: int in groups.values():
+		if count < GOBLIN_GROUP_MIN or count > GOBLIN_GROUP_MAX:
+			print("    goblin invalid group size: %s" % count)
+			return [GOBLIN_GROUP_CHECK]
+	return []

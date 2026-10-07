@@ -128,17 +128,24 @@ func _load(chunk: Vector2i) -> void:
 			var i: int = y * w + x
 			var type: int = terrain[i]
 			if type == Terrain.Type.ROCK:
-				# Rock: dungeon walls, tinted per zone (sandstone in the desert...).
+				# Natural hub rock uses a complete neighbor mask, not the masonry edge priority.
 				var layer: TileMapLayer = _layers[slots[i]]
-				if _is_deep_rock(terrain, w, x, y):
+				if slots[i] == layout.hub_slot and not layout.is_masonry(x, y):
+					var mask: int = 0 if _is_deep_rock(terrain, w, x, y) else CaveArt.open_mask(is_rock, x, y)
+					layer.set_cell(cell, FloorTiles.CAVE_WALL_SOURCE, CaveArt.atlas_coords(mask))
+				elif _is_deep_rock(terrain, w, x, y):
 					layer.set_cell(cell, 0, deep_rock)  # fast path, no autotiling needed
 				else:
 					layer.set_cell(cell, 0, TileAtlas.coords(WallTiler.tile_for(is_rock, x, y, _cell_roll(x, y))))
 			elif type == Terrain.Type.CAVE:
-				var index: int = WallTiler.floor_tile(_cell_roll(x, y))
-				if y > 0 and terrain[i - w] == Terrain.Type.ROCK and WallTiler.is_face(is_rock, x, y - 1):
-					index = WallTiler.FLOOR_UNDER_WALL
-				_layers[slots[i]].set_cell(cell, 0, TileAtlas.coords(index))
+				if slots[i] == layout.hub_slot:
+					var index: int = CaveArt.floor_index(is_rock, x, y, _cell_roll(x, y))
+					_layers[slots[i]].set_cell(cell, FloorTiles.CAVE_FLOOR_SOURCE, CaveArt.atlas_coords(index))
+				else:
+					var index: int = WallTiler.floor_tile(_cell_roll(x, y))
+					if y > 0 and terrain[i - w] == Terrain.Type.ROCK and WallTiler.is_face(is_rock, x, y - 1):
+						index = WallTiler.FLOOR_UNDER_WALL
+					_layers[slots[i]].set_cell(cell, 0, TileAtlas.coords(index))
 			else:
 				# Nature ground from the procedural atlas, not tinted.
 				var roll: float = _cell_roll(x, y)
@@ -168,10 +175,18 @@ func _load(chunk: Vector2i) -> void:
 				_world.add_child(prop)
 				nodes.append(prop)
 			FloorLayout.SpawnKind.TORCH:
-				var torch: Node2D = TORCH_SCENE.instantiate()
+				var torch := TORCH_SCENE.instantiate() as WallTorch
+				torch.mount_direction = spawn.wall_direction
 				torch.position = _cell_center(spawn.cell)
 				_world.add_child(torch)
 				nodes.append(torch)
+			FloorLayout.SpawnKind.WALL_DECOR:
+				var decoration := WallDecoration.new()
+				decoration.kind = spawn.art
+				decoration.mount_direction = spawn.wall_direction
+				decoration.position = _cell_center(spawn.cell)
+				_world.add_child(decoration)
+				nodes.append(decoration)
 	_loaded[chunk] = nodes
 	load_time_total_usec += Time.get_ticks_usec() - started
 	loads_done += 1

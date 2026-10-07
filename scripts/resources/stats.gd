@@ -17,6 +17,9 @@ const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"vitality",
 # --- Pools: health from Strength, mana from Magic (0 while Magic is locked) ---
 const HEALTH_BASE: float = 50.0
 const HEALTH_PER_STRENGTH: float = 10.0
+## Negative MonsterData base values mean: preserve the existing player/legacy defaults.
+const USE_DEFAULT_BASE: float = -1.0
+const DEFENSE_BASE: float = 0.0
 const MANA_BASE: float = 20.0
 const MANA_PER_MAGIC: float = 5.0
 
@@ -114,6 +117,18 @@ const DEFENSE_SCALE: float = 100.0
 		emit_changed()
 
 
+## Runtime-only species bases, configured on a private copy by MonsterData.
+## They are deliberately not exported: Stats still serializes only the main stats.
+var _health_base: float = HEALTH_BASE
+var _defense_base: float = DEFENSE_BASE
+
+
+func configure_monster_bases(health_base: float, defense_base: float) -> void:
+	_health_base = health_base if health_base >= 0.0 else HEALTH_BASE
+	_defense_base = defense_base if defense_base >= 0.0 else DEFENSE_BASE
+	emit_changed()
+
+
 func get_stat(stat: Stat) -> int:
 	return get(PROPERTY_NAMES[stat])
 
@@ -132,7 +147,7 @@ func add_stat(stat: Stat, amount: int) -> void:
 # --- Derived values ---
 
 func get_max_health() -> float:
-	return maxf(1.0, HEALTH_BASE + strength * HEALTH_PER_STRENGTH)
+	return maxf(1.0, _health_base + strength * HEALTH_PER_STRENGTH)
 
 
 func get_max_mana() -> float:
@@ -153,7 +168,7 @@ func get_magic_damage_bonus() -> float:
 
 
 func get_defense() -> float:
-	return strength * DEFENSE_PER_STRENGTH
+	return _defense_base + strength * DEFENSE_PER_STRENGTH
 
 
 func get_carry_weight() -> float:

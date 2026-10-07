@@ -24,6 +24,7 @@ const ITEMS: Dictionary = {
 	"body": ["body", "body/body.json", "", "Body"],
 	"head_human_male": ["head", "head/heads/human/heads_human_male.json", "", "Human head (male)"],
 	"head_human_female": ["head", "head/heads/human/heads_human_female.json", "", "Human head (female)"],
+	"head_goblin": ["head", "head/heads/fantasy/heads_goblin.json", "", "Goblin head"],
 	"hair_plain": ["hair", "hair/short/hair_plain.json", "", "Short hair"],
 	"hair_buzzcut": ["hair", "hair/bald/hair_buzzcut.json", "", "Buzzcut"],
 	"hair_bob": ["hair", "hair/bob/hair_bob.json", "", "Bob"],

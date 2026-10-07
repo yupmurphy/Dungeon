@@ -38,6 +38,16 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
     Perception also drives the player's light radius and the map reveal radius (ExplorationMap.reveal_radius,
     set by FloorLevel); monsters are only visible inside the player's sight radius.
   - `MonsterData`: one monster type (stats, XP, behaviors, region, SpriteFrames + tint, ranges, timings, damage).
+    Optional species `base_health` / `base_defense` are stored here (-1 keeps the legacy defaults). Each Enemy
+    calls `runtime_copy()`: independent Stats receive these runtime-only bases, then the same Strength
+    contributions apply through Stats getters. Stats still saves only its main stats; player formulas are unchanged.
+    `attack_damage` is base damage BEFORE Combat bonuses/crit/target defense (user decision).
+    `EnemyChaseBehavior` and `EnemyMeleeBehavior` are child components: detection/chase and a direction-locked
+    windup -> attack -> recovery cycle, with signals to Enemy. Empty `behaviors` preserves legacy chase/melee.
+    Goblin: `goblin.tres`, 35 HP / base damage 12 / defense 0 / reward data 1; LPC paper doll with `head_goblin`.
+    Feature-based spawns use `spawn_feature`, group size/spread/radius in MonsterData. Goblins form seeded
+    groups of 2-4 in connected `goblin_camp` territory, respecting used/protected cells and the safe start.
+    Bats/spiders remain in Galleries during the staged migration. Bestiary/first-kill XP/level cap/F5 come later.
   - `RegionData`: name, tile tint, map color, monster list, mini-boss. `FloorData`: size, regions, boss.
 - **Texts that the user edits** (stat explanations, "Miss") live in `localization/texts.csv` (Godot translation,
   column `en`, English ASCII; use `tr(&"KEY")`). More languages later = more columns.
@@ -76,7 +86,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   chunk; densities per 100 floor tiles live in `RegionData`; torches only in closed zones.
 - **Terrain / ecology (stage 2 of the rebuild).** Every cell has a `Terrain.Type` (scripts/floors/terrain.gd: walkable,
   speed factor, blocks sight, map color, art tile). Each region has a `biome` and a `ZoneBuilder`
-  (scripts/floors/zones/): `GalleriesBuilder` (cave chambers + winding tunnels, camp / mine / chieftain halls),
+  (scripts/floors/zones/): `GalleriesBuilder` (cave chambers + winding tunnels, camp / mine / chieftain halls; mine has no luminous floor crystals),
   `ForestBuilder` (river with bridges and fords, dense woods vs clearings, old trees, spider nests with webs),
   `SwampBuilder` (lakes to puddles, deep vs shallow water, reeds, mud islands, dead trees, fog),
   `DesertBuilder` (dunes, big mesas, quicksand patches, oasis with palms, giant bones). Builder phases:
@@ -88,8 +98,12 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - Art for nature is procedural placeholder pixel art (`NatureArt`: one tile atlas + prop textures), added to
   the floor TileSet as source 1 by `FloorTiles`; deep water collides, a TREE cell only with its trunk. Trees are
   big: a TREE cell is just the trunk spot (max one per 3x3 block); its 48x56 crown is source 2 on the y-sorted
-  "Canopies" TileMapLayer inside World, so characters walk behind/in front of trees correctly. Rock and cave floor still use
-  the Kenney tiles (tinted per zone); nature tiles go on an untinted "Nature" layer. `Prop` shows either a
+  "Canopies" TileMapLayer inside World, so characters walk behind/in front of trees correctly. Galleries use original procedural `CaveArt` (source 3 rock, source 4 floor): complete eight-neighbor masks,
+  opaque full-cell rock, directional top/side shading, a tall front face with a single lit brow, and stronger front contact shadows. Geometry,
+  sight and collisions do not depend on this art. `FloorLayout` stores visual-only masonry marks on existing
+  rock; only the built back wall of the chieftain hall is reinforced with Kenney masonry. Other zones and the
+  test room retain their existing art; nature tiles go on an untinted "Nature" layer. A minority of ordinary
+  cave chambers have a larger radius (tunable constants in GalleriesBuilder). `Prop` shows either a
   Kenney tile (`tile_index`) or a NatureArt prop (`art`, multi-tile footprint, optional light).
 - `-- --terrain-map=<folder> --seeds=<first>:<n>` saves terrain pictures (headless) to eyeball generation.
 - Generator rules are checked on 10 seeds by `--floor-test` (zones contiguous, hub sealed except gates, single
@@ -99,6 +113,14 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   living monsters left in unloaded chunks go back to data and respawn at their spawn point. Tile variation uses a
   per-cell hash, not a sequential RNG, so load order doesn't matter. Every cell is drawn (deep rock and plain floor
   take a fast path without autotiling, ~6 ms per chunk).
+- **Galleries atmosphere:** warm bracket-mounted `WallTorch` sprites use four cached original `WallArt` flame
+  frames and subtle smooth light flicker. The plate stays inside rock; an orientation-aware raised bracket
+  projects the body toward the adjacent room cell, with a small cast shadow and the light at the flame.
+  The torch has no collider. Spawns use front and lateral rock faces beside walkable floor; rear/north mounts are excluded because the visible wall has no front attachment surface.
+  Seeded wall details never change terrain, sight, protected cells or floor reservations. Torch spacing comes
+  from FloorData; caps per chunk (2 torches, 4 non-light decorations) and decor spacing/chance are constants
+  in FloorPopulator. `WallDecoration` has no collider/light/process; cracks, roots and sparse webs are natural,
+  marks/bones appear only near goblin halls/camps. Mine keeps rails/carts; luminous crystals are removed.
 - `FloorLevel` (scenes/floors/floor.tscn, the main scene) creates one tinted TileMapLayer per slot and the portal.
   `ExplorationMap` = fog of war + minimap texture (line-of-sight reveal). `EnemyActivator` pauses monsters farther
   than 30 tiles. Dying enemies leave the "enemy" group so they are never paused mid fade-out.
@@ -111,6 +133,41 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70. No dash/dodge.
 - Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
   (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
+
+## Human town (exterior stage)
+- Fixed peaceful hub, independent from FloorGenerator: `scenes/town/town.tscn`. Dungeon remains the main scene.
+- Launch `-- --town`, or open the town scene in the editor and use F6. `M` toggles a zoomed-out exterior overview.
+- `TownData` (Resource) defines tile positions: modest hall, six stalls, blacksmith, bookshop, tavern, twenty homes and
+  four empty central 9x7 parcels. Reserved plots are walkable, have no buildings/props and stay available for expansion.
+- `TownBuildingData` gives each exterior a persistent ID, footprint, translation key, art variant and optional
+  PackedScene interior. Exterior stage leaves interiors null. `TownBuilding` composes cached facade art,
+  footprint collision, a `TownDoor` and an `ExteriorReturn` marker. Do not use separate Godot projects for interiors.
+- Town clears `FloorLayout.active`; reused Player/Stats/Equipment/HUD are unchanged. World is y-sorted; doors
+  are reachable from the square. E currently only explains that interiors are not available, no scene transition.
+- Town now has hand-shaped crooked roads and clustered housing rather than a symmetric grid. The civic
+  square/hall sit on a stepped terrace (`TERRACE_SHAPE`): full-cell ledge collisions prevent crossing edges,
+  with wide south stairs and an east ramp as the two level connections. `TownLayout.elevation()` grades
+  their rise; town records the player's current elevation for later gameplay. This is top-down 2D relief,
+  not 3D gravity or free jumping. Both crossings are covered by actual physics sweeps in the smoke test.
+- `TownPropData` and reusable `TownDecoration` compose benches, fountain, noticeboard, smith work area,
+  tavern barrels, planters, sparse yard fences and trees. Pure walkability and scene collision share the
+  same solid footprints. Garden placement avoids door paths, transitions and all four reserved parcels.
+- `TownBuildingData.floors` counts ground floor plus upper floors (currently 1 or 2). Hall, tavern,
+  house_03 and house_13 have ground + one upper floor. Facade height/texture cache depends on floor count;
+  footprints, door cells, return markers and interior availability stay unchanged. Do not stretch roofs.
+- Stairs use one cached composite stone flight with distinct treads/risers, staggered joints, side coping
+  and paved landings. Side coping occupies blocking cells OUTSIDE the six-tile clear passage; geometry
+  and physical sweeps verify both free traversal and blocked borders. `Ground/StairFlight` draws below actors.
+- Yard fences merge adjacent legal cells into continuous vertical runs; posts have caps, shaded side faces,
+  nails/grain, two thick rails and contact shadows. The same run footprint defines collision. Frontages and
+  door paths remain open, with no fences/curbs inside the four expansion parcels.
+- `TownArt` has taller facades, two shaded roof planes, eave/foundation shading and projected building
+  shadows below world actors. It is original code-generated pixel art, nearest-scaled through GameScale;
+  no external town assets.
+- `--smoke-test` also verifies counts, IDs, connected walkability/door approaches, all four reserved plots,
+  actual scene/collision, HUD and bounded setup time. `--screenshot=... --mode=town|town_overview` needs GPU.
+- Later: a transition owner retains the same player/state and caches or background-loads small interior scenes.
+  Do not implement merchants, NPC schedules or town/dungeon travel in the exterior stage.
 
 ## Art
 - **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).
@@ -126,7 +183,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   player's `Equipment` node holds body type + one piece per slot and emits `changed`; the player rebuilds its
   LpcCharacter. The weapon's art decides the attack (spear = thrust, others slash). Character sheet (C) has an
   Equipment column: live preview + one debug list per slot.
-- Monsters still use Kenney sprites (no LPC monsters downloaded yet).
+- Goblins use the existing LPC body/clothes/dagger plus the imported adult goblin head; per-item tint colors only
+  their body. Other monsters still use Kenney sprites (no separate LPC monster packs downloaded yet).
 - Pack: Kenney **Tiny Dungeon** (CC0) in `assets/`. Use `assets/Tilemap/tilemap_packed.png`: 12 x 11 tiles of 16 px,
   no spacing. Tile index = row * 12 + column; `TileAtlas` (scripts/levels/tile_atlas.gd) converts it.
 - The pack has **one frame per character** (no animation sheets) and **no skulls or torches**. Characters use
@@ -157,10 +215,11 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . --quit-after 300               # run the game briefly, catch script errors
     <godot> --headless --path . -- --smoke-test                # combat checks (test room), exit code 0 = pass
     <godot> --headless --path . -- --stats-test                # stat formulas with known values
-    <godot> --headless --path . -- --floor-test                # generator (8 seeds) + floor scene + streaming + debug keys
+    <godot> --headless --path . -- --floor-test                # cave art/collision checks + generator (8 seeds) + floor scene + streaming + debug keys
     <godot> --headless --path . -- --floor-test --seeds=100:25 --generator-only   # generator rules on more seeds
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless
-            # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place / test room: fight (--crit, --miss), room
+            # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place, cave, atmosphere / test room: fight (--crit, --miss), room, goblin
+            # atmosphere: --wall-side=south|north|east|west selects mount orientation
             # any mode: --perception=<n> sets the player's Perception first
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
 

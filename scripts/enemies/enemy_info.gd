@@ -47,11 +47,13 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	modulate.a = enemy.modulate.a
-	global_position = enemy.global_position \
-		+ Vector2(0, -GameScale.world(enemy.data.visual_size / 2.0 + BAR_GAP))
+	var head_offset: float = GameScale.world(enemy.data.visual_size / 2.0 + BAR_GAP)
+	if enemy.character != null:
+		head_offset += absf(LpcCharacter.FEET_OFFSET.y) * enemy.character.scale.y
+	global_position = enemy.global_position + Vector2(0, -head_offset)
 	_name_label.visible = named
 	if named:
-		_name_label.text = enemy.data.display_name
+		_name_label.text = enemy.data.localized_name()
 		_name_label.modulate = power_color()
 		_name_label.size = _name_label.get_minimum_size()
 		_name_label.position = Vector2(-_name_label.size.x / 2.0, -GameScale.world(BAR_SIZE.y + 1.0) - _name_label.size.y)

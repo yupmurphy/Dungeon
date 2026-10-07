@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Stats" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/stats.gd" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+strength = 0
+agility = 4
+vitality = 0
+magic = 0
+intelligence = 2
+perception = 2
+luck = 0

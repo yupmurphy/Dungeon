@@ -27,6 +27,8 @@ const DIAGONAL_SIDE_BIAS: float = 0.5
 @export var body_type: String = "male"
 ## Item ids from the LPC catalog (assets/lpc/catalog.json), one per slot.
 @export var items: Array[String] = []
+## Optional colors keyed by catalog item id. Empty keeps the existing player unchanged.
+@export var item_tints: Dictionary = {}
 ## Shared by every layer (hit flash shader).
 @export var layer_material: Material
 
@@ -52,13 +54,14 @@ func rebuild() -> void:
 	for id in items:
 		for layer: Dictionary in LpcCatalog.item(id).get("layers", []):
 			if layer["bodies"].has(body_type):
-				stack.append([int(layer["z"]), layer])
+				stack.append([int(layer["z"]), layer, id])
 	stack.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	for entry: Array in stack:
 		var sprite := AnimatedSprite2D.new()
 		sprite.sprite_frames = LpcCatalog.layer_frames(entry[1], body_type)
 		sprite.position = FEET_OFFSET
 		sprite.material = layer_material
+		sprite.modulate = item_tints.get(entry[2], Color.WHITE)
 		add_child(sprite)
 		_layers.append(sprite)
 	_apply_frame()
