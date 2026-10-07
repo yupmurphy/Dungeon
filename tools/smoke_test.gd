@@ -58,6 +58,13 @@ func run(_options: Dictionary) -> void:
 	sheet._stat_buttons[Vector2i(Stats.Stat.AGILITY, 10)].pressed.emit()
 	_check(sheet._derived_values[7].text == "15%", "Agility 15 -> enemies miss 15%% (%s)" % sheet._derived_values[7].text)
 	player.stats.agility = 5
+	var torch := player.get_node("Torch") as PointLight2D
+	var torch_before: float = torch.texture_scale
+	sheet._stat_buttons[Vector2i(Stats.Stat.PERCEPTION, 10)].pressed.emit()
+	_check(torch.texture_scale > torch_before * 1.5, "Perception +10 -> the light around the player grows (x%.2f)"
+		% (torch.texture_scale / torch_before))
+	player.stats.perception = 5
+	_check(is_equal_approx(torch.texture_scale, torch_before), "back to Perception 5 -> light back to normal")
 	sheet._xp_button.pressed.emit()
 	sheet._xp_button.pressed.emit()
 	_check(player.progression.level == 2 and player.progression.xp == 0, "2 x +50 XP -> level 2")

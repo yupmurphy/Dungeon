@@ -22,6 +22,8 @@ func run(options: Dictionary) -> void:
 		await get_tree().process_frame
 	var room: Node = get_tree().current_scene
 	var player := room.get_node("World/Player") as Player
+	if options.has("--perception"):
+		player.stats.perception = int(options["--perception"])
 
 	match mode:
 		"fight":

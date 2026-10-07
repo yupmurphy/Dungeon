@@ -55,6 +55,7 @@ func _ready() -> void:
 	_world.add_child(portal)
 
 	_exploration.setup(layout, _slot_colors(), _legend())
+	_exploration.reveal_radius = _player.stats.get_reveal_radius()
 	_exploration.update_player(_player.global_position)
 	_activator.refresh()
 	_hud.setup_floor(floor_data.display_name, current_seed)
@@ -93,6 +94,7 @@ static func _compass(direction: Vector2) -> String:
 
 func _physics_process(_delta: float) -> void:
 	chunks.update_player(_player.global_position)
+	_exploration.reveal_radius = _player.stats.get_reveal_radius()
 	_exploration.update_player(_player.global_position)
 	var cell: Vector2i = _exploration.world_to_cell(_player.global_position)
 	var slot: int = layout.slot_at(cell.x, cell.y)

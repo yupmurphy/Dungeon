@@ -29,8 +29,6 @@ var progression: Progression = Progression.new()
 ## Distance from the player's center to the center of the sword hitbox.
 @export var attack_reach: float = 18.0
 @export var attack_size: Vector2 = Vector2(22, 28)
-## Radius of the light the player carries.
-@export var light_radius: float = 100.0
 
 @export_group("Movement")
 @export var base_move_speed: float = 110.0
@@ -110,8 +108,13 @@ func _apply_sizes() -> void:
 	var sword := $AttackPivot/WeaponPivot/Sword as Sprite2D
 	sword.position.x = GameScale.world(attack_reach * 0.6)
 	sword.scale = GameScale.fit_scale(sword.texture.get_size(), visual_size)
+	_apply_light()
+
+
+## The light radius comes from Perception (Stats).
+func _apply_light() -> void:
 	var light := $Torch as PointLight2D
-	light.texture_scale = GameScale.world(light_radius) * 2.0 / light.texture.get_width()
+	light.texture_scale = GameScale.world(stats.get_light_radius()) * 2.0 / light.texture.get_width()
 
 
 func _physics_process(delta: float) -> void:
@@ -262,3 +265,4 @@ func _on_died() -> void:
 func _on_stats_changed() -> void:
 	health.set_max_health(stats.get_max_health())
 	stamina.set_max_stamina(stats.get_max_stamina())
+	_apply_light()

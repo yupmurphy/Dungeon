@@ -31,7 +31,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   - `Combat` (scripts/core/combat.gd) resolves every hit the same way for player and monsters: miss roll (target
     Agility, max 80%), crit roll (attacker Perception, x1.5), damage x (1 + bonus) then x 100 / (100 + defense).
     Hitbox carries `attacker` stats, Hurtbox `defender` stats; `Combat.forced_rolls` makes tests deterministic.
-    Monsters are only visible inside the player's sight radius (Perception).
+    Perception also drives the player's light radius and the map reveal radius (ExplorationMap.reveal_radius,
+    set by FloorLevel); monsters are only visible inside the player's sight radius.
   - `MonsterData`: one monster type (stats, XP, behaviors, region, SpriteFrames + tint, ranges, timings, damage).
   - `RegionData`: name, tile tint, map color, monster list, mini-boss. `FloorData`: size, regions, boss.
 - **Texts that the user edits** (stat explanations, "Miss") live in `localization/texts.csv` (Godot translation,
@@ -136,6 +137,7 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . -- --floor-test --seeds=100:25 --generator-only   # generator rules on more seeds
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless
             # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place / test room: fight (--crit, --miss), dodge, room
+            # any mode: --perception=<n> sets the player's Perception first
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
 
 The user runs the game from the editor's embedded Game tab: if keys do nothing, the Game tab toolbar is

@@ -313,6 +313,14 @@ func _check_scene() -> void:
 	_check(exploration.is_explored(layout.start_cell), "start area is revealed")
 	_check(not exploration.is_explored(layout.portal_cell), "portal area starts hidden (fog)")
 	_check(exploration.explored_ratio() < 0.02, "most of the map starts hidden (%.0f%% seen)" % (exploration.explored_ratio() * 100.0))
+	_check(exploration.reveal_radius == player.stats.get_reveal_radius(), "map reveal radius comes from Perception")
+	var seen_before: float = exploration.explored_ratio()
+	player.stats.perception += 10
+	for i in 3:
+		await get_tree().physics_frame
+	_check(exploration.reveal_radius == 13 and exploration.explored_ratio() > seen_before,
+		"Perception +10 -> reveal radius 13, more of the map revealed at once")
+	player.stats.perception -= 10
 
 	for action in ["map", "debug_new_seed", "debug_reveal_map", "debug_invincible", "debug_show_seed"]:
 		_check(InputMap.has_action(action) and InputMap.action_get_events(action).size() > 0,

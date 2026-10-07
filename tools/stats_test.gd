@@ -65,6 +65,12 @@ func run(_options: Dictionary) -> void:
 	_check_value(_with(Stats.Stat.PERCEPTION, 150).get_crit_chance(), 1.0, "Perception 150 -> 100% critical (cap)")
 	_check(_with(Stats.Stat.PERCEPTION, 20).get_sight_radius() > _with(Stats.Stat.PERCEPTION, 5).get_sight_radius(),
 		"more Perception -> see monsters farther")
+	_check_value(_with(Stats.Stat.PERCEPTION, 5).get_light_radius(), 100.0, "Perception 5 -> light radius 100 px (6.25 tiles)")
+	_check_value(_with(Stats.Stat.PERCEPTION, 15).get_light_radius(), 160.0, "Perception 15 -> light radius 160 px")
+	_check_value(_with(Stats.Stat.PERCEPTION, 500).get_light_radius(), Stats.LIGHT_RADIUS_MAX, "light radius is capped")
+	_check(_with(Stats.Stat.PERCEPTION, 5).get_reveal_radius() == 9, "Perception 5 -> map reveal radius 9 tiles")
+	_check(_with(Stats.Stat.PERCEPTION, 15).get_reveal_radius() == 13, "Perception 15 -> map reveal radius 13 tiles")
+	_check(_with(Stats.Stat.PERCEPTION, 500).get_reveal_radius() == Stats.REVEAL_RADIUS_MAX, "map reveal radius is capped")
 
 	print("--- damage formulas")
 	var average := Stats.new()

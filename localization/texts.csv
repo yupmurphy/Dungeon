@@ -17,7 +17,7 @@ STAT_STRENGTH_DESC,"Raw power. You hit harder, push enemies farther, take less d
 STAT_AGILITY_DESC,"Speed and reflexes. You attack and move faster, enemies miss you more often and your dodge protects you longer."
 STAT_VITALITY_DESC,"Toughness. More health and stamina, and poison wears off sooner."
 STAT_INTELLIGENCE_DESC,"Mind. More mana for abilities, and a bit more damage."
-STAT_PERCEPTION_DESC,"Sharp eyes. More critical hits, and you spot monsters and traps from farther away."
+STAT_PERCEPTION_DESC,"Sharp eyes. More critical hits, a wider light around you, more of the map revealed, and you spot monsters and traps from farther away."
 STAT_LUCK_DESC,"Fortune. It does nothing yet; its effects come later."
 STAT_HEADER,{name} {value}:
 EFFECT_DAMAGE,+{value}% damage
@@ -33,7 +33,9 @@ EFFECT_STAMINA,+{value} stamina
 EFFECT_POISON,-{value}% poison duration
 EFFECT_MANA,+{value} mana
 EFFECT_CRIT,+{value}% critical chance
-EFFECT_SIGHT,+{value} tiles sight radius
+EFFECT_SIGHT,+{value} tiles radius in which you see monsters
+EFFECT_LIGHT,+{value} tiles light radius
+EFFECT_REVEAL,+{value} tiles map reveal radius
 EFFECT_NONE,No effect yet.
 DERIVED_HEALTH,Health
 DERIVED_STAMINA,Stamina
@@ -45,7 +47,9 @@ DERIVED_MOVE_SPEED,Movement speed
 DERIVED_EVADE,Enemies miss you
 DERIVED_DODGE,Dodge invulnerability
 DERIVED_CRIT,Critical chance
-DERIVED_SIGHT,Sight radius
+DERIVED_SIGHT,Monster sight
+DERIVED_LIGHT,Light radius
+DERIVED_REVEAL,Map reveal radius
 DERIVED_KNOCKBACK,Knockback
 DERIVED_CARRY,Carry weight
 DERIVED_POISON,Poison duration
@@ -60,6 +64,8 @@ DERIVED_EVADE_FROM,"From Agility: {per}% per point, at most {max}%."
 DERIVED_DODGE_FROM,"From Agility: {base} s + {per} s per point."
 DERIVED_CRIT_FROM,"From Perception: {per}% per point. Critical hits do {critical}% damage."
 DERIVED_SIGHT_FROM,"From Perception: {base} + {per} tiles per point. You see monsters (and traps, later) this far."
+DERIVED_LIGHT_FROM,"From Perception: {base} + {per} tiles per point (at most {max}). How far your light reaches in the dark."
+DERIVED_REVEAL_FROM,"From Perception: {base} + {per} tiles per point, rounded down (at most {max}). How far around you the map gets revealed."
 DERIVED_KNOCKBACK_FROM,"From Strength: +{per}% per point."
 DERIVED_CARRY_FROM,"From Strength: {base} + {per} per point."
 DERIVED_POISON_FROM,"From Vitality: -{per}% per point, but poison lasts at least {min}% of its time."

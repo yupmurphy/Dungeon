@@ -26,7 +26,7 @@ const COLUMN_TITLE_Y: float = 42.0
 const STATS_Y: float = 60.0
 const STAT_ROW_HEIGHT: float = 20.0
 const DERIVED_Y: float = 58.0
-const DERIVED_ROW_HEIGHT: float = 12.0
+const DERIVED_ROW_HEIGHT: float = 11.0
 const TOOLTIP_WIDTH: float = 190.0
 ## Debug buttons next to each stat: label and amount.
 const STAT_BUTTONS: Array[Array] = [["-", -1], ["+", 1], ["+10", 10]]

@@ -3,11 +3,10 @@ extends Node2D
 ## Fog of war + map data. Keeps which tiles the player has seen and draws two textures from it:
 ## - fog: black over unseen tiles (child Sprite2D, one pixel per tile, scaled up to tile size)
 ## - map_texture: explored tiles in region colors, used by the minimap and the big map (M).
-## Tiles are revealed in a radius around the player, only where there is line of sight.
+## Tiles are revealed in a radius around the player (Perception), only where there is line of sight.
 
 signal revealed
 
-const REVEAL_RADIUS: int = 9
 const ROCK_DARKEN: float = 0.72
 const PORTAL_MAP_COLOR: Color = Color(0.8, 0.4, 1.0)
 ## Gates of the closed zone and the boss arena entrance.
@@ -17,6 +16,12 @@ var layout: FloorLayout
 var map_texture: ImageTexture
 ## [{name, color}] per region slot, for the big map legend.
 var legend: Array[Dictionary] = []
+## Tiles revealed around the player; FloorLevel sets it from Perception (Stats.get_reveal_radius).
+var reveal_radius: int = 9:
+	set(value):
+		if value != reveal_radius:
+			reveal_radius = value
+			_last_cell = Vector2i(-99999, -99999)  # reveal again with the new radius
 
 var _explored: PackedByteArray
 var _explored_floor: int = 0
@@ -29,10 +34,8 @@ var _dirty: bool = false
 
 @onready var _fog: Sprite2D = $Fog
 
-
 func _ready() -> void:
 	add_to_group("exploration")
-
 
 func setup(new_layout: FloorLayout, slot_colors: Array[Color], new_legend: Array[Dictionary]) -> void:
 	layout = new_layout
@@ -54,10 +57,8 @@ func setup(new_layout: FloorLayout, slot_colors: Array[Color], new_legend: Array
 	_fog.scale = Vector2(GameScale.TILE_SIZE, GameScale.TILE_SIZE)
 	_last_cell = Vector2i(-99999, -99999)
 
-
 func world_to_cell(world_position: Vector2) -> Vector2i:
 	return Vector2i((world_position / GameScale.TILE_SIZE).floor())
-
 
 ## Call every frame with the player position; work happens only when the player changes tile.
 func update_player(world_position: Vector2) -> void:
@@ -67,15 +68,14 @@ func update_player(world_position: Vector2) -> void:
 	if cell == _last_cell:
 		return
 	_last_cell = cell
-	for dy in range(-REVEAL_RADIUS, REVEAL_RADIUS + 1):
-		for dx in range(-REVEAL_RADIUS, REVEAL_RADIUS + 1):
-			if dx * dx + dy * dy > REVEAL_RADIUS * REVEAL_RADIUS:
+	for dy in range(-reveal_radius, reveal_radius + 1):
+		for dx in range(-reveal_radius, reveal_radius + 1):
+			if dx * dx + dy * dy > reveal_radius * reveal_radius:
 				continue
 			var target: Vector2i = cell + Vector2i(dx, dy)
 			if layout.in_bounds(target.x, target.y) and _has_line_of_sight(cell, target):
 				_mark(target.x, target.y)
 	_commit()
-
 
 func reveal_all() -> void:
 	for y in layout.size.y:
@@ -84,14 +84,11 @@ func reveal_all() -> void:
 				_mark(x, y)
 	_commit()
 
-
 func is_explored(cell: Vector2i) -> bool:
 	return layout.in_bounds(cell.x, cell.y) and _explored[cell.y * layout.size.x + cell.x] == 1
 
-
 func explored_ratio() -> float:
 	return float(_explored_floor) / maxf(layout.floor_cell_count(), 1.0)
-
 
 ## Bresenham walk; every cell strictly between a and b must be floor. The target itself may be a wall,
 ## so walls facing the player get revealed.
@@ -114,7 +111,6 @@ func _has_line_of_sight(a: Vector2i, b: Vector2i) -> bool:
 			cell.y += sy
 	return true
 
-
 func _mark(x: int, y: int) -> void:
 	var index: int = y * layout.size.x + x
 	if _explored[index] == 1:
@@ -133,7 +129,6 @@ func _mark(x: int, y: int) -> void:
 	else:
 		# Rock keeps a dark shade of its zone's color, so the zones read clearly on the map.
 		_map_image.set_pixel(x, y, zone_color.darkened(ROCK_DARKEN))
-
 
 func _commit() -> void:
 	if not _dirty:

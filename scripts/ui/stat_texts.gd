@@ -59,6 +59,8 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 			lines.append(_text("EFFECT_CRIT", {"value": _num(minf(value * Stats.CRIT_CHANCE_PER_PERCEPTION,
 				Stats.CRIT_CHANCE_MAX) * 100.0)}))
 			lines.append(_text("EFFECT_SIGHT", {"value": _num(_tiles(value * Stats.SIGHT_RADIUS_PER_PERCEPTION))}))
+			lines.append(_text("EFFECT_LIGHT", {"value": _num(_tiles(value * Stats.LIGHT_RADIUS_PER_PERCEPTION))}))
+			lines.append(_text("EFFECT_REVEAL", {"value": _num(value * Stats.REVEAL_RADIUS_PER_PERCEPTION)}))
 		Stats.Stat.LUCK:
 			lines.append(_text("EFFECT_NONE"))
 	return lines
@@ -96,6 +98,12 @@ static func derived(stats: Stats) -> Array[Derived]:
 		{"per": _num(Stats.CRIT_CHANCE_PER_PERCEPTION * 100.0), "critical": _num(Stats.CRITICAL_DAMAGE * 100.0)}))
 	list.append(_derived("SIGHT", "%s tiles" % _num(_tiles(stats.get_sight_radius())),
 		{"base": _num(_tiles(Stats.SIGHT_RADIUS_BASE)), "per": _num(_tiles(Stats.SIGHT_RADIUS_PER_PERCEPTION))}))
+	list.append(_derived("LIGHT", "%s tiles" % _num(_tiles(stats.get_light_radius())),
+		{"base": _num(_tiles(Stats.LIGHT_RADIUS_BASE)), "per": _num(_tiles(Stats.LIGHT_RADIUS_PER_PERCEPTION)),
+		"max": _num(_tiles(Stats.LIGHT_RADIUS_MAX))}))
+	list.append(_derived("REVEAL", "%d tiles" % stats.get_reveal_radius(),
+		{"base": _num(Stats.REVEAL_RADIUS_BASE), "per": _num(Stats.REVEAL_RADIUS_PER_PERCEPTION),
+		"max": Stats.REVEAL_RADIUS_MAX}))
 	list.append(_derived("KNOCKBACK", _percent_over(stats.get_knockback_multiplier()),
 		{"per": _num(Stats.KNOCKBACK_PER_STRENGTH * 100.0)}))
 	list.append(_derived("CARRY", _num(stats.get_carry_weight()),
