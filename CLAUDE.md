@@ -24,7 +24,9 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   (`HealthComponent`, `StaminaComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, camera shake). Player and enemies share them.
 - **Game data is separated from logic** as `Resource` classes (`scripts/resources/`) with instances in `resources/`
   (`.tres`). Adding a monster or changing balance = new/edited `.tres`, no logic rewrite.
-  - `Stats` (strength, agility, vitality) owns every derived formula (max health, damage, attack speed, ...).
+  - `Stats`: 6 main stats (strength, agility, vitality, intelligence, perception, luck), all start at 5
+    (`STARTING_VALUE`); only they are saved. It owns every derived formula (health, stamina, mana, damage, speeds...)
+    as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.
   - `MonsterData`: one monster type (stats, XP, behaviors, region, SpriteFrames + tint, ranges, timings, damage).
   - `RegionData`: name, tile tint, map color, monster list, mini-boss. `FloorData`: size, regions, boss.
@@ -120,6 +122,7 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . --import                       # re-import, register classes
     <godot> --headless --path . --quit-after 300               # run the game briefly, catch script errors
     <godot> --headless --path . -- --smoke-test                # combat checks (test room), exit code 0 = pass
+    <godot> --headless --path . -- --stats-test                # stat formulas with known values
     <godot> --headless --path . -- --floor-test                # generator (8 seeds) + floor scene + streaming + debug keys
     <godot> --headless --path . -- --floor-test --seeds=100:25 --generator-only   # generator rules on more seeds
     <godot> --path . -- --screenshot=<png> --mode=<mode> [--seed=<n>]   # needs GPU, not headless

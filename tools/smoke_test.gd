@@ -22,7 +22,8 @@ func run(_options: Dictionary) -> void:
 		_check(InputMap.has_action(action) and InputMap.action_get_events(action).size() > 0,
 			"input action '%s' mapped" % action)
 	_check(player.health.current_health == 100.0, "player starts with 100 HP")
-	_check(player.stamina.current_stamina == 100.0, "player starts with full stamina")
+	_check(player.stamina.current_stamina == player.stats.get_max_stamina() and player.stamina.max_stamina == 70.0,
+		"player starts with full stamina (70 = 50 + 4 x Vitality 5)")
 	var frames: Array = [slime.sprite.sprite_frames, bat.sprite.sprite_frames, spider.sprite.sprite_frames]
 	_check(frames[0] != frames[1] and frames[1] != frames[2] and frames[0] != frames[2],
 		"each enemy uses different sprites")
@@ -56,7 +57,7 @@ func run(_options: Dictionary) -> void:
 	print("--- dodge")
 	player._try_dodge(Vector2.RIGHT)
 	_check(player.hurtbox.is_invulnerable(), "dodge gives invulnerability")
-	_check(player.stamina.current_stamina == 75.0, "dodge costs 25 stamina")
+	_check(player.stamina.current_stamina == player.stamina.max_stamina - 25.0, "dodge costs 25 stamina")
 	await get_tree().create_timer(0.1).timeout
 	_check(effects.get_child_count() > 0, "dodge leaves a ghost trail")
 	await get_tree().create_timer(0.3).timeout
@@ -72,7 +73,10 @@ func run(_options: Dictionary) -> void:
 	print("--- hit-stop")
 	GameFeel.hit_stop(0.05)
 	_check(Engine.time_scale < 1.0, "hit-stop slows time")
-	await get_tree().create_timer(0.1, true, false, true).timeout
+	# Timers count from the start of the frame, so poll the real clock instead of trusting one short timer.
+	var deadline: int = Time.get_ticks_msec() + 500
+	while Engine.time_scale < 1.0 and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
 	_check(Engine.time_scale == 1.0, "hit-stop ends by itself")
 
 	print("--- spider dies")

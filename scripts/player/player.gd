@@ -78,8 +78,11 @@ var _flash_tween: Tween
 func _ready() -> void:
 	if stats == null:
 		stats = Stats.new()
+	# Own copy: changing the stats in game must not edit the shared .tres.
+	stats = stats.duplicate()
 	_apply_sizes()
 	health.setup(stats.get_max_health())
+	stamina.setup(stats.get_max_stamina())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
 	hitbox.activated.connect(slash_visual.show)

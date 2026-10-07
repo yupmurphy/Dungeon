@@ -18,6 +18,13 @@ func _ready() -> void:
 	stamina_changed.emit(current_stamina, max_stamina)
 
 
+## Called by the owner with the max stamina computed from its stats; refills the bar.
+func setup(new_max: float) -> void:
+	max_stamina = new_max
+	current_stamina = new_max
+	stamina_changed.emit(current_stamina, max_stamina)
+
+
 func spend(cost: float) -> bool:
 	if current_stamina < cost:
 		return false

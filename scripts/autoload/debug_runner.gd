@@ -2,6 +2,7 @@ extends Node
 ## Dev-only command line hooks (autoload DebugRunner). Does nothing unless Godot gets user args after "--":
 ##   -- --smoke-test                                  automated combat checks, exit code 0 = all passed
 ##   -- --floor-test                                  floor generator + floor scene checks
+##   -- --stats-test                                  stat formulas checked with known values
 ##   -- --seed=<number>                               (read by FloorLevel) start the floor with this seed
 ##   -- --screenshot=<file.png> [--mode=idle|fight|dodge]   save one rendered frame (not headless)
 ##   -- --build-room                                  regenerate tileset + test room tiles
@@ -11,6 +12,7 @@ extends Node
 const TOOLS: Dictionary = {
 	"--smoke-test": "res://tools/smoke_test.gd",
 	"--floor-test": "res://tools/floor_test.gd",
+	"--stats-test": "res://tools/stats_test.gd",
 	"--screenshot": "res://tools/screenshot.gd",
 	"--build-room": "res://tools/room_builder.gd",
 	"--terrain-map": "res://tools/terrain_map.gd",
