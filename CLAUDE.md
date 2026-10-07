@@ -112,6 +112,21 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
   (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
 
+## Town (human hub)
+- Static, hand-edited scene `scenes/town/town.tscn` (user decision: towns are built by hand, not generated). Guide for
+  editing it: `README.md`. `tools/town_builder.gd` (`-- --build-town --force`) laid out the first version ONCE; never
+  rerun it (it overwrites hand edits). Run the town with F6 on the scene; N toggles night (`toggle_night`).
+- Layers: Grass, Water, Roads (dirt + soil), Paving (cobbles) = `TownTiles` TileSet (`resources/tilesets/town_tileset.tres`,
+  LPC terrain sheets, corner terrains so roads can be painted in the editor). y-sorted `World`: Walls, Buildings,
+  Props, Trees, Player. Every LPC door faces south, so every building fronts a street (checked by `--town-test`).
+- Nodes, all `@tool` (live preview in the editor): `TownBuilding` (walls, roof, door, windows, chimney, sign, banners
+  from LPC pieces; footprint = width x roof_height tiles above its bottom-left corner), `TownWall`, `TownFence`,
+  `TownProp` (any `TownArt.PROPS` entry: sprite rect, footprint, frames, light), `WantedBoard` (`WantedPoster` .tres).
+  Landmarks are scenes in `scenes/town/buildings/`; drag-in parts in `scenes/town/parts/`.
+- `TownArt` is the single list of sheet rectangles for town art (`assets/town/`, LPC packs + LPC Base Assets).
+  `TownLighting` (CanvasModulate) fades day / night and switches every "town_lights" node (`lit`) and the player torch.
+  `TownSmoke` = chimney / forge particles; `town_water.gdshader` = glints on the stream.
+
 ## Art
 - **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).
   `tools/lpc_import.gd` (`-- --lpc-import=D:/DungeonHunters/lpc-generator`, a clone of the Universal LPC generator
@@ -146,7 +161,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 
 ## Input map
 `move_up/down/left/right` = WASD, `attack` = left mouse, `sprint` = Shift, `restart` = R, `map` = M, `character_sheet` = C,
-`debug_new_seed` F1, `debug_reveal_map` F2, `debug_invincible` F3, `debug_show_seed` F4.
+`debug_new_seed` F1, `debug_reveal_map` F2, `debug_invincible` F3, `debug_show_seed` F4, `toggle_night` = N (town).
 
 ## Running / checking
 Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tools run inside the real game
@@ -163,6 +178,8 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
             # floor modes: idle, map, sheet (--hover=stat:2), overview, gate, arena, start, place / test room: fight (--crit, --miss), room
             # any mode: --perception=<n> sets the player's Perception first
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
+    <godot> --headless --path . -- --town-test                 # town scene checks (doors, overlaps, gates, walls, night)
+    <godot> --path . -- --screenshot=<png> --mode=town --at=<x>,<y> --zoom=<z> [--night] [--no-limits]
 
 The user runs the game from the editor's embedded Game tab: if keys do nothing, the Game tab toolbar is
 probably in 2D/3D selection mode instead of "Input".
