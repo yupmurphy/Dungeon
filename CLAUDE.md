@@ -112,7 +112,13 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   `assets/lpc/catalog.json` (item -> slot, layers with z order, sheet per animation per body type), `assets/CREDITS.csv`
   (license row per file) and `CREDITS.md` (authors, sources, and which pieces are free to use and how). Keep credits!
   `LpcCatalog` cuts sheets into SpriteFrames; `LpcCharacter` stacks one AnimatedSprite2D per layer and drives the
-  same frame on all of them (idle, walk, slash, thrust, hurt; layers without the animation hide).
+  same frame on all of them (idle, walk, slash, thrust; flinch = first frames of the LPC fall, death = the whole
+  fall; layers without the animation hide). LPC has 4 directions only: diagonals use the side view.
+- **Paper doll:** `EquipmentData` (resources/equipment/<id>.tres, made by the import tool, edits kept): `id` (unique,
+  for future stats/drops/saves), display name, slot (hair, torso, legs, feet, helmet, weapon), `lpc_item`. The
+  player's `Equipment` node holds body type + one piece per slot and emits `changed`; the player rebuilds its
+  LpcCharacter. The weapon's art decides the attack (spear = thrust, others slash). Character sheet (C) has an
+  Equipment column: live preview + one debug list per slot.
 - Monsters still use Kenney sprites (no LPC monsters downloaded yet).
 - Pack: Kenney **Tiny Dungeon** (CC0) in `assets/`. Use `assets/Tilemap/tilemap_packed.png`: 12 x 11 tiles of 16 px,
   no spacing. Tile index = row * 12 + column; `TileAtlas` (scripts/levels/tile_atlas.gd) converts it.

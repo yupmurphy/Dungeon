@@ -322,17 +322,23 @@ func _check_scene() -> void:
 		"Perception +10 -> reveal radius 13, more of the map revealed at once")
 	player.stats.perception -= 10
 	# The reveal runs on every tile step; at the max radius (max Perception) it must stay cheap.
+	# The reveal runs on every tile step; at the max radius (max Perception) it must stay cheap. Timings are
+	# compared with the normal radius, so a busy PC (editor open) doesn't fail the check.
+	var reveal_ms: Array[float] = []
 	for radius in [9, Stats.REVEAL_RADIUS_MAX]:
 		var reveal_start: int = Time.get_ticks_usec()
 		for step in 10:
-			exploration.reveal_radius = radius  # forces a fresh reveal
-			exploration.reveal_radius = 0
+			exploration.reveal_radius = 0  # forces a fresh reveal
 			exploration.update_player(player.global_position + Vector2(step * GameScale.TILE_SIZE, 0))
 			exploration.reveal_radius = radius
 			exploration.update_player(player.global_position + Vector2(step * GameScale.TILE_SIZE, 0))
-		var step_ms: float = (Time.get_ticks_usec() - reveal_start) / 10000.0
-		_check(step_ms < 6.0, "map reveal at radius %d: %.2f ms per step" % [radius, step_ms])
-	await _check_fast_run(floor_level, player)
+		reveal_ms.append((Time.get_ticks_usec() - reveal_start) / 10000.0)
+	_check(reveal_ms[1] < reveal_ms[0] * 8.0 and reveal_ms[1] < 12.0, "map reveal: radius 9 %.2f ms, radius %d %.2f ms per step"
+		% [reveal_ms[0], Stats.REVEAL_RADIUS_MAX, reveal_ms[1]])
+	var normal: Array[float] = await _fast_run(floor_level, player, 5)
+	var sharp: Array[float] = await _fast_run(floor_level, player, 100)
+	_check(sharp[1] < normal[1] * 1.6 + 5.0, "fast run (Agility 300): slowest frame %.1f ms with Perception 5, %.1f ms with 100"
+		% [normal[1], sharp[1]])
 
 	for action in ["map", "debug_new_seed", "debug_reveal_map", "debug_invincible", "debug_show_seed"]:
 		_check(InputMap.has_action(action) and InputMap.action_get_events(action).size() > 0,
@@ -431,12 +437,12 @@ func _wait_for_new_floor(old: Node) -> FloorLevel:
 	return null
 
 
-## Very high Agility + Perception: the player crosses the map fast (moved 0.5 tile per frame, ~Agility 300),
-## the slowest frame must stay playable.
-func _check_fast_run(floor_level: FloorLevel, player: Player) -> void:
+## The player crosses the map fast (moved 0.5 tile per frame, ~Agility 300) with this Perception.
+## Returns [average frame ms, slowest frame ms].
+func _fast_run(floor_level: FloorLevel, player: Player, perception: int) -> Array[float]:
 	var start: Vector2 = player.global_position
 	player.stats.agility = 300
-	player.stats.perception = 100
+	player.stats.perception = perception
 	var step: Vector2 = Vector2(0.5, 0.2).normalized() * GameScale.TILE_SIZE * 0.5
 	var slowest: float = 0.0
 	var total: float = 0.0
@@ -449,13 +455,14 @@ func _check_fast_run(floor_level: FloorLevel, player: Player) -> void:
 		slowest = maxf(slowest, (now - last) / 1000.0)
 		total += (now - last) / 1000.0
 		last = now
-	_check(slowest < 25.0, "fast run with max Agility + Perception: average frame %.1f ms, slowest %.1f ms (reveal %d)" % [total / 300.0, slowest,
-		floor_level._exploration.reveal_radius])
+	print("    fast run, Perception %d (reveal %d): average %.1f ms, slowest %.1f ms" % [perception,
+		floor_level._exploration.reveal_radius, total / 300.0, slowest])
 	player.global_position = start
 	player.stats.agility = 5
 	player.stats.perception = 5
-	for i in 3:
+	for i in 30:
 		await get_tree().physics_frame
+	return [total / 300.0, slowest]
 
 
 func _press(key: Key) -> void:

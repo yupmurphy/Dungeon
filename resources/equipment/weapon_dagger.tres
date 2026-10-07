@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EquipmentData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/equipment_data.gd" id="1_c1cea"]
+
+[resource]
+script = ExtResource("1_c1cea")
+id = &"weapon_dagger"
+display_name = "Dagger"
+slot = 5
+lpc_item = "weapon_dagger"

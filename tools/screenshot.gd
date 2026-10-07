@@ -22,6 +22,11 @@ func run(options: Dictionary) -> void:
 		await get_tree().process_frame
 	var room: Node = get_tree().current_scene
 	var player := room.get_node("World/Player") as Player
+	# --equip=<id>,<id> wears these pieces, --body=male|female (see resources/equipment/).
+	if options.has("--body"):
+		player.equipment.set_body_type(options["--body"])
+	for id in String(options.get("--equip", "")).split(",", false):
+		player.equipment.equip(Equipment.find(StringName(id)))
 	if options.has("--perception"):
 		player.stats.perception = int(options["--perception"])
 
@@ -98,7 +103,8 @@ func run(options: Dictionary) -> void:
 			var hover: PackedStringArray = String(options.get("--hover", "stat:2")).split(":")
 			var index: int = int(hover[1])
 			var rows: Array[Rect2] = sheet._stat_rows if hover[0] == "stat" else sheet._derived_rows
-			sheet.forced_mouse = rows[index].get_center() + Vector2(20, 0)
+			if index < rows.size():  # an index past the end = hover nothing
+				sheet.forced_mouse = rows[index].get_center() + Vector2(20, 0)
 			for i in 5:
 				await get_tree().process_frame
 		"map":

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EquipmentData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/equipment_data.gd" id="1_lkxa6"]
+
+[resource]
+script = ExtResource("1_lkxa6")
+id = &"legs_leggings"
+display_name = "Leggings"
+slot = 2
+lpc_item = "legs_leggings"

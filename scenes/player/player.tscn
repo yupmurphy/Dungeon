@@ -9,6 +9,13 @@
 [ext_resource type="Shader" path="res://resources/shaders/flash.gdshader" id="8_flash"]
 [ext_resource type="Script" path="res://scripts/components/camera_shake.gd" id="10_camera"]
 [ext_resource type="Script" path="res://scripts/components/lpc_character.gd" id="11_lpc"]
+[ext_resource type="Script" path="res://scripts/components/equipment.gd" id="12_equipment"]
+[ext_resource type="Resource" path="res://resources/equipment/hair_plain.tres" id="13_hair"]
+[ext_resource type="Resource" path="res://resources/equipment/torso_longsleeve.tres" id="14_torso"]
+[ext_resource type="Resource" path="res://resources/equipment/legs_pants.tres" id="15_legs"]
+[ext_resource type="Resource" path="res://resources/equipment/feet_shoes.tres" id="16_feet"]
+[ext_resource type="Resource" path="res://resources/equipment/weapon_sword.tres" id="17_weapon"]
+[ext_resource type="Script" path="res://scripts/resources/equipment_data.gd" id="18_equipment_data"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
 resource_local_to_scene = true
@@ -47,7 +54,6 @@ stats = ExtResource("2_stats")
 
 [node name="Character" type="Node2D" parent="Visual"]
 script = ExtResource("11_lpc")
-items = Array[String](["body", "head_human_male", "hair_plain", "torso_longsleeve", "legs_pants", "feet_shoes", "weapon_sword"])
 layer_material = SubResource("ShaderMaterial_flash")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
@@ -55,6 +61,10 @@ shape = SubResource("CircleShape2D_body")
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("3_health")
+
+[node name="Equipment" type="Node" parent="."]
+script = ExtResource("12_equipment")
+starting = Array[ExtResource("18_equipment_data")]([ExtResource("13_hair"), ExtResource("14_torso"), ExtResource("15_legs"), ExtResource("16_feet"), ExtResource("17_weapon")])
 
 [node name="StaminaComponent" type="Node" parent="."]
 script = ExtResource("4_stamina")

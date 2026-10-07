@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="EquipmentData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/equipment_data.gd" id="1_cys0b"]
+
+[resource]
+script = ExtResource("1_cys0b")
+id = &"torso_leather"
+display_name = "Leather armor"
+lpc_item = "torso_leather"

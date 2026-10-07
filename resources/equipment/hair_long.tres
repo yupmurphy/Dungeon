@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EquipmentData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/equipment_data.gd" id="1_667fx"]
+
+[resource]
+script = ExtResource("1_667fx")
+id = &"hair_long"
+display_name = "Long hair"
+slot = 0
+lpc_item = "hair_long"

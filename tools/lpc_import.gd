@@ -12,6 +12,8 @@ const CATALOG: String = "res://assets/lpc/catalog.json"
 const CREDITS: String = "res://assets/CREDITS.csv"
 ## Human-readable credits: every source and author, and which pieces are free to use and how.
 const CREDITS_PAGE: String = "res://CREDITS.md"
+## One EquipmentData .tres per wearable item (made once; later edits to the .tres are kept).
+const EQUIPMENT_DIR: String = "res://resources/equipment/"
 const BODY_TYPES: Array[String] = ["male", "female"]
 const ANIMATIONS: Array[String] = ["idle", "walk", "slash", "thrust", "hurt"]
 ## Oversized attack layers (weapons): which of our animations they replace.
@@ -73,7 +75,9 @@ func run(options: Dictionary) -> void:
 	file.close()
 	var credited: int = _write_credits(clone)
 	_write_credits_page(catalog)
-	print("LPC import: %d items, %d files copied, %d credited" % [catalog.size(), _copied.size(), credited])
+	var created: int = _write_equipment(catalog)
+	print("LPC import: %d items, %d files copied, %d credited, %d new equipment resources" % [catalog.size(),
+		_copied.size(), credited, created])
 	for line in _missing:
 		print("  missing: ", line)
 	get_tree().quit(0)
@@ -301,3 +305,22 @@ static func _csv_fields(line: String) -> PackedStringArray:
 			current += c
 	fields.append(current.strip_edges())
 	return fields
+
+
+## EquipmentData for every item whose slot is an equipment slot (not body / head). Existing files are kept.
+func _write_equipment(catalog: Dictionary) -> int:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(EQUIPMENT_DIR))
+	var created: int = 0
+	for id: String in catalog:
+		var slot: int = EquipmentData.slot_from_name(catalog[id]["slot"])
+		var path: String = EQUIPMENT_DIR + id + ".tres"
+		if slot < 0 or FileAccess.file_exists(path):
+			continue
+		var piece := EquipmentData.new()
+		piece.id = StringName(id)
+		piece.display_name = catalog[id]["name"]
+		piece.slot = slot
+		piece.lpc_item = id
+		if ResourceSaver.save(piece, path) == OK:
+			created += 1
+	return created

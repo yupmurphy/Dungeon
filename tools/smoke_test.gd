@@ -33,7 +33,7 @@ func run(_options: Dictionary) -> void:
 		return l.sprite_frames.has_animation(&"walk_down"))
 	var frame_size: Vector2 = walking[0].sprite_frames.get_frame_texture(&"walk_down", 0).get_size()
 	_check(frame_size == Vector2(64, 64), "LPC frames are 64 x 64 (%s)" % frame_size)
-	for action in ["idle", "walk", "slash", "thrust", "hurt"]:
+	for action in ["idle", "walk", "slash", "thrust", "flinch", "death"]:
 		_check(player.character.has_action(action), "player has the '%s' animation" % action)
 	_check(GameScale.TILE_SIZE == 32 and (room.get_node("Dungeon") as TileMapLayer).tile_set.tile_size == Vector2i(32, 32),
 		"tiles are 32 x 32")
@@ -190,6 +190,45 @@ func run(_options: Dictionary) -> void:
 	_check(saw_windup, "bat telegraphs its attack (wind-up)")
 	_check(player.health.current_health < 100.0, "bat damaged the player (HP %s)" % player.health.current_health)
 	Combat.forced_rolls.clear()
+
+	print("--- equipment (paper doll)")
+	var ids: Dictionary = {}
+	var unique: bool = true
+	for slot in EquipmentData.Slot.values():
+		for piece in Equipment.all_pieces(slot):
+			unique = unique and not ids.has(piece.id) and not String(piece.id).is_empty() \
+				and LpcCatalog.has_item(piece.lpc_item) and Equipment.find(piece.id) == piece
+			ids[piece.id] = true
+	_check(unique and ids.size() >= 20, "%d pieces, each with a unique id and its LPC art" % ids.size())
+	_check(player.equipment.get_piece(EquipmentData.Slot.WEAPON).id == &"weapon_sword"
+		and player.character.attack_action() == "slash", "starts with a sword: attacks are slashes")
+	sheet.open()
+	var torso_list: OptionButton = sheet._equip_lists[EquipmentData.Slot.TORSO]
+	var leather: int = sheet._equip_choices[EquipmentData.Slot.TORSO].find(Equipment.find(&"torso_leather"))
+	torso_list.select(leather)
+	torso_list.item_selected.emit(leather)
+	_check(player.equipment.get_piece(EquipmentData.Slot.TORSO).id == &"torso_leather"
+		and "torso_leather" in player.character.items, "picking Leather armor in the list puts it on at once")
+	var weapon_list: OptionButton = sheet._equip_lists[EquipmentData.Slot.WEAPON]
+	var spear: int = sheet._equip_choices[EquipmentData.Slot.WEAPON].find(Equipment.find(&"weapon_spear"))
+	weapon_list.item_selected.emit(spear)
+	_check(player.character.attack_action() == "thrust", "with a spear, attacks are thrusts")
+	weapon_list.item_selected.emit(0)
+	_check(player.equipment.get_piece(EquipmentData.Slot.WEAPON) == null
+		and not "weapon_spear" in player.character.items, "'None' takes the weapon off")
+	sheet._equip_lists["body"].item_selected.emit(1)
+	_check(player.equipment.body_type == "female" and player.character.body_type == "female"
+		and sheet._preview.body_type == "female", "body type Female changes the player and the preview")
+	sheet._equip_lists["body"].item_selected.emit(0)
+	player.equipment.equip(Equipment.find(&"weapon_sword"))
+	player.equipment.equip(Equipment.find(&"torso_longsleeve"))
+	sheet.close()
+
+	print("--- hurt and death animations")
+	player.hurtbox.receive_hit(Combat.Hit.new(5.0), Vector2.RIGHT, 0.0)
+	_check(player.character.action == "flinch", "a hit makes the player flinch (%s)" % player.character.action)
+	player.health.take_damage(1000.0)
+	_check(player.character.action == "death", "dying plays the fall (%s)" % player.character.action)
 
 	print("--- result: %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	get_tree().quit(0 if _failures == 0 else 1)

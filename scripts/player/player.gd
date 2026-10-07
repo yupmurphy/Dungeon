@@ -73,6 +73,8 @@ var _flash_tween: Tween
 @onready var visual: Node2D = $Visual
 ## The LPC look: stacked layers (body, clothes, weapon...) animated together.
 @onready var character: LpcCharacter = $Visual/Character
+## What the player wears; changing it changes the look right away.
+@onready var equipment: Equipment = $Equipment
 
 
 func _ready() -> void:
@@ -89,6 +91,8 @@ func _ready() -> void:
 	hurtbox.defender = stats
 	hitbox.attacker = stats
 	stats.changed.connect(_on_stats_changed)
+	equipment.changed.connect(_refresh_look)
+	_refresh_look()
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
 
@@ -245,6 +249,9 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 		_flash_tween.kill()
 	_flash_tween = create_tween()
 	_flash_tween.tween_method(_set_flash, 1.0, 0.0, 0.2)
+	# A short flinch, unless an attack is being drawn (it would cut the swing).
+	if character.action not in ["slash", "thrust"]:
+		character.play("flinch", character.direction)
 
 
 func _on_died() -> void:
@@ -252,8 +259,8 @@ func _on_died() -> void:
 	hurtbox.invulnerable = true
 	hitbox.deactivate()
 	visual.modulate = Color(0.75, 0.75, 0.8, 1.0)
-	# LPC "hurt" is the fall to the ground.
-	character.play("hurt", character.direction)
+	# The LPC fall to the ground.
+	character.play("death", character.direction)
 	_set_flash(0.0)
 	died.emit()
 
@@ -263,3 +270,10 @@ func _on_stats_changed() -> void:
 	health.set_max_health(stats.get_max_health())
 	stamina.set_max_stamina(stats.get_max_stamina())
 	_apply_light()
+
+
+## Rebuilds the layered look from the equipment (body type + worn pieces).
+func _refresh_look() -> void:
+	character.body_type = equipment.body_type
+	character.items = equipment.look_items()
+	character.rebuild()

@@ -3,12 +3,17 @@ extends Node2D
 ## A 64 x 64 LPC character built from stacked layers (body, head, hair, clothes, helmet, weapon...), one
 ## AnimatedSprite2D per layer, sorted by the layer's z order. All layers show the same animation and the same
 ## frame, driven from here (so they never drift apart). Layers without the current animation hide.
-## Actions: idle, walk, slash, thrust (4 directions) and hurt (falls down, one row).
+## Actions: idle, walk, slash, thrust (4 directions); flinch (hit) and death use the LPC "hurt" sheet (the fall,
+## one row): flinch shows only its first frames, death all of them.
 
 signal action_finished(action: String)
 
 ## Frames per second of each action (walk is also scaled by movement speed).
-const FPS: Dictionary = {"idle": 2.0, "walk": 10.0, "slash": 14.0, "thrust": 16.0, "hurt": 10.0}
+const FPS: Dictionary = {"idle": 2.0, "walk": 10.0, "slash": 14.0, "thrust": 16.0, "flinch": 12.0, "death": 10.0}
+## Actions drawn from another action's sheet.
+const SHEET_OF: Dictionary = {"flinch": "hurt", "death": "hurt"}
+## A flinch is the start of the fall: this many frames.
+const FLINCH_FRAMES: int = 2
 ## Actions that repeat; the others play once and hold their last frame.
 const LOOPING: Array[String] = ["idle", "walk"]
 ## LPC walk sheets: frame 0 is the standing pose, 1-8 the cycle.
@@ -65,7 +70,7 @@ func layers() -> Array[AnimatedSprite2D]:
 
 ## True if some layer has this action (e.g. a spear has "thrust" but no "slash").
 func has_action(action_name: String) -> bool:
-	var key := StringName(LpcCatalog.animation_key(action_name, LpcCatalog.Direction.DOWN))
+	var key := StringName(LpcCatalog.animation_key(SHEET_OF.get(action_name, action_name), LpcCatalog.Direction.DOWN))
 	return _layers.any(func(layer: AnimatedSprite2D) -> bool: return layer.sprite_frames.has_animation(key))
 
 
@@ -113,7 +118,7 @@ func _process(delta: float) -> void:
 
 
 func _apply_frame() -> void:
-	var key := StringName(LpcCatalog.animation_key(action, direction))
+	var key := StringName(LpcCatalog.animation_key(SHEET_OF.get(action, action), direction))
 	var count: int = _frame_count()
 	var frame: int = int(_time * FPS.get(action, 10.0))
 	if action == "walk":
@@ -135,10 +140,11 @@ func _apply_frame() -> void:
 
 ## Frames in the current animation (the body decides; all layers of an action have the same count).
 func _frame_count() -> int:
-	var key := StringName(LpcCatalog.animation_key(action, direction))
+	var key := StringName(LpcCatalog.animation_key(SHEET_OF.get(action, action), direction))
 	for layer in _layers:
 		if layer.sprite_frames.has_animation(key):
-			return layer.sprite_frames.get_frame_count(key)
+			var count: int = layer.sprite_frames.get_frame_count(key)
+			return mini(count, FLINCH_FRAMES) if action == "flinch" else count
 	return 1
 
 
