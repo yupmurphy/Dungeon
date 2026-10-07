@@ -94,8 +94,8 @@ debug_show_seed={
 
 [internationalization]
 
-locale/translations=PackedStringArray("res://localization/texts.ro.translation")
-locale/fallback="ro"
+locale/translations=PackedStringArray("res://localization/texts.en.translation")
+locale/fallback="en"
 
 [layer_names]
 

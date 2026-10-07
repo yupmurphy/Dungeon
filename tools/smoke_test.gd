@@ -80,7 +80,7 @@ func run(_options: Dictionary) -> void:
 	await _hit_with_player(player, spider, [0.0, 0.99])
 	_check(spider.health.current_health == before, "a missed hit does no damage")
 	var popup: DamageNumber = _find_popup(effects)
-	_check(popup != null and popup.text == "Ratat", "a miss shows 'Ratat' (%s)" % (popup.text if popup else "nothing"))
+	_check(popup != null and popup.text == "Miss", "a miss shows 'Miss' (%s)" % (popup.text if popup else "nothing"))
 	await _clear(effects)
 	await _hit_with_player(player, spider, [0.99, 0.0])
 	var critical: float = Combat.damage_taken(Combat.damage_dealt(player.stats, 20.0, true), spider.data.stats)
