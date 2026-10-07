@@ -43,7 +43,8 @@ const HURT_SHAKE: float = 6.0
 
 @export_group("Dodge")
 @export var dodge_speed: float = 280.0
-@export var base_dodge_duration: float = 0.18
+## How long the dodge dash lasts. Invulnerability is separate and comes from Agility (Stats).
+@export var dodge_duration: float = 0.18
 @export var dodge_cooldown: float = 0.6
 @export var dodge_stamina_cost: float = 25.0
 
@@ -58,6 +59,7 @@ var _swing_left: float = 0.0
 var _swing_side: float = 1.0
 var _dodge_cooldown_left: float = 0.0
 var _dodge_time_left: float = 0.0
+var _invulnerable_left: float = 0.0
 var _dodge_dir: Vector2 = Vector2.ZERO
 var _ghost_left: float = 0.0
 var _knockback: Vector2 = Vector2.ZERO
@@ -85,6 +87,9 @@ func _ready() -> void:
 	stamina.setup(stats.get_max_stamina())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
+	hurtbox.hit_missed.connect(_on_hit_missed)
+	hurtbox.defender = stats
+	hitbox.attacker = stats
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
 
@@ -111,6 +116,7 @@ func _physics_process(delta: float) -> void:
 	_attack_slow_left = maxf(_attack_slow_left - delta, 0.0)
 	_swing_left = maxf(_swing_left - delta, 0.0)
 	_dodge_cooldown_left = maxf(_dodge_cooldown_left - delta, 0.0)
+	_tick_invulnerability(delta)
 	_knockback = _knockback.move_toward(Vector2.ZERO, GameScale.world(KNOCKBACK_DECAY) * delta)
 
 	match state:
@@ -175,8 +181,8 @@ func _try_attack() -> void:
 	if _attack_cooldown_left > 0.0 or not stamina.spend(attack_stamina_cost):
 		return
 	_aim_at_mouse()
-	hitbox.damage = base_attack_damage * stats.get_damage_multiplier()
-	hitbox.knockback_force = GameScale.world(attack_knockback)
+	hitbox.damage = base_attack_damage
+	hitbox.knockback_force = GameScale.world(attack_knockback) * stats.get_knockback_multiplier()
 	hitbox.activate(ATTACK_ACTIVE_TIME)
 	_swing_left = ATTACK_ACTIVE_TIME
 	_swing_side = -_swing_side
@@ -195,7 +201,8 @@ func _try_dodge(input_dir: Vector2) -> void:
 	if dir == Vector2.ZERO:
 		dir = Vector2.DOWN
 	_dodge_dir = dir
-	_dodge_time_left = base_dodge_duration * stats.get_dodge_length_multiplier()
+	_dodge_time_left = dodge_duration
+	_invulnerable_left = stats.get_dodge_invulnerability()
 	_dodge_cooldown_left = dodge_cooldown
 	_ghost_left = 0.0
 	hurtbox.invulnerable = true
@@ -204,19 +211,31 @@ func _try_dodge(input_dir: Vector2) -> void:
 
 
 func _end_dodge() -> void:
-	hurtbox.invulnerable = false
-	visual.modulate.a = 1.0
 	state = State.NORMAL
+
+
+## Dodge invulnerability (from Agility) can last longer or shorter than the dash itself.
+func _tick_invulnerability(delta: float) -> void:
+	if _invulnerable_left <= 0.0 or state == State.DEAD:
+		return
+	_invulnerable_left -= delta
+	if _invulnerable_left <= 0.0:
+		hurtbox.invulnerable = false
+		visual.modulate.a = 1.0
+
+
+func _on_hit_missed() -> void:
+	GameFeel.spawn_miss(global_position)
 
 
 func _set_flash(amount: float) -> void:
 	(sprite.material as ShaderMaterial).set_shader_parameter("flash_amount", amount)
 
 
-func _on_hit_received(damage: float, knockback: Vector2) -> void:
+func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void:
 	_knockback = knockback
 	GameFeel.shake(HURT_SHAKE)
-	GameFeel.spawn_damage_number(global_position, damage, DAMAGE_TAKEN_COLOR)
+	GameFeel.spawn_damage_number(global_position, damage, DAMAGE_TAKEN_COLOR, critical)
 	if state == State.DEAD:
 		return
 	if _flash_tween != null:

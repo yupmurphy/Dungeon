@@ -44,6 +44,52 @@ func run(_options: Dictionary) -> void:
 	_check_value(_with(Stats.Stat.INTELLIGENCE, 5).get_max_mana(), 45.0, "Intelligence 5 -> 45 mana")
 	_check_value(_with(Stats.Stat.INTELLIGENCE, 0).get_max_mana(), 20.0, "Intelligence 0 -> 20 mana")
 
+	print("--- what each stat does")
+	_check_value(Stats.new().get_damage_bonus(), 0.2, "all stats 5 -> +20% damage (4 stats x 5 x 1%)")
+	_check_value(_with(Stats.Stat.LUCK, 50).get_damage_bonus(), 0.2, "Luck does not add damage")
+	_check_value(_with(Stats.Stat.STRENGTH, 10).get_defense(), 5.0, "Strength 10 -> 5 defense")
+	_check_value(_with(Stats.Stat.STRENGTH, 5).get_carry_weight(), 35.0, "Strength 5 -> carry 35")
+	_check(_with(Stats.Stat.STRENGTH, 20).get_knockback_multiplier() > _with(Stats.Stat.STRENGTH, 5).get_knockback_multiplier(),
+		"more Strength -> more knockback")
+	_check_value(_with(Stats.Stat.AGILITY, 10).get_attack_speed_multiplier(), 1.3, "Agility 10 -> attack speed x1.3")
+	_check_value(_with(Stats.Stat.AGILITY, 5).get_move_speed_multiplier(), 1.05, "Agility 5 -> move speed x1.05")
+	_check_value(_with(Stats.Stat.AGILITY, 300).get_move_speed_multiplier(), 4.0, "Agility 300 -> move speed x4 (no limit)")
+	_check_value(_with(Stats.Stat.AGILITY, 30).get_evade_chance(), 0.3, "Agility 30 -> 30% of enemy hits miss")
+	_check_value(_with(Stats.Stat.AGILITY, 80).get_evade_chance(), 0.8, "Agility 80 -> 80% miss")
+	_check_value(_with(Stats.Stat.AGILITY, 100).get_evade_chance(), 0.8, "Agility 100 -> still 80% miss (cap)")
+	_check_value(_with(Stats.Stat.AGILITY, 5).get_dodge_invulnerability(), 0.18, "Agility 5 -> 0.18 s dodge invulnerability")
+	_check_value(_with(Stats.Stat.AGILITY, 15).get_dodge_invulnerability(), 0.28, "Agility 15 -> 0.28 s")
+	_check_value(_with(Stats.Stat.VITALITY, 10).get_poison_duration_multiplier(), 0.7, "Vitality 10 -> poison lasts 70%")
+	_check_value(_with(Stats.Stat.VITALITY, 100).get_poison_duration_multiplier(), 0.1, "Vitality 100 -> poison 10% (floor)")
+	_check_value(_with(Stats.Stat.PERCEPTION, 5).get_crit_chance(), 0.05, "Perception 5 -> 5% critical")
+	_check_value(_with(Stats.Stat.PERCEPTION, 150).get_crit_chance(), 1.0, "Perception 150 -> 100% critical (cap)")
+	_check(_with(Stats.Stat.PERCEPTION, 20).get_sight_radius() > _with(Stats.Stat.PERCEPTION, 5).get_sight_radius(),
+		"more Perception -> see monsters farther")
+
+	print("--- damage formulas")
+	var average := Stats.new()
+	_check_value(Combat.damage_dealt(average, 20.0, false), 24.0, "weapon 20, stats 5 -> deals 24")
+	_check_value(Combat.damage_dealt(average, 20.0, true), 36.0, "critical -> 150% = 36")
+	_check_value(Combat.damage_dealt(null, 20.0, false), 20.0, "no stats -> weapon damage only")
+	_check_value(Combat.damage_taken(50.0, _with(Stats.Stat.STRENGTH, 0)), 50.0, "defense 0 -> takes all 50")
+	_check_value(Combat.damage_taken(50.0, _with(Stats.Stat.STRENGTH, 200)), 25.0, "defense 100 -> takes half (25)")
+	Combat.forced_rolls.assign([0.04, 0.99])
+	var hit: Combat.Hit = Combat.resolve(average, average, 20.0)
+	_check(hit.missed and hit.damage == 0.0, "miss roll 0.04 < 5% evade -> missed, no damage")
+	Combat.forced_rolls.assign([0.06, 0.04])
+	hit = Combat.resolve(average, _with(Stats.Stat.STRENGTH, 0), 20.0)
+	_check(not hit.missed and hit.critical and is_equal_approx(hit.damage, 36.0),
+		"miss roll 0.06 hits, crit roll 0.04 < 5%% -> critical 36 (got %s)" % hit.damage)
+	Combat.forced_rolls.assign([0.85, 0.99])
+	hit = Combat.resolve(average, _with(Stats.Stat.AGILITY, 100), 20.0)
+	_check(not hit.missed, "Agility 100: a 0.85 roll still hits (evade capped at 80%, not 100%)")
+	Combat.forced_rolls.clear()
+	var misses: int = 0
+	for i in 2000:
+		if Combat.resolve(average, _with(Stats.Stat.AGILITY, 100), 20.0).missed:
+			misses += 1
+	_check(misses > 1500 and misses < 1700, "Agility 100: ~80%% of 2000 random hits miss (%d)" % misses)
+
 	print("--- monsters use the same system")
 	for path in MONSTER_STATS:
 		var stats: Stats = load(path)

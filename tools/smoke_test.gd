@@ -66,9 +66,29 @@ func run(_options: Dictionary) -> void:
 	print("--- player hits spider")
 	spider.process_mode = Node.PROCESS_MODE_INHERIT
 	await _hit_with_player(player, spider)
-	_check(is_equal_approx(spider.health.current_health, 40.0), "spider took 20 damage (60 -> %s)" % spider.health.current_health)
+	# 20 weapon damage x 1.2 (bonus: 4 stats at 5) x 100 / (100 + spider defense 1.5)
+	var expected: float = Combat.damage_taken(Combat.damage_dealt(player.stats, 20.0, false), spider.data.stats)
+	_check(is_equal_approx(expected, 24.0 * 100.0 / 101.5), "formula: 20 x 1.2 x 100 / 101.5 = %.2f" % expected)
+	_check(is_equal_approx(spider.health.current_health, 60.0 - expected),
+		"spider took %.1f damage (60 -> %.1f)" % [expected, spider.health.current_health])
 	_check(_has_child_of(effects, DamageNumber), "damage number spawned")
 	_check(_has_child_of(effects, ParticleBurst), "hit particles spawned")
+
+	print("--- miss and critical")
+	await _clear(effects)
+	var before: float = spider.health.current_health
+	await _hit_with_player(player, spider, [0.0, 0.99])
+	_check(spider.health.current_health == before, "a missed hit does no damage")
+	var popup: DamageNumber = _find_popup(effects)
+	_check(popup != null and popup.text == "Ratat", "a miss shows 'Ratat' (%s)" % (popup.text if popup else "nothing"))
+	await _clear(effects)
+	await _hit_with_player(player, spider, [0.99, 0.0])
+	var critical: float = Combat.damage_taken(Combat.damage_dealt(player.stats, 20.0, true), spider.data.stats)
+	_check(is_equal_approx(before - spider.health.current_health, critical),
+		"a critical hit does 150%% damage (%.1f)" % (before - spider.health.current_health))
+	popup = _find_popup(effects)
+	_check(popup != null and popup.modulate.r == GameFeel.CRITICAL_COLOR.r and popup.modulate.g == GameFeel.CRITICAL_COLOR.g
+		and popup.get_theme_font_size("font_size") == DamageNumber.CRITICAL_FONT_SIZE, "a critical number is bigger and orange")
 
 	print("--- hit-stop")
 	GameFeel.hit_stop(0.05)
@@ -89,6 +109,7 @@ func run(_options: Dictionary) -> void:
 	bat.process_mode = Node.PROCESS_MODE_INHERIT
 	player.global_position = Vector2(300, 250)
 	bat.global_position = Vector2(300, 228)
+	Combat.forced_rolls.assign([0.99, 0.99, 0.99, 0.99, 0.99, 0.99])  # the bat's hits don't miss
 	var saw_windup: bool = false
 	for i in 90:
 		await get_tree().physics_frame
@@ -96,20 +117,23 @@ func run(_options: Dictionary) -> void:
 			saw_windup = true
 	_check(saw_windup, "bat telegraphs its attack (wind-up)")
 	_check(player.health.current_health < 100.0, "bat damaged the player (HP %s)" % player.health.current_health)
+	Combat.forced_rolls.clear()
 
 	print("--- result: %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	get_tree().quit(0 if _failures == 0 else 1)
 
 
-func _hit_with_player(player: Player, enemy: Enemy) -> void:
+## `rolls`: miss roll then critical roll (see Combat); the default is a normal hit.
+func _hit_with_player(player: Player, enemy: Enemy, rolls: Array[float] = [0.99, 0.99]) -> void:
 	# The headless mouse sits at (0, 0), so aim manually and freeze the auto-aim during the swing.
 	player.global_position = Vector2(300, 250)
 	enemy.global_position = Vector2(320, 250)
 	await get_tree().physics_frame
 	player._swing_left = 1.0
 	player.attack_pivot.rotation = 0.0
-	player.hitbox.damage = player.base_attack_damage * player.stats.get_damage_multiplier()
+	player.hitbox.damage = player.base_attack_damage
 	player.hitbox.knockback_force = player.attack_knockback
+	Combat.forced_rolls.assign(rolls)
 	player.hitbox.activate(Player.ATTACK_ACTIVE_TIME)
 	await get_tree().create_timer(0.3, true, false, true).timeout
 
@@ -134,3 +158,16 @@ func _check(condition: bool, label: String) -> void:
 	else:
 		_failures += 1
 		print("  FAIL  ", label)
+
+
+func _find_popup(parent: Node) -> DamageNumber:
+	for child in parent.get_children():
+		if child is DamageNumber and not child.is_queued_for_deletion():
+			return child
+	return null
+
+
+func _clear(parent: Node) -> void:
+	for child in parent.get_children():
+		child.queue_free()
+	await get_tree().process_frame

@@ -1,12 +1,15 @@
 class_name Hitbox
 extends Area2D
 ## The "deals damage" area. Stays off until activate() is called, then damages every Hurtbox
-## it overlaps (once per activation). Knockback goes along the hitbox's facing (its local +X).
+## it overlaps (once per activation, a miss counts too). Knockback goes along the hitbox's facing (its local +X).
 
 signal activated
 signal deactivated
 
+## Weapon damage, before the attacker's stats (Combat applies bonus, critical and the target's defense).
 var damage: float = 0.0
+## Stats of whoever swings; null = no bonuses.
+var attacker: Stats
 var knockback_force: float = 0.0
 
 var _already_hit: Array[Hurtbox] = []
@@ -39,8 +42,9 @@ func deactivate() -> void:
 
 func _on_area_entered(area: Area2D) -> void:
 	var hurtbox := area as Hurtbox
-	if hurtbox == null or hurtbox in _already_hit:
+	if hurtbox == null or hurtbox in _already_hit or hurtbox.is_invulnerable():
 		return
 	var direction: Vector2 = global_transform.x.normalized()
-	if hurtbox.receive_hit(damage, direction, knockback_force):
+	var hit: Combat.Hit = Combat.resolve(attacker, hurtbox.defender, damage)
+	if hurtbox.receive_hit(hit, direction, knockback_force):
 		_already_hit.append(hurtbox)

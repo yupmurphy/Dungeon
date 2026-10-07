@@ -326,7 +326,7 @@ func _check_scene() -> void:
 
 	_press(KEY_F3)
 	await get_tree().process_frame
-	_check(player.hurtbox.god_mode and not player.hurtbox.receive_hit(50.0, Vector2.RIGHT, 0.0),
+	_check(player.hurtbox.god_mode and not player.hurtbox.receive_hit(Combat.Hit.new(50.0), Vector2.RIGHT, 0.0),
 		"F3 makes the player invincible")
 	_press(KEY_F3)
 	await get_tree().process_frame

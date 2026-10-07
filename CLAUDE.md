@@ -28,6 +28,12 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
     (`STARTING_VALUE`); only they are saved. It owns every derived formula (health, stamina, mana, damage, speeds...)
     as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.
+  - `Combat` (scripts/core/combat.gd) resolves every hit the same way for player and monsters: miss roll (target
+    Agility, max 80%), crit roll (attacker Perception, x1.5), damage x (1 + bonus) then x 100 / (100 + defense).
+    Hitbox carries `attacker` stats, Hurtbox `defender` stats; `Combat.forced_rolls` makes tests deterministic.
+    Monsters are only visible inside the player's sight radius (Perception).
+- **Texts that the user edits** (stat explanations, "Ratat") live in `localization/texts.csv` (Godot translation,
+  column `ro`, ASCII without diacritics; use `tr(&"KEY")`). This is the exception to "in-game text is English".
   - `MonsterData`: one monster type (stats, XP, behaviors, region, SpriteFrames + tint, ranges, timings, damage).
   - `RegionData`: name, tile tint, map color, monster list, mini-boss. `FloorData`: size, regions, boss.
 - **Juice goes through the `GameFeel` autoload** (hit-stop, shake, damage numbers, particles, ghosts). Gameplay code

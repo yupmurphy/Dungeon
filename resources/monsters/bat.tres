@@ -15,4 +15,4 @@ detect_range = 190.0
 windup_time = 0.4
 lunge_speed = 230.0
 recovery_time = 0.6
-attack_damage = 10.0
+attack_damage = 7.0

@@ -16,6 +16,8 @@ const HIT_SHAKE: float = 2.0
 const DEATH_SHAKE: float = 3.5
 const DAMAGE_DEALT_COLOR: Color = Color(1.0, 0.95, 0.6)
 const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
+## Reference pixels: monsters fade in over this distance at the edge of the player's sight radius (Perception).
+const SIGHT_FADE: float = 20.0
 
 @export var data: MonsterData
 
@@ -27,6 +29,8 @@ var _knockback: Vector2 = Vector2.ZERO
 var _attack_dir: Vector2 = Vector2.RIGHT
 var _flash_left: float = 0.0
 var _shader: ShaderMaterial
+## Whoever looks at us (the player), for the Perception sight radius.
+var _viewer: Player
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
@@ -62,14 +66,37 @@ func _ready() -> void:
 	hitbox.position.x = radius + attack_size.x / 2.0 - GameScale.world(1.0)
 	# The slash polygon is drawn for a 20 px wide attack.
 	slash_visual.scale = Vector2.ONE * attack_size.x / 20.0
-	hitbox.damage = data.attack_damage * data.stats.get_damage_multiplier()
-	hitbox.knockback_force = GameScale.world(data.attack_knockback)
+	hitbox.damage = data.attack_damage
+	hitbox.attacker = data.stats
+	hurtbox.defender = data.stats
+	hitbox.knockback_force = GameScale.world(data.attack_knockback) * data.stats.get_knockback_multiplier()
 
 	health.setup(data.stats.get_max_health())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
+	hurtbox.hit_missed.connect(_on_hit_missed)
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
+	_update_visibility()
+
+
+func _process(_delta: float) -> void:
+	_update_visibility()
+
+
+## Only seen inside the player's sight radius (Perception), with a short fade at its edge.
+func _update_visibility() -> void:
+	if not is_instance_valid(_viewer):
+		_viewer = get_tree().get_first_node_in_group("player") as Player
+		if _viewer == null or _viewer.stats == null:
+			return
+	var radius: float = GameScale.world(_viewer.stats.get_sight_radius())
+	var distance: float = global_position.distance_to(_viewer.global_position)
+	modulate.a = clampf((radius - distance) / GameScale.world(SIGHT_FADE) + 1.0, 0.0, 1.0)
+
+
+func _on_hit_missed() -> void:
+	GameFeel.spawn_miss(global_position)
 
 
 func _physics_process(delta: float) -> void:
@@ -173,11 +200,11 @@ func _set_tint(color: Color, amount: float) -> void:
 	_shader.set_shader_parameter("flash_amount", amount)
 
 
-func _on_hit_received(damage: float, knockback: Vector2) -> void:
+func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void:
 	_knockback = knockback * (1.0 - data.knockback_resistance)
 	GameFeel.hit_stop(HIT_STOP_TIME)
 	GameFeel.shake(HIT_SHAKE)
-	GameFeel.spawn_damage_number(global_position, damage, DAMAGE_DEALT_COLOR)
+	GameFeel.spawn_damage_number(global_position, damage, DAMAGE_DEALT_COLOR, critical)
 	GameFeel.spawn_burst(global_position, SPARK_COLOR, 6, 90.0)
 	_flash_left = HIT_FLASH_TIME
 	if state == State.DEAD:

@@ -37,10 +37,15 @@ func run(options: Dictionary) -> void:
 			player.attack_pivot.rotation = 0.0
 			player._swing_left = Player.ATTACK_ACTIVE_TIME
 			player.hitbox.damage = 20.0
+			# --crit / --miss force the outcome (see Combat.forced_rolls).
+			if options.has("--crit"):
+				Combat.forced_rolls.assign([0.99, 0.0])
+			elif options.has("--miss"):
+				Combat.forced_rolls.assign([0.0, 0.99])
 			player.hitbox.activate(0.12)
 			# Wait until the hit actually lands, then a few frames for the effects to appear.
 			for i in 60:
-				if spider.health.current_health < spider.health.max_health:
+				if spider.health.current_health < spider.health.max_health or GameFeel._layer.get_child_count() > 0:
 					break
 				await get_tree().physics_frame
 			for i in 4:

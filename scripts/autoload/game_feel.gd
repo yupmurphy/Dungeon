@@ -7,6 +7,9 @@ const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/effects/damage_nu
 const PARTICLE_BURST_SCENE: PackedScene = preload("res://scenes/effects/particle_burst.tscn")
 
 const GHOST_FADE_TIME: float = 0.25
+## Critical hits show their number bigger and in this color.
+const CRITICAL_COLOR: Color = Color(1.0, 0.5, 0.1)
+const MISS_COLOR: Color = Color(0.8, 0.85, 0.9)
 
 var _layer: CanvasLayer
 var _hit_stop_until_msec: int = 0
@@ -37,10 +40,19 @@ func shake(strength: float) -> void:
 	get_tree().call_group("game_camera", "add_trauma", GameScale.world(strength))
 
 
-func spawn_damage_number(world_position: Vector2, amount: float, color: Color) -> void:
+func spawn_damage_number(world_position: Vector2, amount: float, color: Color, critical: bool = false) -> void:
+	_spawn_popup(world_position, str(roundi(amount)), CRITICAL_COLOR if critical else color, critical)
+
+
+## "Miss" above whoever was missed (text from the translation file, key MISS).
+func spawn_miss(world_position: Vector2) -> void:
+	_spawn_popup(world_position, tr(&"MISS"), MISS_COLOR, false)
+
+
+func _spawn_popup(world_position: Vector2, text: String, color: Color, critical: bool) -> void:
 	var number: DamageNumber = DAMAGE_NUMBER_SCENE.instantiate()
 	_layer.add_child(number)
-	number.setup(world_position, amount, color)
+	number.setup(world_position, text, color, critical)
 
 
 func spawn_burst(world_position: Vector2, color: Color, amount: int, speed: float) -> void:

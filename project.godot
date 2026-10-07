@@ -92,6 +92,11 @@ debug_show_seed={
 ]
 }
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://localization/texts.ro.translation")
+locale/fallback="ro"
+
 [layer_names]
 
 2d_physics/layer_1="world"

@@ -13,5 +13,5 @@ body_color = Color(0.35, 0.85, 0.55, 1)
 move_speed = 40.0
 windup_time = 0.6
 lunge_speed = 140.0
-attack_damage = 18.0
+attack_damage = 17.0
 knockback_resistance = 0.4
