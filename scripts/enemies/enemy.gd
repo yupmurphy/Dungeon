@@ -4,10 +4,12 @@ extends CharacterBody2D
 ## for `windup_time`, lunges, then recovers. Everything tunable lives in MonsterData.
 ## Ranged monsters (MonsterData.projectile_texture) aim instead (drawing the bow), shoot a
 ## Projectile only with a clear line of fire, and back away while reloading if the player is too close.
+## Some monsters (MonsterData.dash_attack_chance) sometimes make a dash attack instead (DashAttack, the same
+## component as the player): they lean back for a moment, then dash through the target with a stronger strike.
 
 signal died(enemy: Enemy)
 
-enum State { IDLE, CHASE, WINDUP, ATTACK, RECOVER, DEAD }
+enum State { IDLE, CHASE, WINDUP, ATTACK, RECOVER, DASH, DEAD }
 
 const KNOCKBACK_DECAY: float = 800.0
 const STAGGER_TIME: float = 0.35
@@ -35,6 +37,11 @@ var _flash_left: float = 0.0
 var _shader: ShaderMaterial
 ## Whoever looks at us (the player), for the Perception sight radius.
 var _viewer: Player
+## Only for monsters with a dash attack (MonsterData.can_dash_attack).
+var dash: DashAttack
+## The dash-or-not roll is made once per attack.
+var _dash_rolled: bool = false
+var _knockback_force: float = 0.0
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
@@ -76,7 +83,20 @@ func _ready() -> void:
 	hitbox.damage = data.attack_damage
 	hitbox.attacker = data.stats
 	hurtbox.defender = data.stats
-	hitbox.knockback_force = GameScale.world(data.attack_knockback) * data.stats.get_knockback_multiplier()
+	_knockback_force = GameScale.world(data.attack_knockback) * data.stats.get_knockback_multiplier()
+	hitbox.knockback_force = _knockback_force
+	if data.can_dash_attack():
+		dash = DashAttack.new()
+		dash.visual = visual
+		dash.hitbox = hitbox
+		dash.attack_pivot = attack_pivot
+		dash.hurtbox = hurtbox
+		dash.windup_time = data.dash_windup_time
+		dash.speed = data.dash_speed
+		dash.duration = data.dash_time
+		dash.knockback_multiplier = data.dash_knockback_multiplier
+		dash.dash_started.connect(_on_dash_started)
+		add_child(dash)
 
 	health.setup(data.get_max_health())
 	health.died.connect(_on_died)
@@ -135,6 +155,10 @@ func _physics_process(delta: float) -> void:
 			move = _keep_away()
 			if _state_left <= 0.0:
 				_set_state(State.CHASE, 0.0)
+		State.DASH:
+			move = dash.dash_velocity()
+			if not dash.is_busy():
+				_set_state(State.RECOVER, data.recovery_time / data.stats.get_attack_speed_multiplier())
 		State.DEAD:
 			pass
 
@@ -161,6 +185,7 @@ func _find_target() -> Player:
 func _tick_idle() -> void:
 	_target = _find_target()
 	if _target != null and global_position.distance_to(_target.global_position) <= GameScale.world(data.detect_range):
+		_dash_rolled = false
 		_set_state(State.CHASE, 0.0)
 
 
@@ -175,6 +200,13 @@ func _tick_chase() -> Vector2:
 		_target = null
 		_set_state(State.IDLE, 0.0)
 		return Vector2.ZERO
+	if dash != null and not _dash_rolled and distance <= GameScale.world(data.dash_range):
+		_dash_rolled = true
+		if randf() < _dash_attack_chance() and _clear_shot() and dash.try_dash(to_target):
+			# Direction locked at the lean: stepping aside dodges the dash.
+			_attack_dir = to_target.normalized()
+			_set_state(State.DASH, 0.0)
+			return Vector2.ZERO
 	if distance <= GameScale.world(data.attack_range) and (not data.is_ranged() or _clear_shot()):
 		# Direction is locked now, so a player who moves away can dodge the attack.
 		_attack_dir = to_target.normalized()
@@ -189,11 +221,29 @@ func _tick_chase() -> Vector2:
 
 func _begin_attack() -> void:
 	attack_pivot.rotation = _attack_dir.angle()
+	_dash_rolled = false
 	if data.is_ranged():
 		_shoot()
 	else:
+		# A dash strike changed them.
+		hitbox.damage = data.attack_damage
+		hitbox.knockback_force = _knockback_force
 		hitbox.activate(data.attack_active_time)
 	_set_state(State.ATTACK, data.attack_active_time)
+
+
+## Hurt monsters dash more often.
+func _dash_attack_chance() -> float:
+	if health.current_health < health.max_health * data.hurt_health_ratio:
+		return data.dash_attack_chance_hurt
+	return data.dash_attack_chance
+
+
+## The lean is over: the dash attack strikes for the whole dash.
+func _on_dash_started(_direction: Vector2) -> void:
+	_dash_rolled = false
+	animator.play_attack(dash.duration)
+	dash.try_strike(data.attack_damage, _knockback_force)
 
 
 ## Nothing solid (walls, trees, rocks) between us and the target.
@@ -236,7 +286,7 @@ func _keep_away() -> Vector2:
 
 
 func _update_facing() -> void:
-	if state in [State.WINDUP, State.ATTACK]:
+	if state in [State.WINDUP, State.ATTACK, State.DASH]:
 		animator.face_vector(_attack_dir)
 	elif is_instance_valid(_target):
 		animator.face_vector(_target.global_position - global_position)
@@ -261,7 +311,10 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 	_flash_left = HIT_FLASH_TIME
 	if state == State.DEAD:
 		return
-	if state == State.WINDUP:
+	if state == State.WINDUP or (state == State.DASH and dash.is_winding_up()):
+		# A hit during the warning interrupts the attack (a dash already under way goes on).
+		if dash != null:
+			dash.cancel()
 		_set_state(State.RECOVER, STAGGER_TIME)
 		animator.stop_attack()
 	elif state == State.IDLE:
@@ -274,6 +327,9 @@ func _on_died() -> void:
 	# Out of the "enemy" group so EnemyActivator can't pause it mid fade-out (it would never be freed).
 	remove_from_group("enemy")
 	process_mode = Node.PROCESS_MODE_INHERIT
+	# Before the collision changes below: cancel() puts the dash's collision mask back (deferred too).
+	if dash != null:
+		dash.cancel()
 	hurtbox.invulnerable = true
 	hitbox.deactivate()
 	# Deferred: we are probably inside a physics callback (the player's hit).

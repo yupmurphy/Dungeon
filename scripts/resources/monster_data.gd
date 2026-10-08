@@ -58,8 +58,8 @@ extends Resource
 @export var attack_knockback: float = 200.0
 
 @export_group("Ranged")
-## Set = the monster shoots this (e.g. an arrow, pointing right) instead of striking: the wind-up becomes aiming,
-## with a line toward the target, then the shot flies. attack_range is then the shooting distance.
+## Set = the monster shoots this (e.g. an arrow, pointing right) instead of striking: the wind-up becomes aiming
+## (drawing the bow), then the shot flies. attack_range is then the shooting distance.
 @export var projectile_texture: Texture2D
 ## Reference pixels per second / reference pixels.
 @export var projectile_speed: float = 150.0
@@ -70,6 +70,21 @@ extends Resource
 @export var keep_distance: float = 0.0
 ## The aim stops following the target this long before the shot, so a sidestep at the right moment dodges it.
 @export var aim_lock_time: float = 0.25
+
+@export_group("Dash attack")
+## Chance that an attack is a dash attack (DashAttack: lean back, dash through the target, +30% damage).
+## Rolled once per attack, when the target comes within dash_range. 0 = never.
+@export_range(0.0, 1.0) var dash_attack_chance: float = 0.0
+## The same chance while health is below hurt_health_ratio (hurt monsters take more risks).
+@export_range(0.0, 1.0) var dash_attack_chance_hurt: float = 0.0
+@export_range(0.0, 1.0) var hurt_health_ratio: float = 0.4
+## Reference pixels: farthest distance a dash attack starts from (the dash itself covers about 58 px).
+@export var dash_range: float = 60.0
+## Seconds the monster leans back before dashing (the warning).
+@export var dash_windup_time: float = 0.4
+@export var dash_speed: float = DashAttack.DASH_SPEED
+@export var dash_time: float = DashAttack.DASH_TIME
+@export var dash_knockback_multiplier: float = 1.0
 
 @export_group("Defense")
 ## 0 = full knockback, 1 = immune.
@@ -92,3 +107,7 @@ func is_ranged() -> bool:
 
 func get_max_health() -> float:
 	return max_health if max_health > 0.0 else stats.get_max_health()
+
+
+func can_dash_attack() -> bool:
+	return dash_attack_chance > 0.0 or dash_attack_chance_hurt > 0.0

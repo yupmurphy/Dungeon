@@ -297,7 +297,11 @@ func run(_options: Dictionary) -> void:
 	print("--- young goblin")
 	var goblin_data: MonsterData = load("res://resources/monsters/goblin.tres")
 	var goblin := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
-	goblin.data = goblin_data
+	# No random dash attacks here: this part checks the normal swing.
+	var plain_goblin: MonsterData = goblin_data.duplicate()
+	plain_goblin.dash_attack_chance = 0.0
+	plain_goblin.dash_attack_chance_hurt = 0.0
+	goblin.data = plain_goblin
 	goblin.process_mode = Node.PROCESS_MODE_INHERIT
 	room.get_node("World").add_child(goblin)
 	player.global_position = Vector2(300, 400)
@@ -327,6 +331,65 @@ func run(_options: Dictionary) -> void:
 	var grown_frames: SpriteFrames = MonsterSheet.frames(load("res://resources/monsters/goblin_grown.tres"))
 	var grown_right: AtlasTexture = grown_frames.get_frame_texture(&"attack_right", 0)
 	_check(grown_right.region.position.y == 64.0, "the grown goblin attacks to the right with its right-facing row")
+
+	print("--- goblin dash attack")
+	_check(goblin_data.dash_attack_chance > 0.24 and goblin_data.dash_attack_chance < 0.34,
+		"about 1 goblin attack in 3-4 is a dash attack (%.2f)" % goblin_data.dash_attack_chance)
+	_check(goblin_data.dash_attack_chance_hurt > 0.32 and goblin_data.dash_attack_chance_hurt < 0.51,
+		"hurt goblins: 1 in 2-3 (%.2f)" % goblin_data.dash_attack_chance_hurt)
+	var dasher_data: MonsterData = goblin_data.duplicate()
+	dasher_data.dash_attack_chance = 1.0
+	dasher_data.dash_attack_chance_hurt = 1.0
+	for dodge in [false, true]:
+		var dasher := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+		dasher.data = dasher_data
+		dasher.process_mode = Node.PROCESS_MODE_INHERIT
+		room.get_node("World").add_child(dasher)
+		var stand: Vector2 = Vector2(300, 400)
+		player.global_position = stand
+		dasher.global_position = stand + GameScale.world_vector(Vector2(-50, 0))
+		player.health.heal(1000.0)
+		var health_before: float = player.health.current_health
+		Combat.forced_rolls.assign([0.99, 0.99])
+		var leaned: bool = false
+		var lean_moved: bool = false
+		var dashed: bool = false
+		for i in 60:
+			await get_tree().physics_frame
+			if dasher.dash.is_winding_up():
+				leaned = leaned or dasher.visual.rotation != 0.0
+				lean_moved = lean_moved or dasher.velocity.length() > 1.0
+				# The warning is the moment to react: step aside, out of the dash line.
+				if dodge:
+					stand = Vector2(300, 400) + GameScale.world_vector(Vector2(0, 40))
+			dashed = dashed or dasher.dash.is_dashing()
+			player.global_position = stand
+			if dashed and not dasher.dash.is_busy():
+				break
+		if not dodge:
+			_check(dasher.state == Enemy.State.RECOVER or dasher.state == Enemy.State.DASH, "the goblin chose a dash attack")
+			_check(leaned and not lean_moved, "it leans back first, standing still (the warning)")
+			_check(dashed, "then it dashes")
+			var expected_hit: float = Combat.damage_taken(Combat.damage_dealt(dasher_data.stats, dasher_data.attack_damage * 1.3,
+				false), player.stats)
+			_check(is_equal_approx(health_before - player.health.current_health, expected_hit),
+				"the dash attack hits the player with +30%% (%.1f, expected %.1f)" % [health_before - player.health.current_health,
+				expected_hit])
+		else:
+			_check(dashed and player.health.current_health == health_before,
+				"stepping aside during the lean dodges the dash attack (%.1f -> %.1f)" % [health_before,
+				player.health.current_health])
+		dasher.queue_free()
+		Combat.forced_rolls.clear()
+	var hurt_goblin := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	hurt_goblin.data = goblin_data
+	room.get_node("World").add_child(hurt_goblin)
+	var healthy_chance: float = hurt_goblin._dash_attack_chance()
+	hurt_goblin.health.take_damage(hurt_goblin.health.max_health * 0.7)
+	_check(healthy_chance == goblin_data.dash_attack_chance and
+		hurt_goblin._dash_attack_chance() == goblin_data.dash_attack_chance_hurt, "low health = dash attacks more often")
+	hurt_goblin.queue_free()
+	player.health.heal(1000.0)
 
 	print("--- goblin archer")
 	var archer := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy

@@ -122,6 +122,10 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   player and monsters. Short dash (passes through bodies, not walls), a strike during it does +30% and hits all on the
   way, +15 exhaustion, 1.5 s cooldown, blocked while exhausted, ghost trail, no invulnerability by default (flag),
   optional wind-up lean (monsters warn before dashing). Defaults are constants; monsters override the exports.
+  Monsters: `MonsterData` "Dash attack" group (`dash_attack_chance`, `_hurt` below `hurt_health_ratio`, `dash_range`,
+  wind-up 0.4 s lean, speed/time/knockback). Rolled once per attack. Young goblin: 0.28 (1 in 3-4), hurt 0.4 (1 in
+  2-3); the direction locks at the lean, so stepping aside dodges it; a hit during the lean cancels it. Brute and
+  archer dashes not done yet.
 - Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
   (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
 

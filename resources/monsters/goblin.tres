@@ -27,3 +27,5 @@ attack_damage = 12.0
 group_size = Vector2i(2, 4)
 home_feature = &"goblin_camp"
 groups_per_home = 2
+dash_attack_chance = 0.28
+dash_attack_chance_hurt = 0.4
