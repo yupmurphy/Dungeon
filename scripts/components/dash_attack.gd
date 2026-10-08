@@ -64,6 +64,9 @@ var _made_invulnerable: bool = false
 var _saved_mask: int = -1
 var _visual_position: Vector2
 var _visual_rotation: float = 0.0
+## This dash, compared with the default one (see try_dash).
+var _speed_scale: float = 1.0
+var _time_scale: float = 1.0
 
 
 func is_dashing() -> bool:
@@ -88,10 +91,16 @@ func can_dash() -> bool:
 
 
 ## Starts the dash (after the wind-up, if any). Returns false when it can't be used now.
-func try_dash(direction: Vector2) -> bool:
-	if not can_dash() or direction.length_squared() < 0.0001:
+## `distance_scale`: how far compared with the default dash (speed and time both grow, by its square root).
+## `ignore_exhaustion`: dash even when exhausted (a charge that ran the owner to 100 still launches).
+func try_dash(direction: Vector2, distance_scale: float = 1.0, ignore_exhaustion: bool = false) -> bool:
+	if direction.length_squared() < 0.0001 or is_busy() or _cooldown_left > 0.0:
+		return false
+	if not ignore_exhaustion and not can_dash():
 		return false
 	_direction = direction.normalized()
+	_speed_scale = sqrt(maxf(distance_scale, 0.01))
+	_time_scale = _speed_scale
 	_struck = false
 	_cooldown_left = cooldown
 	if exhaustion != null:
@@ -105,13 +114,14 @@ func try_dash(direction: Vector2) -> bool:
 
 
 ## Strikes during the dash (once per dash): `damage` and `knockback_force` are the owner's normal attack.
-func try_strike(damage: float, knockback_force: float) -> bool:
+## `damage_multiplier`: 0 = the default (1 + damage_bonus); the player's charged dash attack passes its own.
+func try_strike(damage: float, knockback_force: float, damage_multiplier: float = 0.0) -> bool:
 	if not is_dashing() or _struck or hitbox == null:
 		return false
 	_struck = true
 	if attack_pivot != null:
 		attack_pivot.rotation = _direction.angle()
-	hitbox.damage = damage * (1.0 + damage_bonus)
+	hitbox.damage = damage * (damage_multiplier if damage_multiplier > 0.0 else 1.0 + damage_bonus)
 	hitbox.knockback_force = knockback_force * knockback_multiplier
 	# Stays on for the rest of the dash: everything met on the way is hit (once each).
 	hitbox.activate(maxf(_dash_left, MIN_STRIKE_TIME))
@@ -121,11 +131,16 @@ func try_strike(damage: float, knockback_force: float) -> bool:
 
 ## Movement the owner should use this frame (zero while winding up or not dashing).
 func dash_velocity() -> Vector2:
-	return _direction * GameScale.world(speed) if is_dashing() else Vector2.ZERO
+	return _direction * GameScale.world(speed) * _speed_scale if is_dashing() else Vector2.ZERO
 
 
 func direction() -> Vector2:
 	return _direction
+
+
+## Seconds of dashing left (0 when not dashing).
+func time_left() -> float:
+	return _dash_left
 
 
 ## Stops a wind-up or dash right away (the owner was hit, died...). The cooldown still counts.
@@ -156,7 +171,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _start_dash() -> void:
-	_dash_left = duration
+	_dash_left = duration * _time_scale
 	_ghost_left = 0.0
 	if invulnerable and hurtbox != null and not hurtbox.invulnerable:
 		hurtbox.invulnerable = true

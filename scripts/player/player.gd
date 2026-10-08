@@ -20,11 +20,23 @@ const DAMAGE_TAKEN_COLOR: Color = Color(1.0, 0.35, 0.3)
 const HURT_SHAKE: float = 6.0
 ## Movement speed while sprinting (Shift).
 const SPRINT_SPEED_FACTOR: float = 1.6
-## Space released before this many seconds = a tap = the short dash.
+## Space released before this many seconds = a tap = the short dash. Held longer = charging.
 const DASH_TAP_TIME: float = 0.2
 ## The short dash: a little exhaustion and a short wait.
 const DASH_EXHAUSTION_COST: float = 8.0
 const DASH_COOLDOWN: float = 0.6
+## Space held this long (seconds) = fully charged; holding longer keeps the full charge.
+const DASH_FULL_CHARGE_TIME: float = 1.0
+## Exhaustion per second while charging (stops once fully charged).
+const DASH_CHARGE_EXHAUSTION_PER_SECOND: float = 30.0
+## Charged dash distance compared with the short dash: from MIN (barely charged) to MAX (full charge).
+const DASH_CHARGED_DISTANCE_MIN: float = 1.5
+const DASH_CHARGED_DISTANCE_MAX: float = 3.0
+## Dash attack (click while charging) damage: from MIN (barely charged) to MAX (full charge).
+const DASH_ATTACK_DAMAGE_MIN: float = 1.2
+const DASH_ATTACK_DAMAGE_MAX: float = 2.0
+## While charging the character crouches a little (picture squashed by this much at full charge).
+const DASH_CHARGE_SQUASH: float = 0.08
 
 @export var stats: Stats
 ## Level and XP (shown on the character sheet).
@@ -61,6 +73,8 @@ var _flash_tween: Tween
 var dash: DashAttack
 ## Space is held (seconds since pressed); -1 = not held.
 var _dash_hold: float = -1.0
+## Shows the dash charge above the head.
+var _charge_bar: ChargeBar
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var exhaustion: ExhaustionComponent = $ExhaustionComponent
@@ -102,6 +116,8 @@ func _ready() -> void:
 	dash.exhaustion_cost = DASH_EXHAUSTION_COST
 	dash.cooldown = DASH_COOLDOWN
 	add_child(dash)
+	_charge_bar = ChargeBar.new()
+	add_child(_charge_bar)
 
 
 ## Builds collision shapes, hitbox placement and light size from the exported sizes.
@@ -167,18 +183,68 @@ func _physics_normal() -> void:
 		_try_attack()
 
 
-## Space: a short tap (released before DASH_TAP_TIME) dashes where the character faces. Returns true if it dashed.
+## Space, all launched where the character faces:
+## - tap (released before DASH_TAP_TIME): the short dash;
+## - held longer: charging, standing still and tiring; released = a long dash without damage;
+## - attack while Space is held: Space counts as released and it launches the dash attack.
+## Returns true when the player must not walk this frame (charging or just dashed).
 func _tick_dash_key(input_dir: Vector2) -> bool:
-	if Input.is_action_just_pressed("dash"):
+	if Input.is_action_just_pressed("dash") and dash.can_dash():
 		_dash_hold = 0.0
 	if _dash_hold < 0.0:
 		return false
-	if Input.is_action_pressed("dash"):
-		_dash_hold += get_physics_process_delta_time()
+	if Input.is_action_just_pressed("attack"):
+		return _launch_dash(input_dir, true)
+	if not Input.is_action_pressed("dash"):
+		return _launch_dash(input_dir, false)
+	var delta: float = get_physics_process_delta_time()
+	_dash_hold += delta
+	if _dash_hold < DASH_TAP_TIME:
 		return false
-	var tapped: bool = _dash_hold < DASH_TAP_TIME
+	if _dash_charge() < 1.0:
+		exhaustion.add(DASH_CHARGE_EXHAUSTION_PER_SECOND * delta)
+	if exhaustion.exhausted:
+		# Ran out of breath while charging: the charge stops and launches as a long dash.
+		return _launch_dash(input_dir, false)
+	_show_charge(_dash_charge())
+	return true
+
+
+## 0 at DASH_TAP_TIME, 1 at DASH_FULL_CHARGE_TIME and after.
+func _dash_charge() -> float:
+	return clampf((_dash_hold - DASH_TAP_TIME) / (DASH_FULL_CHARGE_TIME - DASH_TAP_TIME), 0.0, 1.0)
+
+
+func _launch_dash(input_dir: Vector2, attack: bool) -> bool:
+	var charged: bool = attack or _dash_hold >= DASH_TAP_TIME
+	var charge: float = _dash_charge()
 	_dash_hold = -1.0
-	return tapped and dash.try_dash(_facing(input_dir))
+	_show_charge(-1.0)
+	# Agility makes every dash longer and the dash attack stronger.
+	var power: float = stats.get_dash_power_multiplier()
+	var distance: float = power
+	if charged:
+		distance *= lerpf(DASH_CHARGED_DISTANCE_MIN, DASH_CHARGED_DISTANCE_MAX, charge)
+	if not dash.try_dash(_facing(input_dir), distance, true):
+		return false
+	if attack:
+		var damage: float = base_attack_damage * exhaustion.damage_factor()
+		var knockback_force: float = GameScale.world(attack_knockback) * stats.get_knockback_multiplier()
+		dash.try_strike(damage, knockback_force, lerpf(DASH_ATTACK_DAMAGE_MIN, DASH_ATTACK_DAMAGE_MAX, charge) * power)
+		exhaustion.add(ExhaustionComponent.ATTACK_COST)
+		_attack_cooldown_left = base_attack_cooldown / (stats.get_attack_speed_multiplier() * exhaustion.speed_factor())
+		# The aim stays along the dash while flying.
+		_swing_left = dash.time_left()
+		character.play("thrust", LpcCharacter.direction_of(dash.direction()), dash.time_left())
+	return true
+
+
+## Charge bar and crouch; `charge` < 0 = not charging.
+func _show_charge(charge: float) -> void:
+	_charge_bar.visible = charge >= 0.0
+	_charge_bar.ratio = maxf(charge, 0.0)
+	var squash: float = DASH_CHARGE_SQUASH * maxf(charge, 0.0)
+	visual.scale = Vector2(1.0 + squash, 1.0 - squash)
 
 
 ## Where the character looks: where it walks, or toward the mouse when standing (like the animations).
@@ -251,6 +317,7 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 func _on_died() -> void:
 	state = State.DEAD
 	_dash_hold = -1.0
+	_show_charge(-1.0)
 	dash.cancel()
 	hurtbox.invulnerable = true
 	hitbox.deactivate()

@@ -454,10 +454,71 @@ func run(_options: Dictionary) -> void:
 	while dash.is_dashing():
 		await get_tree().physics_frame
 	dash._cooldown_left = 0.0
+	_check(is_equal_approx(player.stats.get_dash_power_multiplier(), 1.25), "Agility 5: dashes 25% farther / stronger")
+
+	print("--- charged dash (hold Space) and dash attack (attack while holding)")
+	player.exhaustion.current = 0.0
+	player.global_position = Vector2(300, 400)
 	_send_key(KEY_SPACE, true)
-	await get_tree().create_timer(Player.DASH_TAP_TIME + 0.1, true, false, true).timeout
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	var still_at: Vector2 = player.global_position
+	await get_tree().physics_frame
+	_check(not dash.is_busy() and player._charge_bar.visible and player.global_position == still_at,
+		"holding Space: nothing launches, the player stands still, the charge bar shows")
+	_check(player.exhaustion.current > Player.DASH_CHARGE_EXHAUSTION_PER_SECOND * 0.95 * 0.3,
+		"charging tires (%.1f exhaustion)" % player.exhaustion.current)
+	var charge: float = player._dash_charge()
+	_check(charge > 0.4 and charge < 0.7, "about half charged after 0.6 s (%.2f)" % charge)
 	await _release_space()
-	_check(not dash.is_busy(), "holding Space longer than a tap: no short dash")
+	var scale_now: float = dash._speed_scale * dash._speed_scale
+	var expected_scale: float = 1.25 * lerpf(Player.DASH_CHARGED_DISTANCE_MIN, Player.DASH_CHARGED_DISTANCE_MAX, charge)
+	_check(dash.is_dashing() and absf(scale_now - expected_scale) < 0.15 and not player.hitbox.monitoring,
+		"released: a long dash without damage (%.2fx the default dash, expected about %.2fx)" % [scale_now, expected_scale])
+	_check(not player._charge_bar.visible, "the charge bar hides after the launch")
+	while dash.is_dashing():
+		await get_tree().physics_frame
+	dash._cooldown_left = 0.0
+
+	player.exhaustion.current = 0.0
+	_send_key(KEY_SPACE, true)
+	await get_tree().create_timer(Player.DASH_FULL_CHARGE_TIME + 0.1, true, false, true).timeout
+	var at_full: float = player.exhaustion.current
+	await get_tree().create_timer(0.4, true, false, true).timeout
+	_check(is_equal_approx(player._dash_charge(), 1.0) and not dash.is_busy(), "full charge: still nothing launches")
+	_check(player.exhaustion.current <= at_full + 0.01,
+		"full charge: exhaustion stops growing (%.1f -> %.1f)" % [at_full, player.exhaustion.current])
+	Combat.forced_rolls.assign([0.99, 0.99, 0.99, 0.99])
+	_send_click(true)
+	while not Input.is_action_pressed("attack"):
+		await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_send_click(false)
+	_check(dash.is_dashing() and is_equal_approx(dash._speed_scale * dash._speed_scale, 1.25 * Player.DASH_CHARGED_DISTANCE_MAX),
+		"attack while holding Space: launches at once, as far as a full long dash")
+	_check(is_equal_approx(player.hitbox.damage, player.base_attack_damage * Player.DASH_ATTACK_DAMAGE_MAX * 1.25),
+		"full dash attack: x2 damage, x1.25 from Agility (%.1f)" % player.hitbox.damage)
+	_check(player.character.action == "thrust", "the dash attack plays the thrust (%s)" % player.character.action)
+	_send_key(KEY_SPACE, false)
+	while Input.is_action_pressed("dash"):
+		await get_tree().process_frame
+	while dash.is_dashing():
+		await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(not dash.is_busy(), "releasing Space after the dash attack launches nothing more")
+	dash._cooldown_left = 0.0
+	player._attack_cooldown_left = 0.0
+
+	player.exhaustion.current = 90.0
+	_send_key(KEY_SPACE, true)
+	await get_tree().create_timer(0.7, true, false, true).timeout
+	_check(dash.is_busy() or dash.cooldown_left() > 0.0, "exhaustion reaching 100 while charging launches the long dash")
+	await _release_space()
+	while dash.is_dashing():
+		await get_tree().physics_frame
+	dash._cooldown_left = 0.0
+	player.exhaustion.current = 0.0
+	player.exhaustion.exhausted = false
 	player.exhaustion.current = 0.0
 	player.exhaustion.add(200.0)
 	_check(not dash.try_dash(Vector2.RIGHT), "no dash at 100 exhaustion")

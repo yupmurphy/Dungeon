@@ -117,10 +117,15 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health follows).
 - Exhaustion replaces stamina (user decision): 0..100, grows with sprint (Shift) and attacks, recovers after a
   pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70.
-- Dash attack is back (v0.1.6+, user spec; no separate button, user decision): Space dashes toward the mouse, an
-  attack (left click) during the dash becomes the dash attack and adds its own exhaustion (+3). `DashAttack` component (scripts/components/dash_attack.gd), the same for
-  player and monsters. Short dash (passes through bodies, not walls), a strike during it does +30% and hits all on the
-  way, +15 exhaustion, 1.5 s cooldown, blocked while exhausted, ghost trail, no invulnerability by default (flag),
+- Dash (v0.1.9+ rework, user spec in 4 stages: 1 tap, 2 charge, 3 air visuals, 4 goblins). Player (constants at
+  the top of player.gd): tap Space (< 0.2 s) = short dash where the character faces (walking direction, else the
+  mouse), +8 exhaustion, 0.6 s cooldown; attack during it = a normal attack. Hold Space = charge 0.2 -> 1 s
+  (stands still, crouches, ChargeBar above the head, +30 exhaustion/s until full, then no more); release = long dash
+  1.5x-3x, no damage; attack while holding = dash attack at once (thrust, hits all on the way, 1.2x-2x damage);
+  exhaustion hitting 100 while charging launches the long dash. Agility: x(1 + 0.05/point) dash distance and dash
+  attack damage (`Stats.get_dash_power_multiplier`). `DashAttack` component (scripts/components/dash_attack.gd), the
+  same for player and monsters: passes through bodies (not walls), `try_dash(dir, distance_scale, ignore_exhaustion)`,
+  `try_strike(damage, knockback, multiplier)` (default +30%), ghost trail, no invulnerability by default (flag),
   optional wind-up lean (monsters warn before dashing). Defaults are constants; monsters override the exports.
   Monsters: `MonsterData` "Dash attack" group (`dash_attack_chance`, `_hurt` below `hurt_health_ratio`, `dash_range`,
   wind-up 0.4 s lean, speed/time/knockback). Rolled once per attack. Young goblin: 0.28 (1 in 3-4), hurt 0.4 (1 in

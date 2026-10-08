@@ -46,6 +46,8 @@ const MOVE_SPEED_PER_AGILITY: float = 0.01
 ## Chance that an enemy's hit misses you.
 const EVADE_PER_AGILITY: float = 0.01
 const EVADE_MAX: float = 0.8
+## Dash distance and dash attack power: x (1 + this per point).
+const DASH_POWER_PER_AGILITY: float = 0.05
 
 # --- Vitality ---
 ## Exhaustion gained x (1 - this per point), never less than EXHAUSTION_GAIN_MIN.
@@ -170,6 +172,11 @@ func get_attack_speed_multiplier() -> float:
 
 func get_move_speed_multiplier() -> float:
 	return 1.0 + agility * MOVE_SPEED_PER_AGILITY
+
+
+## Dash distance and dash attack damage multiplier (1.25 = 25% farther and stronger).
+func get_dash_power_multiplier() -> float:
+	return 1.0 + agility * DASH_POWER_PER_AGILITY
 
 
 ## Chance (0..1) that an enemy's hit misses this character.
