@@ -36,8 +36,6 @@ extends Resource
 @export var art_faces_right: bool = true
 ## Color of hit/death particles.
 @export var body_color: Color = Color(0.45, 0.75, 0.35)
-## Sprite is tinted toward this color during the attack wind-up (the visual warning).
-@export var windup_color: Color = Color(1.0, 0.15, 0.1)
 ## Sizes below are in reference pixels (see GameScale). How wide the monster looks on screen:
 @export var visual_size: float = 16.0
 @export var body_radius: float = 6.0

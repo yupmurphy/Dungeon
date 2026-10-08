@@ -159,11 +159,11 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   swing plays during the wind-up. `MonsterData.max_health` (0 = from Stats), `group_size`, `home_feature` +
   `groups_per_home` (FloorPopulator spawns groups, goblins also around the goblin camp). User decision (v0.1.3):
   Galleries = ONLY young goblins with a knife (`goblin.tres`); Forest = "Goblin Archer" (`goblin_archer.tres`, young
-  goblin with a bow, baked too) led by the "Grown Goblin" ([LPC] Goblin adult sheet + its sword, `goblin_grown.tres`,
+  goblin with a bow, baked too) led by the "Grown Goblin" ([LPC] Goblin adult sheet + its sword, `goblin_grown.tres`, its sheet rows go down, right, up, left = `sheet_direction_rows`,
   `group_leader`). LPC weapons are adult-sized: the baker moves each weapon frame toward the feet (`_fit`); the child
   body has no bow animation, so the archer stands and only its front arm (cut from the adult shoot frames) and the
   bow move. Ranged monsters: `MonsterData.projectile_texture` (+ speed, range, homing turn rate, `keep_distance`,
-  `aim_lock_time`): the wind-up aims with a red line, needs a clear line of fire (ray on the world layer), then a
+  `aim_lock_time`): the wind-up draws the bow (no aim line, no red tint: user decision v0.1.5), needs a clear line of fire (ray on the world layer), then a
   `Projectile` (a moving Hitbox, scripts/enemies/projectile.gd) flies; they back away while reloading.
 - Pack: Kenney **Tiny Dungeon** (CC0) in `assets/`. Use `assets/Tilemap/tilemap_packed.png`: 12 x 11 tiles of 16 px,
   no spacing. Tile index = row * 12 + column; `TileAtlas` (scripts/levels/tile_atlas.gd) converts it.

@@ -323,6 +323,10 @@ func run(_options: Dictionary) -> void:
 	goblin.health.take_damage(1000.0)
 	await get_tree().physics_frame
 	_check(is_instance_valid(goblin) and goblin.sprite.animation == &"death", "a dying goblin plays its fall")
+	# The [LPC] goblin sheet goes down, right, up, left: row 1 is the right-facing one.
+	var grown_frames: SpriteFrames = MonsterSheet.frames(load("res://resources/monsters/goblin_grown.tres"))
+	var grown_right: AtlasTexture = grown_frames.get_frame_texture(&"attack_right", 0)
+	_check(grown_right.region.position.y == 64.0, "the grown goblin attacks to the right with its right-facing row")
 
 	print("--- goblin archer")
 	var archer := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
@@ -336,15 +340,15 @@ func run(_options: Dictionary) -> void:
 	var count_miss := func() -> void: reached[0] += 1
 	player.hurtbox.hit_received.connect(count_hit)
 	player.hurtbox.hit_missed.connect(count_miss)
-	var saw_aim_line: bool = false
+	var saw_draw: bool = false
 	var saw_arrow: bool = false
 	for i in 150:
 		await get_tree().physics_frame
 		player.global_position = Vector2(300, 400)
-		saw_aim_line = saw_aim_line or (archer.state == Enemy.State.WINDUP and archer._aim_line.visible)
+		saw_draw = saw_draw or (archer.state == Enemy.State.WINDUP and String(archer.sprite.animation).begins_with("attack_"))
 		saw_arrow = saw_arrow or room.get_node("World").get_children().any(func(n: Node) -> bool: return n is Projectile)
 	_check(archer.health.max_health == 30.0 and archer.data.is_ranged(), "the goblin archer has 30 health and shoots")
-	_check(saw_aim_line, "the archer aims with a visible line before shooting")
+	_check(saw_draw, "the archer draws its bow during the wind-up (visible warning)")
 	_check(saw_arrow, "the archer shoots an arrow")
 	_check(reached[0] > 0, "the arrow reaches the player")
 	player.hurtbox.hit_received.disconnect(count_hit)

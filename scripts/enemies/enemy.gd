@@ -1,8 +1,8 @@
 class_name Enemy
 extends CharacterBody2D
-## Data-driven enemy. Chases the player when it sees them, telegraphs its attack by
-## turning red for `windup_time`, lunges, then recovers. Everything tunable lives in MonsterData.
-## Ranged monsters (MonsterData.projectile_texture) aim instead, with a line toward the player, shoot a
+## Data-driven enemy. Chases the player when it sees them, telegraphs its attack with the start of its swing
+## for `windup_time`, lunges, then recovers. Everything tunable lives in MonsterData.
+## Ranged monsters (MonsterData.projectile_texture) aim instead (drawing the bow), shoot a
 ## Projectile only with a clear line of fire, and back away while reloading if the player is too close.
 
 signal died(enemy: Enemy)
@@ -12,7 +12,6 @@ enum State { IDLE, CHASE, WINDUP, ATTACK, RECOVER, DEAD }
 const KNOCKBACK_DECAY: float = 800.0
 const STAGGER_TIME: float = 0.35
 const HIT_FLASH_TIME: float = 0.1
-const MAX_WINDUP_TINT: float = 0.75
 const HIT_STOP_TIME: float = 0.05
 const HIT_SHAKE: float = 2.0
 const DEATH_SHAKE: float = 3.5
@@ -22,10 +21,6 @@ const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
 const SIGHT_FADE: float = 20.0
 ## Time the death animation (if the monster has one) plays before the body fades out.
 const DEATH_ANIMATION_TIME: float = 0.7
-## Aim line of ranged monsters (reference pixels); it grows more opaque as the shot comes.
-const AIM_LINE_WIDTH: float = 1.0
-const AIM_LINE_COLOR: Color = Color(1.0, 0.2, 0.15)
-const AIM_LINE_MAX_ALPHA: float = 0.7
 const WORLD_LAYER: int = 1
 
 @export var data: MonsterData
@@ -40,7 +35,6 @@ var _flash_left: float = 0.0
 var _shader: ShaderMaterial
 ## Whoever looks at us (the player), for the Perception sight radius.
 var _viewer: Player
-var _aim_line: Line2D
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
@@ -90,13 +84,6 @@ func _ready() -> void:
 	hurtbox.hit_missed.connect(_on_hit_missed)
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
-	if data.is_ranged():
-		_aim_line = Line2D.new()
-		_aim_line.width = GameScale.world(AIM_LINE_WIDTH)
-		_aim_line.default_color = AIM_LINE_COLOR
-		_aim_line.points = PackedVector2Array([Vector2.ZERO, Vector2.ZERO])
-		_aim_line.visible = false
-		add_child(_aim_line)
 	# Health bar and name, shown by the player's Perception.
 	var info := EnemyInfo.new()
 	info.enemy = self
@@ -162,8 +149,6 @@ func _physics_process(delta: float) -> void:
 func _set_state(new_state: State, duration: float) -> void:
 	state = new_state
 	_state_left = duration
-	if _aim_line != null:
-		_aim_line.visible = new_state == State.WINDUP
 
 
 func _find_target() -> Player:
@@ -194,10 +179,9 @@ func _tick_chase() -> Vector2:
 		# Direction is locked now, so a player who moves away can dodge the attack.
 		_attack_dir = to_target.normalized()
 		_set_state(State.WINDUP, data.windup_time)
-		if animator.directional:
-			# Real frames: the swing starts with the wind-up (raised weapon = the warning).
-			animator.face_vector(_attack_dir)
-			animator.play_attack(data.windup_time + data.attack_active_time)
+		# The swing starts with the wind-up (raised weapon / drawn bow = the warning).
+		animator.face_vector(_attack_dir)
+		animator.play_attack(data.windup_time + data.attack_active_time)
 		return Vector2.ZERO
 	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
 		* FloorLayout.speed_factor_at(global_position)
@@ -209,8 +193,6 @@ func _begin_attack() -> void:
 		_shoot()
 	else:
 		hitbox.activate(data.attack_active_time)
-	if not animator.directional:
-		animator.play_attack(data.attack_active_time)
 	_set_state(State.ATTACK, data.attack_active_time)
 
 
@@ -220,16 +202,10 @@ func _clear_shot() -> bool:
 	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 
-## While aiming: follow the target (until the aim locks) and show the aim line.
+## While aiming (the bow is drawn): follow the target until the aim locks.
 func _tick_aim() -> void:
 	if _state_left > data.aim_lock_time and is_instance_valid(_target):
 		_attack_dir = (_target.global_position - global_position).normalized()
-	var length: float = GameScale.world(data.attack_range)
-	if is_instance_valid(_target):
-		length = minf(global_position.distance_to(_target.global_position), length)
-	_aim_line.points = PackedVector2Array([Vector2.ZERO, _attack_dir * length])
-	var progress: float = 1.0 - clampf(_state_left / maxf(data.windup_time, 0.01), 0.0, 1.0)
-	_aim_line.modulate.a = progress * AIM_LINE_MAX_ALPHA
 
 
 func _shoot() -> void:
@@ -267,15 +243,8 @@ func _update_facing() -> void:
 
 
 func _update_tint() -> void:
-	if _flash_left > 0.0:
-		_set_tint(Color.WHITE, 1.0)
-	elif state == State.WINDUP:
-		var progress: float = 1.0 - clampf(_state_left / maxf(data.windup_time, 0.01), 0.0, 1.0)
-		_set_tint(data.windup_color, progress * MAX_WINDUP_TINT)
-	elif state == State.ATTACK:
-		_set_tint(data.windup_color, MAX_WINDUP_TINT)
-	else:
-		_set_tint(Color.WHITE, 0.0)
+	# Only the white hit flash: the warning before an attack is the swing itself, not a color.
+	_set_tint(Color.WHITE, 1.0 if _flash_left > 0.0 else 0.0)
 
 
 func _set_tint(color: Color, amount: float) -> void:

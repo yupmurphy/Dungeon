@@ -12,6 +12,7 @@ max_health = 35.0
 xp_reward = 1
 region_id = &"forest"
 sprite_sheet = ExtResource("3_sheet")
+sheet_direction_rows = Array[int]([0, 3, 2, 1])
 sheet_run_columns = Vector2i(1, 7)
 sheet_attack_columns = Vector2i(8, 3)
 sheet_death_frames = 5
