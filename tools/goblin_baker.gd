@@ -1,7 +1,7 @@
 extends Node
 ## Bakes the young goblin's sprite sheet from the Universal LPC generator clone (kept outside the project):
-## child body + "goblin child" head, recolored from the light skin palette to green, with a child shirt and
-## pants. Writes assets/monsters/goblin/young_goblin.png in the MonsterSheet layout used by goblin.tres.
+## child body + child head with long pointed ears (a simple, young face), recolored from the light skin palette
+## to green, with a child shirt and pants. Writes assets/monsters/goblin/young_goblin.png in the MonsterSheet layout used by goblin.tres.
 ##   <godot.exe> --headless --path . -- --bake-goblin=D:/DungeonHunters/lpc-generator
 ## Output rows: down, left, up, right, then death. Columns: 0 idle, 1-8 walk, 9-14 attack (slash).
 ## The child clothes only exist for walking: attack frames wear the clothes of the standing frame.
@@ -20,7 +20,8 @@ const COLUMNS: int = WALK_FRAMES + SLASH_FRAMES
 const LIGHT_SKIN: Array[String] = ["#271920", "#99423c", "#cc8665", "#E4A47C", "#F9D5BA", "#FAECE7"]
 const GREEN_SKIN: Array[String] = ["#140C09", "#09320B", "#19541D", "#228236", "#39AA4E", "#53BF71"]
 const BODY: String = "/spritesheets/body/bodies/child/%s.png"
-const HEAD: String = "/spritesheets/head/heads/goblin/child/%s.png"
+const HEAD: String = "/spritesheets/head/heads/human/child/%s.png"
+const EARS: String = "/spritesheets/head/ears/long/child/%s.png"
 const CLOTHES: Array[String] = ["/spritesheets/legs/pants/child/walk/brown.png",
 	"/spritesheets/torso/clothes/shirt/child/walk/brown.png"]
 
@@ -39,9 +40,9 @@ func run(options: Dictionary) -> void:
 	var walk: Image = _green(BODY % "walk")
 	var slash: Image = _green(BODY % "slash")
 	var hurt: Image = _green(BODY % "hurt")
-	var walk_head: Image = _green(HEAD % "walk")
-	var slash_head: Image = _green(HEAD % "slash")
-	var hurt_head: Image = _green(HEAD % "hurt")
+	var walk_head: Image = _head("walk")
+	var slash_head: Image = _head("slash")
+	var hurt_head: Image = _head("hurt")
 	var clothes: Image = _clothes()
 	var sheet := Image.create(COLUMNS * FRAME, 5 * FRAME, false, Image.FORMAT_RGBA8)
 	for row in SOURCE_ROWS.size():
@@ -75,6 +76,13 @@ func _green(path: String) -> Image:
 			if pixel.a > 0.0 and _skin.has(key):
 				body.set_pixel(x, y, _skin[key])
 	return body
+
+
+## Head with the ears on top, green.
+func _head(animation: String) -> Image:
+	var head: Image = _green(HEAD % animation)
+	head.blend_rect(_green(EARS % animation), Rect2i(Vector2i.ZERO, head.get_size()), Vector2i.ZERO)
+	return head
 
 
 func _clothes() -> Image:

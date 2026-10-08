@@ -144,8 +144,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   player's `Equipment` node holds body type + one piece per slot and emits `changed`; the player rebuilds its
   LpcCharacter. The weapon's art decides the attack (spear = thrust, others slash). Character sheet (C) has an
   Equipment column: live preview + one debug list per slot.
-- Monsters: bat, slime, spider still use Kenney sprites. The goblin is a young LPC goblin (child body + "goblin child"
-  head, green, child clothes) baked once by `tools/goblin_baker.gd` (`-- --bake-goblin=<clone>`) into
+- Monsters: bat, slime, spider still use Kenney sprites. The goblin is a young LPC goblin (child body + child head
+  with long ears, green, child clothes) baked once by `tools/goblin_baker.gd` (`-- --bake-goblin=<clone>`) into
   `assets/monsters/goblin/young_goblin.png`; `MonsterData.sprite_sheet` + `MonsterSheet` cut such sheets into
   idle_/run_/attack_<down|left|up|right> + death (real size, no scaling); `SpriteAnimator` then faces 4 ways and the
   swing plays during the wind-up. `MonsterData.max_health` (0 = from Stats), `group_size`, `home_feature` +

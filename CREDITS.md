@@ -43,7 +43,7 @@ Other art:
 | Dungeon tiles, props, monsters (`assets/Tilemap`) | Kenney, Tiny Dungeon - https://kenney.nl/assets/tiny-dungeon | CC0 | Free, no conditions |
 | Nature tiles, trees, props (`NatureArt`) | Drawn by code in this project | ours | yes |
 | Town buildings, walls, roofs, decorations (`assets/town`) | OpenGameArt "LPC Tiles" collection, authors in `assets/CREDITS.csv` and `assets/town/*/CREDITS-*.txt` | CC-BY-SA 3.0 / 4.0 (some also GPL, OGA-BY, CC-BY) | Free, credit + share-alike (edits of this art must stay CC-BY-SA/GPL; the DRM clause makes it risky for Steam/consoles) |
-| Young goblin (`assets/monsters/goblin`) | LPC goblin child head (Redshrike, William.Thompsonj, bluecarrot16) on the LPC child body and child clothes, see `assets/monsters/goblin/CREDITS-goblin.txt` | OGA-BY 3.0 (all pieces) | Free, credit the authors (fine for commercial games, Steam, consoles) |
+| Young goblin (`assets/monsters/goblin`) | LPC child body and head with long ears (Redshrike, kheftel, bluecarrot16, JaidynReiman, Nila122...), green, child clothes, see `assets/monsters/goblin/CREDITS-goblin.txt` | OGA-BY 3.0 (all pieces) | Free, credit the authors (fine for commercial games, Steam, consoles) |
 | Engine | Godot Engine - https://godotengine.org/license | MIT | Free, keep the Godot license text with the game |
 
 ## LPC pieces: authors and sources
