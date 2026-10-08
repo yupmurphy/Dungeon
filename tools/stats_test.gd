@@ -3,7 +3,8 @@ extends Node
 ## Run:  <godot.exe> --headless --path . -- --stats-test     (exit code 0 = all passed)
 
 const MONSTER_STATS: Array[String] = ["res://resources/stats/bat_stats.tres",
-	"res://resources/stats/slime_stats.tres", "res://resources/stats/spider_stats.tres"]
+	"res://resources/stats/slime_stats.tres", "res://resources/stats/spider_stats.tres",
+	"res://resources/stats/goblin_stats.tres"]
 
 var _failures: int = 0
 
@@ -132,6 +133,11 @@ func run(_options: Dictionary) -> void:
 		var stats: Stats = load(path)
 		_check(stats is Stats and stats.get_max_health() >= 50.0, "%s: Stats with health %d" % [path.get_file(),
 			stats.get_max_health()])
+	var goblin: MonsterData = load("res://resources/monsters/goblin.tres")
+	_check_value(goblin.get_max_health(), 35.0, "goblin: fixed health 35 (MonsterData.max_health)")
+	var plain := MonsterData.new()
+	plain.stats = Stats.new()
+	_check_value(plain.get_max_health(), plain.stats.get_max_health(), "without max_health, health comes from Stats")
 
 	print("--- result: %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	get_tree().quit(0 if _failures == 0 else 1)

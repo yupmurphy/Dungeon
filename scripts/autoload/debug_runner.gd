@@ -9,6 +9,7 @@ extends Node
 ##   -- --terrain-map=<folder> [--seeds=<first>:<n>]  save floor terrain pictures (works headless)
 ##   -- --lpc-import=<LPC generator clone>             copy the LPC pieces we use into assets/lpc/ + credits
 ##   -- --build-town [--force]                      lay out the town scene (scenes/town/town.tscn), once
+##   -- --bake-goblin=<LPC generator clone>          bake the young goblin sheet (assets/monsters/goblin/)
 ##   -- --town-test                                   town scene checks (layout, doors, walls, gates, night)
 ## Tools run inside the real game (with autoloads), which a plain `--script` run does not provide.
 
@@ -21,6 +22,7 @@ const TOOLS: Dictionary = {
 	"--terrain-map": "res://tools/terrain_map.gd",
 	"--lpc-import": "res://tools/lpc_import.gd",
 	"--build-town": "res://tools/town_builder.gd",
+	"--bake-goblin": "res://tools/goblin_baker.gd",
 	"--town-test": "res://tools/town_test.gd",
 }
 

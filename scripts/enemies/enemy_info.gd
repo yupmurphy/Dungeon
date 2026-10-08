@@ -47,8 +47,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	modulate.a = enemy.modulate.a
-	global_position = enemy.global_position \
-		+ Vector2(0, -GameScale.world(enemy.data.visual_size / 2.0 + BAR_GAP))
+	global_position = enemy.global_position + Vector2(0, -enemy.head_height() - GameScale.world(BAR_GAP))
 	_name_label.visible = named
 	if named:
 		_name_label.text = enemy.data.display_name
@@ -60,7 +59,8 @@ func _process(_delta: float) -> void:
 
 ## White = much weaker than the player, yellow = about equal, red = stronger.
 func power_color() -> Color:
-	var ratio: float = Combat.power_rating(enemy.data.stats, enemy.data.attack_damage) \
+	var monster: MonsterData = enemy.data
+	var ratio: float = Combat.power_rating(monster.stats, monster.attack_damage, monster.get_max_health()) \
 		/ Combat.power_rating(player.stats, player.base_attack_damage)
 	if ratio < WEAK_RATIO:
 		return WEAK_COLOR

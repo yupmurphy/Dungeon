@@ -54,5 +54,7 @@ static func _roll() -> float:
 
 
 ## Rough strength of a fighter, to compare monsters with the player: max health x damage of one normal hit.
-static func power_rating(stats: Stats, weapon_damage: float) -> float:
-	return stats.get_max_health() * damage_dealt(stats, weapon_damage, false)
+## `max_health` overrides the Stats formula (monsters with a fixed health, MonsterData.max_health).
+static func power_rating(stats: Stats, weapon_damage: float, max_health: float = 0.0) -> float:
+	var health: float = max_health if max_health > 0.0 else stats.get_max_health()
+	return health * damage_dealt(stats, weapon_damage, false)

@@ -1,0 +1,11 @@
+Young goblin (young_goblin.png), baked by tools/goblin_baker.gd from the Universal LPC Spritesheet Character Generator
+(https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator). Skin recolored to the ULPC "green" palette.
+
+- Goblin child head: original goblin by Stephen "Redshrike" Challener, commissioned by William.Thompsonj; modular head
+  extracted and slightly modified by bluecarrot16. OGA-BY 3.0 / CC-BY 4.0 / GPL 2.0 / GPL 3.0.
+  https://opengameart.org/content/lpc-goblin , https://opengameart.org/content/lpc-folk
+- Child body: bluecarrot16, Benjamin K. Smith (BenCreating), ElizaWy, MuffinElZangano, Durrani, Nila122, kheftel,
+  Stephen Challener (Redshrike). OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0.
+  https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles ,
+  https://opengameart.org/content/lpc-child-standing-template , https://opengameart.org/content/lpc-children-walk-animation
+- Child shirt and pants: Nila122. OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0. https://opengameart.org/content/lpc-clothes-for-children

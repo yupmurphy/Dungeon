@@ -21,6 +21,11 @@ const WALL_PROP_TRIES: int = 12
 const PASSAGE_CLEARANCE: int = 2
 ## Chance that a wall face on the torch grid gets a torch (closed zones only).
 const TORCH_CHANCE: float = 0.5
+## Group members stand within this many tiles of each other; placing them gives up after this many tries each.
+const GROUP_SPREAD: int = 2
+const GROUP_TRIES: int = 6
+## Groups living around a home place (goblin camp) stand this far from its center, in tiles.
+const HOME_GROUP_DISTANCE: float = 5.0
 const RING: Array[Vector2i] = [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0),
 	Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0)]
 
@@ -83,14 +88,43 @@ static func _add_monsters(layout: FloorLayout, data: FloorData, region: RegionDa
 					or Vector2(cell).distance_to(Vector2(layout.start_cell)) < safe \
 					or Terrain.speed_factor(layout.terrain_at(cell.x, cell.y)) < 0.8:
 				continue
-			used[cell] = true
-			var spawn := FloorLayout.Spawn.new()
-			spawn.kind = FloorLayout.SpawnKind.MONSTER
-			spawn.cell = cell
-			spawn.slot = slot
-			spawn.monster = region.monsters[rng.randi() % region.monsters.size()]
-			layout.add_spawn(spawn)
+			_spawn_group(layout, data, region.monsters[rng.randi() % region.monsters.size()], cell, slot, used, rng)
 			break
+	# Monsters that live somewhere (goblins in their camps) also gather there.
+	for monster in region.monsters:
+		if monster.home_feature == &"" or monster.groups_per_home <= 0:
+			continue
+		for feature in layout.features:
+			if feature.kind != monster.home_feature or feature.slot != slot:
+				continue
+			for g in monster.groups_per_home:
+				var offset: Vector2 = Vector2.from_angle(rng.randf() * TAU) * HOME_GROUP_DISTANCE
+				var spot: Vector2i = feature.cell + Vector2i(offset.round())
+				_spawn_group(layout, data, monster, spot, slot, used, rng)
+
+
+## One monster, or a group of them (MonsterData.group_size) on free cells close to `cell`.
+static func _spawn_group(layout: FloorLayout, data: FloorData, monster: MonsterData, cell: Vector2i, slot: int,
+		used: Dictionary, rng: RandomNumberGenerator) -> void:
+	var count: int = rng.randi_range(monster.group_size.x, maxi(monster.group_size.x, monster.group_size.y))
+	var placed: int = 0
+	for attempt in count * GROUP_TRIES:
+		if placed >= count:
+			break
+		var spot: Vector2i = cell if attempt == 0 else cell + Vector2i(rng.randi_range(-GROUP_SPREAD, GROUP_SPREAD),
+			rng.randi_range(-GROUP_SPREAD, GROUP_SPREAD))
+		if used.has(spot) or not layout.is_floor(spot.x, spot.y) or layout.slot_at(spot.x, spot.y) != slot \
+				or layout.is_protected(spot.x, spot.y) \
+				or Vector2(spot).distance_to(Vector2(layout.start_cell)) < data.safe_start_radius:
+			continue
+		used[spot] = true
+		var spawn := FloorLayout.Spawn.new()
+		spawn.kind = FloorLayout.SpawnKind.MONSTER
+		spawn.cell = spot
+		spawn.slot = slot
+		spawn.monster = monster
+		layout.add_spawn(spawn)
+		placed += 1
 
 
 static func _add_props(layout: FloorLayout, region: RegionData, slot: int, floors: PackedInt32Array,

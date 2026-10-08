@@ -275,6 +275,7 @@ func _write_credits_page(catalog: Dictionary) -> void:
 	page.append("| Dungeon tiles, props, monsters (`assets/Tilemap`) | Kenney, Tiny Dungeon - https://kenney.nl/assets/tiny-dungeon | CC0 | %s |" % FREE_NO_CONDITIONS)
 	page.append("| Nature tiles, trees, props (`NatureArt`) | Drawn by code in this project | ours | yes |")
 	page.append("| Town buildings, walls, roofs, decorations (`assets/town`) | OpenGameArt \"LPC Tiles\" collection, authors in `assets/CREDITS.csv` and `assets/town/*/CREDITS-*.txt` | CC-BY-SA 3.0 / 4.0 (some also GPL, OGA-BY, CC-BY) | %s |" % FREE_SHARE_ALIKE)
+	page.append("| Young goblin (`assets/monsters/goblin`) | LPC goblin child head (Redshrike, William.Thompsonj, bluecarrot16) on the LPC child body and child clothes, see `assets/monsters/goblin/CREDITS-goblin.txt` | OGA-BY 3.0 (all pieces) | %s |" % FREE_WITH_CREDIT)
 	page.append("| Engine | Godot Engine - https://godotengine.org/license | MIT | Free, keep the Godot license text with the game |")
 	page.append("")
 	page.append("## LPC pieces: authors and sources")

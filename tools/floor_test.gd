@@ -92,6 +92,24 @@ func _check_generator() -> void:
 	var torches: int = sample.count_spawns(FloorLayout.SpawnKind.TORCH)
 	_check(monsters >= 150, "floor holds many monsters (%d planned)" % monsters)
 	_check(props >= 300 and torches > 0, "floor holds lots of decoration (%d props, %d torches)" % [props, torches])
+	# Goblins: Galleries only, in groups (each has a neighbor close by), and some live around the goblin camp.
+	var goblins: Array[Vector2i] = []
+	var wrong_zone: bool = false
+	for spawn in sample.spawns:
+		if spawn.kind == FloorLayout.SpawnKind.MONSTER and spawn.monster.display_name == "Goblin":
+			goblins.append(spawn.cell)
+			wrong_zone = wrong_zone or FLOOR_DATA.regions[spawn.slot].id != &"goblin_galleries"
+	var alone: int = 0
+	for cell in goblins:
+		if not goblins.any(func(other: Vector2i) -> bool: return other != cell and Vector2(other).distance_to(Vector2(cell)) <= 4.0):
+			alone += 1
+	_check(goblins.size() >= 20 and not wrong_zone, "goblins live in the Goblin Galleries (%d planned)" % goblins.size())
+	_check(alone <= goblins.size() / 10, "goblins come in groups (%d of %d alone)" % [alone, goblins.size()])
+	var near_camp: int = 0
+	for feature in sample.features:
+		if feature.kind == &"goblin_camp":
+			near_camp += goblins.filter(func(c: Vector2i) -> bool: return Vector2(c).distance_to(Vector2(feature.cell)) <= 9.0).size()
+	_check(near_camp >= 2, "goblins gather around their camp (%d)" % near_camp)
 
 
 ## {slot: {terrain type: share of the zone's cells}}.

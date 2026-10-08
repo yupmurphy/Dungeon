@@ -144,7 +144,12 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   player's `Equipment` node holds body type + one piece per slot and emits `changed`; the player rebuilds its
   LpcCharacter. The weapon's art decides the attack (spear = thrust, others slash). Character sheet (C) has an
   Equipment column: live preview + one debug list per slot.
-- Monsters still use Kenney sprites (no LPC monsters downloaded yet).
+- Monsters: bat, slime, spider still use Kenney sprites. The goblin is a young LPC goblin (child body + "goblin child"
+  head, green, child clothes) baked once by `tools/goblin_baker.gd` (`-- --bake-goblin=<clone>`) into
+  `assets/monsters/goblin/young_goblin.png`; `MonsterData.sprite_sheet` + `MonsterSheet` cut such sheets into
+  idle_/run_/attack_<down|left|up|right> + death (real size, no scaling); `SpriteAnimator` then faces 4 ways and the
+  swing plays during the wind-up. `MonsterData.max_health` (0 = from Stats), `group_size`, `home_feature` +
+  `groups_per_home` (FloorPopulator spawns groups, goblins also around the goblin camp).
 - Pack: Kenney **Tiny Dungeon** (CC0) in `assets/`. Use `assets/Tilemap/tilemap_packed.png`: 12 x 11 tiles of 16 px,
   no spacing. Tile index = row * 12 + column; `TileAtlas` (scripts/levels/tile_atlas.gd) converts it.
 - The pack has **one frame per character** (no animation sheets) and **no skulls or torches**. Characters use

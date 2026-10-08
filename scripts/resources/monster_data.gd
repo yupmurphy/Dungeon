@@ -4,6 +4,9 @@ extends Resource
 
 @export var display_name: String = "Monster"
 @export var stats: Stats
+## Fixed max health; 0 = from Stats (Strength), like the player. Use it when a monster needs less health than
+## the Strength formula can give (e.g. the goblin: 35).
+@export var max_health: float = 0.0
 ## XP given the first time this monster type is killed (bestiary, stage 4).
 @export var xp_reward: int = 5
 ## Region this monster belongs to (RegionData.id). Informational; RegionData lists what spawns where.
@@ -14,6 +17,20 @@ extends Resource
 @export_group("Look")
 ## Animations "idle", "run", "attack".
 @export var sprite_frames: SpriteFrames
+## Or a sheet with one row per facing (LPC monsters): cut by MonsterSheet into idle_/run_/attack_<dir> + death.
+## When set, it replaces sprite_frames and the monster faces 4 directions instead of flipping.
+@export var sprite_sheet: Texture2D
+@export var sheet_frame_size: Vector2i = Vector2i(64, 64)
+## Sheet row of each facing, in the order down, left, up, right.
+@export var sheet_direction_rows: Array[int] = [0, 1, 2, 3]
+@export var sheet_idle_column: int = 0
+## First column and frame count.
+@export var sheet_run_columns: Vector2i = Vector2i(1, 7)
+@export var sheet_attack_columns: Vector2i = Vector2i(8, 3)
+@export var sheet_death_row: int = 4
+@export var sheet_death_frames: int = 5
+## Where the sprite sits from the body center, in reference pixels (LPC feet are low in the frame).
+@export var sprite_offset: Vector2 = Vector2.ZERO
 ## Multiplied over the sprite, so one pack sprite can be reused for several monsters.
 @export var sprite_tint: Color = Color.WHITE
 @export var art_faces_right: bool = true
@@ -45,3 +62,14 @@ extends Resource
 @export_group("Defense")
 ## 0 = full knockback, 1 = immune.
 @export_range(0.0, 1.0) var knockback_resistance: float = 0.0
+
+@export_group("Spawning")
+## Spawned in groups of this many (min, max), close together.
+@export var group_size: Vector2i = Vector2i(1, 1)
+## Groups also gather around every place of this kind in their zone (FloorLayout feature, e.g. goblin_camp).
+@export var home_feature: StringName = &""
+@export var groups_per_home: int = 0
+
+
+func get_max_health() -> float:
+	return max_health if max_health > 0.0 else stats.get_max_health()

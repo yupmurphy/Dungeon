@@ -18,6 +18,8 @@ const DAMAGE_DEALT_COLOR: Color = Color(1.0, 0.95, 0.6)
 const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
 ## Reference pixels: monsters fade in over this distance at the edge of the player's sight radius (Perception).
 const SIGHT_FADE: float = 20.0
+## Time the death animation (if the monster has one) plays before the body fades out.
+const DEATH_ANIMATION_TIME: float = 0.7
 
 @export var data: MonsterData
 
@@ -54,10 +56,13 @@ func _ready() -> void:
 	var radius: float = GameScale.world(data.body_radius)
 	(body_shape.shape as CircleShape2D).radius = radius
 	(hurtbox_shape.shape as CircleShape2D).radius = radius + GameScale.world(1.0)
-	if data.sprite_frames != null:
-		sprite.sprite_frames = data.sprite_frames
-		sprite.play(&"idle")
+	# A sheet with one row per facing (LPC monsters) or plain idle/run/attack frames.
+	if data.sprite_sheet != null:
+		animator.use_frames(MonsterSheet.frames(data))
+	elif data.sprite_frames != null:
+		animator.use_frames(data.sprite_frames)
 	animator.fit_to(data.visual_size)
+	visual.position = GameScale.world_vector(data.sprite_offset)
 	sprite.modulate = data.sprite_tint
 	animator.art_faces_right = data.art_faces_right
 	_shader = sprite.material as ShaderMaterial
@@ -71,7 +76,7 @@ func _ready() -> void:
 	hurtbox.defender = data.stats
 	hitbox.knockback_force = GameScale.world(data.attack_knockback) * data.stats.get_knockback_multiplier()
 
-	health.setup(data.stats.get_max_health())
+	health.setup(data.get_max_health())
 	health.died.connect(_on_died)
 	hurtbox.hit_received.connect(_on_hit_received)
 	hurtbox.hit_missed.connect(_on_hit_missed)
@@ -168,6 +173,10 @@ func _tick_chase() -> Vector2:
 		# Direction is locked now, so a player who moves away can dodge the attack.
 		_attack_dir = to_target.normalized()
 		_set_state(State.WINDUP, data.windup_time)
+		if animator.directional:
+			# Real frames: the swing starts with the wind-up (raised weapon = the warning).
+			animator.face_vector(_attack_dir)
+			animator.play_attack(data.windup_time + data.attack_active_time)
 		return Vector2.ZERO
 	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
 		* FloorLayout.speed_factor_at(global_position)
@@ -176,15 +185,16 @@ func _tick_chase() -> Vector2:
 func _begin_attack() -> void:
 	attack_pivot.rotation = _attack_dir.angle()
 	hitbox.activate(data.attack_active_time)
-	animator.play_attack(data.attack_active_time)
+	if not animator.directional:
+		animator.play_attack(data.attack_active_time)
 	_set_state(State.ATTACK, data.attack_active_time)
 
 
 func _update_facing() -> void:
 	if state in [State.WINDUP, State.ATTACK]:
-		animator.face(_attack_dir.x)
+		animator.face_vector(_attack_dir)
 	elif is_instance_valid(_target):
-		animator.face(_target.global_position.x - global_position.x)
+		animator.face_vector(_target.global_position - global_position)
 
 
 func _update_tint() -> void:
@@ -215,6 +225,7 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 		return
 	if state == State.WINDUP:
 		_set_state(State.RECOVER, STAGGER_TIME)
+		animator.stop_attack()
 	elif state == State.IDLE:
 		_target = _find_target()
 		_set_state(State.CHASE, 0.0)
@@ -234,5 +245,15 @@ func _on_died() -> void:
 	GameFeel.spawn_burst(global_position, data.body_color, 18, 120.0)
 	died.emit(self)
 	var tween: Tween = create_tween()
+	if animator.play_death():
+		tween.tween_interval(DEATH_ANIMATION_TIME)
 	tween.tween_property(visual, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(queue_free)
+
+
+## Height of the monster's picture above its body center, in world pixels (for the health bar and name).
+func head_height() -> float:
+	var height: float = GameScale.world(data.visual_size / 2.0)
+	if data.sprite_sheet != null:
+		height = data.sheet_frame_size.y / 2.0 * absf(sprite.scale.y) - visual.position.y
+	return height

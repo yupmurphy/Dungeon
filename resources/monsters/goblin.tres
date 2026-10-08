@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="MonsterData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/stats/goblin_stats.tres" id="2_stats"]
+[ext_resource type="Texture2D" path="res://assets/monsters/goblin/young_goblin.png" id="3_sheet"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Goblin"
+stats = ExtResource("2_stats")
+max_health = 35.0
+xp_reward = 1
+region_id = &"goblin_galleries"
+sprite_sheet = ExtResource("3_sheet")
+sheet_run_columns = Vector2i(1, 8)
+sheet_attack_columns = Vector2i(9, 6)
+sheet_death_frames = 6
+sprite_offset = Vector2(0, -11)
+body_color = Color(0.25, 0.55, 0.25, 1)
+visual_size = 32.0
+body_radius = 5.0
+move_speed = 52.0
+attack_range = 26.0
+windup_time = 0.55
+attack_size = Vector2(16, 20)
+attack_damage = 12.0
+group_size = Vector2i(2, 4)
+home_feature = &"goblin_camp"
+groups_per_home = 2

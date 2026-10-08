@@ -294,6 +294,36 @@ func run(_options: Dictionary) -> void:
 	player.equipment.equip(Equipment.find(&"torso_longsleeve"))
 	sheet.close()
 
+	print("--- young goblin")
+	var goblin_data: MonsterData = load("res://resources/monsters/goblin.tres")
+	var goblin := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	goblin.data = goblin_data
+	goblin.process_mode = Node.PROCESS_MODE_INHERIT
+	room.get_node("World").add_child(goblin)
+	player.global_position = Vector2(300, 400)
+	goblin.global_position = Vector2(300, 400) + GameScale.world_vector(Vector2(-60, 0))
+	await get_tree().physics_frame
+	_check(goblin.health.max_health == 35.0, "goblin has 35 health (%s)" % goblin.health.max_health)
+	_check(goblin.animator.directional and goblin.sprite.sprite_frames.has_animation(&"attack_up"),
+		"goblin has its own frames for 4 facings")
+	var goblin_frame: Vector2 = goblin.sprite.sprite_frames.get_frame_texture(&"idle_down", 0).get_size()
+	_check(goblin_frame == Vector2(64, 64) and is_equal_approx(absf(goblin.sprite.scale.x), 1.0),
+		"goblin is drawn at its real LPC size, not scaled (%s, x%s)" % [goblin_frame, goblin.sprite.scale.x])
+	var saw_right: bool = false
+	var saw_swing: bool = false
+	for i in 120:
+		await get_tree().physics_frame
+		if not is_instance_valid(goblin):
+			break
+		var animation: String = goblin.sprite.animation
+		saw_right = saw_right or animation.ends_with("_right")
+		saw_swing = saw_swing or (goblin.state == Enemy.State.WINDUP and animation.begins_with("attack_"))
+	_check(saw_right, "a goblin left of the player faces right")
+	_check(saw_swing, "the goblin's swing starts during its wind-up (visible warning)")
+	goblin.health.take_damage(1000.0)
+	await get_tree().physics_frame
+	_check(is_instance_valid(goblin) and goblin.sprite.animation == &"death", "a dying goblin plays its fall")
+
 	print("--- hurt and death animations")
 	player.hurtbox.receive_hit(Combat.Hit.new(5.0), Vector2.RIGHT, 0.0)
 	_check(player.character.action == "flinch", "a hit makes the player flinch (%s)" % player.character.action)
