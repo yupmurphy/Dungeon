@@ -419,7 +419,7 @@ func run(_options: Dictionary) -> void:
 	archer.queue_free()
 	player.health.heal(1000.0)
 
-	print("--- dash and dash attack (Space, attack during the dash)")
+	print("--- dash (tap Space = short dash where you face, attack during it = normal attack)")
 	await _clear(effects)
 	var dash: DashAttack = player.dash
 	_check(InputMap.has_action("dash") and InputMap.action_get_events("dash").size() > 0, "input action 'dash' mapped")
@@ -429,26 +429,43 @@ func run(_options: Dictionary) -> void:
 	_send_key(KEY_SPACE, true)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	_send_key(KEY_SPACE, false)
+	_check(not dash.is_busy(), "nothing happens while Space is still held")
+	await _release_space()
 	var toward_mouse: Vector2 = player.get_global_mouse_position() - player.global_position
-	_check(dash.is_dashing() and dash.direction().dot(toward_mouse.normalized()) > 0.99, "Space dashes toward the mouse")
-	_check(is_equal_approx(player.exhaustion.current, DashAttack.EXHAUSTION_COST * 0.95),
-		"a dash adds 15 exhaustion, x 0.95 from Vitality 5 (%.2f)" % player.exhaustion.current)
+	_check(dash.is_dashing() and dash.direction().dot(toward_mouse.normalized()) > 0.99,
+		"a tap on Space, standing: dashes toward the mouse (where the character looks)")
+	_check(is_equal_approx(player.exhaustion.current, Player.DASH_EXHAUSTION_COST * 0.95),
+		"a dash adds 8 exhaustion, x 0.95 from Vitality 5 (%.2f)" % player.exhaustion.current)
 	_check(not dash.try_dash(Vector2.RIGHT), "no second dash while dashing / on cooldown")
 	while dash.is_dashing():
 		await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(player.collision_mask == 5, "after the dash the player is blocked by monsters again")
-	_check(not dash.try_dash(Vector2.RIGHT) and dash.cooldown_left() > 1.0,
-		"cooldown after the dash (%.2f s left)" % dash.cooldown_left())
+	_check(not dash.try_dash(Vector2.RIGHT) and dash.cooldown_left() > 0.3 and dash.cooldown_left() <= Player.DASH_COOLDOWN,
+		"short cooldown after the dash (%.2f s left)" % dash.cooldown_left())
 	dash._cooldown_left = 0.0
+	_send_key(KEY_D, true)
+	_send_key(KEY_SPACE, true)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await _release_space()
+	_send_key(KEY_D, false)
+	_check(dash.is_dashing() and dash.direction().dot(Vector2.RIGHT) > 0.99, "walking right + tap: dashes right")
+	while dash.is_dashing():
+		await get_tree().physics_frame
+	dash._cooldown_left = 0.0
+	_send_key(KEY_SPACE, true)
+	await get_tree().create_timer(Player.DASH_TAP_TIME + 0.1, true, false, true).timeout
+	await _release_space()
+	_check(not dash.is_busy(), "holding Space longer than a tap: no short dash")
+	player.exhaustion.current = 0.0
 	player.exhaustion.add(200.0)
 	_check(not dash.try_dash(Vector2.RIGHT), "no dash at 100 exhaustion")
 	player.exhaustion.current = 0.0
 	player.exhaustion.exhausted = false
 	_check(not player.hurtbox.invulnerable, "no invulnerability by default")
 
-	# Dash attack through two goblins standing in a row (to the right: the headless mouse can't aim).
+	# Through two goblins standing in a row (to the right: the headless mouse can't aim).
 	await _clear(effects)
 	player.global_position = Vector2(300, 400)
 	var on_path: Array[Enemy] = []
@@ -461,25 +478,25 @@ func run(_options: Dictionary) -> void:
 		dummy.global_position = player.global_position + GameScale.world_vector(Vector2(offset, 0))
 		on_path.append(dummy)
 	await get_tree().physics_frame
+	dash._cooldown_left = 0.0
 	var dash_start: Vector2 = player.global_position
 	dash.try_dash(Vector2.RIGHT)
 	Combat.forced_rolls.assign([0.99, 0.99, 0.99, 0.99])
 	_send_click(true)
+	while not Input.is_action_pressed("attack"):
+		await get_tree().process_frame
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_send_click(false)
-	_check(is_equal_approx(player.hitbox.damage, 26.0), "an attack during the dash does +30%% damage (%.1f)"
-		% player.hitbox.damage)
-	_check(is_equal_approx(player.exhaustion.current, (DashAttack.EXHAUSTION_COST + ExhaustionComponent.ATTACK_COST) * 0.95),
-		"the dash attack adds the attack's exhaustion too (%.2f)" % player.exhaustion.current)
-	_check(not dash.try_strike(20.0, 100.0), "one strike per dash")
+	_check(player._attack_cooldown_left > 0.0, "a click during the dash attacks")
+	_check(is_equal_approx(player.hitbox.damage, player.base_attack_damage),
+		"an attack during the dash does normal damage (%.1f)" % player.hitbox.damage)
+	_check(is_equal_approx(player.exhaustion.current, (Player.DASH_EXHAUSTION_COST + ExhaustionComponent.ATTACK_COST) * 0.95),
+		"the attack adds its own exhaustion (%.2f)" % player.exhaustion.current)
 	while dash.is_dashing():
 		await get_tree().physics_frame
 	var dashed: float = (player.global_position.x - dash_start.x) / GameScale.world(1.0)
 	_check(dashed > 45.0 and dashed < 70.0, "the dash passes through the goblins, about 58 px (%.1f)" % dashed)
-	_check(on_path.all(func(e: Enemy) -> bool: return e.health.current_health < e.health.max_health),
-		"the dash attack hits everything on the way (%s)" % [on_path.map(func(e: Enemy) -> float:
-			return e.health.current_health)])
 	var ghosts: int = effects.get_children().filter(func(n: Node) -> bool: return n is Sprite2D).size()
 	_check(ghosts >= 3, "the dash leaves a ghost trail (%d ghosts)" % ghosts)
 	dash._cooldown_left = 0.0
@@ -501,7 +518,7 @@ func run(_options: Dictionary) -> void:
 	player._attack_cooldown_left = 0.0
 	var sheet_lines: Array = StatTexts.derived(player.stats).filter(func(l: StatTexts.Derived) -> bool:
 		return l.key == &"DASH")
-	_check(sheet_lines.size() == 1 and sheet_lines[0].value == "+15 / 1.5 s",
+	_check(sheet_lines.size() == 1 and sheet_lines[0].value == "+8 / 0.6 s",
 		"the character sheet shows the dash cost and cooldown (%s)" % [sheet_lines.map(func(l) -> String: return l.value)])
 
 	print("--- hurt and death animations")
@@ -570,3 +587,12 @@ func _send_click(pressed: bool) -> void:
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = pressed
 	Input.parse_input_event(event)
+
+
+## Releases Space and waits until the game sees it released (input arrives on process frames), plus one physics frame.
+func _release_space() -> void:
+	_send_key(KEY_SPACE, false)
+	while Input.is_action_pressed("dash"):
+		await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
