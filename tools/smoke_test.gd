@@ -356,18 +356,37 @@ func run(_options: Dictionary) -> void:
 	archer.queue_free()
 	player.health.heal(1000.0)
 
-	print("--- dash attack component")
+	print("--- dash and dash attack (Space, attack during the dash)")
 	await _clear(effects)
-	var dash := DashAttack.new()
-	dash.visual = player.visual
-	dash.hitbox = player.hitbox
-	dash.attack_pivot = player.attack_pivot
-	dash.exhaustion = player.exhaustion
-	dash.hurtbox = player.hurtbox
-	player.add_child(dash)
+	var dash: DashAttack = player.dash
+	_check(InputMap.has_action("dash") and InputMap.action_get_events("dash").size() > 0, "input action 'dash' mapped")
 	player.exhaustion.current = 0.0
-	# The headless mouse sits at (0, 0): freeze the player's auto-aim so the hitbox follows the dash.
-	player._swing_left = 10.0
+	player._attack_cooldown_left = 0.0
+	player.global_position = Vector2(300, 400)
+	_send_key(KEY_SPACE, true)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_send_key(KEY_SPACE, false)
+	var toward_mouse: Vector2 = player.get_global_mouse_position() - player.global_position
+	_check(dash.is_dashing() and dash.direction().dot(toward_mouse.normalized()) > 0.99, "Space dashes toward the mouse")
+	_check(is_equal_approx(player.exhaustion.current, DashAttack.EXHAUSTION_COST * 0.95),
+		"a dash adds 15 exhaustion, x 0.95 from Vitality 5 (%.2f)" % player.exhaustion.current)
+	_check(not dash.try_dash(Vector2.RIGHT), "no second dash while dashing / on cooldown")
+	while dash.is_dashing():
+		await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(player.collision_mask == 5, "after the dash the player is blocked by monsters again")
+	_check(not dash.try_dash(Vector2.RIGHT) and dash.cooldown_left() > 1.0,
+		"cooldown after the dash (%.2f s left)" % dash.cooldown_left())
+	dash._cooldown_left = 0.0
+	player.exhaustion.add(200.0)
+	_check(not dash.try_dash(Vector2.RIGHT), "no dash at 100 exhaustion")
+	player.exhaustion.current = 0.0
+	player.exhaustion.exhausted = false
+	_check(not player.hurtbox.invulnerable, "no invulnerability by default")
+
+	# Dash attack through two goblins standing in a row (to the right: the headless mouse can't aim).
+	await _clear(effects)
 	player.global_position = Vector2(300, 400)
 	var on_path: Array[Enemy] = []
 	for offset in [24.0, 62.0]:
@@ -379,48 +398,48 @@ func run(_options: Dictionary) -> void:
 		dummy.global_position = player.global_position + GameScale.world_vector(Vector2(offset, 0))
 		on_path.append(dummy)
 	await get_tree().physics_frame
-	_check(dash.try_dash(Vector2.RIGHT) and dash.is_dashing(), "the dash starts")
-	_check(is_equal_approx(player.exhaustion.current, DashAttack.EXHAUSTION_COST * 0.95),
-		"a dash adds 15 exhaustion, x 0.95 from Vitality 5 (%.2f)" % player.exhaustion.current)
-	_check(not dash.try_dash(Vector2.RIGHT), "no second dash while dashing / on cooldown")
-	Combat.forced_rolls.assign([0.99, 0.99, 0.99, 0.99])
-	_check(dash.try_strike(20.0, 100.0) and is_equal_approx(player.hitbox.damage, 26.0),
-		"a strike during the dash does +30%% damage (%.1f)" % player.hitbox.damage)
-	_check(not dash.try_strike(20.0, 100.0), "one strike per dash")
 	var dash_start: Vector2 = player.global_position
+	dash.try_dash(Vector2.RIGHT)
+	Combat.forced_rolls.assign([0.99, 0.99, 0.99, 0.99])
+	_send_click(true)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_send_click(false)
+	_check(is_equal_approx(player.hitbox.damage, 26.0), "an attack during the dash does +30%% damage (%.1f)"
+		% player.hitbox.damage)
+	_check(is_equal_approx(player.exhaustion.current, (DashAttack.EXHAUSTION_COST + ExhaustionComponent.ATTACK_COST) * 0.95),
+		"the dash attack adds the attack's exhaustion too (%.2f)" % player.exhaustion.current)
+	_check(not dash.try_strike(20.0, 100.0), "one strike per dash")
 	while dash.is_dashing():
 		await get_tree().physics_frame
-		player.global_position += dash.dash_velocity() * get_physics_process_delta_time()
 	var dashed: float = (player.global_position.x - dash_start.x) / GameScale.world(1.0)
-	_check(dashed > 45.0 and dashed < 70.0, "the dash covers about 58 px (%.1f)" % dashed)
+	_check(dashed > 45.0 and dashed < 70.0, "the dash passes through the goblins, about 58 px (%.1f)" % dashed)
 	_check(on_path.all(func(e: Enemy) -> bool: return e.health.current_health < e.health.max_health),
-		"the dash strike hits everything on the way (%s)" % [on_path.map(func(e: Enemy) -> float:
+		"the dash attack hits everything on the way (%s)" % [on_path.map(func(e: Enemy) -> float:
 			return e.health.current_health)])
 	var ghosts: int = effects.get_children().filter(func(n: Node) -> bool: return n is Sprite2D).size()
 	_check(ghosts >= 3, "the dash leaves a ghost trail (%d ghosts)" % ghosts)
-	await get_tree().physics_frame
-	_check(player.collision_mask == 5, "after the dash the player is blocked by monsters again")
-	_check(not dash.try_dash(Vector2.RIGHT) and dash.cooldown_left() > 1.0,
-		"cooldown after the dash (%.2f s left)" % dash.cooldown_left())
 	dash._cooldown_left = 0.0
-	player.exhaustion.add(200.0)
-	_check(not dash.try_dash(Vector2.RIGHT), "no dash at 100 exhaustion")
-	player.exhaustion.current = 0.0
-	player.exhaustion.exhausted = false
-	_check(not player.hurtbox.invulnerable, "no invulnerability by default")
 	dash.windup_time = 0.4
 	var rest_rotation: float = player.visual.rotation
 	dash.try_dash(Vector2.RIGHT)
 	_check(dash.is_winding_up() and dash.dash_velocity() == Vector2.ZERO and player.visual.rotation != rest_rotation,
-		"with a wind-up it leans back first, without moving")
+		"with a wind-up (monsters) it leans back first, without moving")
 	await get_tree().create_timer(0.45, true, false, true).timeout
 	_check(not dash.is_winding_up() and player.visual.rotation == rest_rotation, "after the wind-up it stands up and dashes")
+	while dash.is_dashing():
+		await get_tree().physics_frame
+	dash.windup_time = 0.0
+	dash._cooldown_left = 0.0
 	for dummy in on_path:
 		dummy.queue_free()
-	dash.queue_free()
-	player._swing_left = 0.0
 	player.exhaustion.current = 0.0
 	player.exhaustion.exhausted = false
+	player._attack_cooldown_left = 0.0
+	var sheet_lines: Array = StatTexts.derived(player.stats).filter(func(l: StatTexts.Derived) -> bool:
+		return l.key == &"DASH")
+	_check(sheet_lines.size() == 1 and sheet_lines[0].value == "+15 / 1.5 s",
+		"the character sheet shows the dash cost and cooldown (%s)" % [sheet_lines.map(func(l) -> String: return l.value)])
 
 	print("--- hurt and death animations")
 	player.hurtbox.receive_hit(Combat.Hit.new(5.0), Vector2.RIGHT, 0.0)
@@ -481,3 +500,10 @@ func _clear(parent: Node) -> void:
 	for child in parent.get_children():
 		child.queue_free()
 	await get_tree().process_frame
+
+
+func _send_click(pressed: bool) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	Input.parse_input_event(event)

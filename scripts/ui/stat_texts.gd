@@ -116,6 +116,9 @@ static func derived(stats: Stats) -> Array[Derived]:
 		{"per": _num(Stats.EXHAUSTION_GAIN_PER_VITALITY * 100.0), "min": _num(Stats.EXHAUSTION_GAIN_MIN * 100.0),
 		"sprint": _num(ExhaustionComponent.SPRINT_PER_SECOND), "attack": _num(ExhaustionComponent.ATTACK_COST),
 		"tired": _num(ExhaustionComponent.TIRED_THRESHOLD)}))
+	list.append(_derived("DASH", "+%s / %s s" % [_num(DashAttack.EXHAUSTION_COST), _num(DashAttack.COOLDOWN)],
+		{"cost": _num(DashAttack.EXHAUSTION_COST), "cooldown": _num(DashAttack.COOLDOWN),
+		"bonus": _num(DashAttack.DAMAGE_BONUS * 100.0)}))
 	return list
 
 

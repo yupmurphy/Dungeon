@@ -1,7 +1,8 @@
 class_name Player
 extends CharacterBody2D
-## Top-down player: 8-direction movement, sprint (Shift), mouse-aimed melee attack.
-## Sprint and attacks raise exhaustion (ExhaustionComponent). All numbers scale through Stats.
+## Top-down player: 8-direction movement, sprint (Shift), dash toward the mouse (Space, DashAttack), mouse-aimed
+## melee attack; an attack during the dash is a stronger dash attack. Sprint, dash and attacks raise exhaustion
+## (ExhaustionComponent). All numbers scale through Stats.
 ## Sizes, distances and speeds are in reference pixels and converted with GameScale.
 
 signal died
@@ -51,6 +52,8 @@ var _attack_slow_left: float = 0.0
 var _swing_left: float = 0.0
 var _knockback: Vector2 = Vector2.ZERO
 var _flash_tween: Tween
+## Space: dash toward the mouse; an attack during it becomes a dash attack.
+var dash: DashAttack
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var exhaustion: ExhaustionComponent = $ExhaustionComponent
@@ -83,6 +86,13 @@ func _ready() -> void:
 	_refresh_look()
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
+	dash = DashAttack.new()
+	dash.visual = visual
+	dash.hitbox = hitbox
+	dash.attack_pivot = attack_pivot
+	dash.exhaustion = exhaustion
+	dash.hurtbox = hurtbox
+	add_child(dash)
 
 
 ## Builds collision shapes, hitbox placement and light size from the exported sizes.
@@ -123,6 +133,14 @@ func _physics_process(delta: float) -> void:
 func _physics_normal() -> void:
 	if _swing_left <= 0.0:
 		_aim_at_mouse()
+	if dash.is_busy():
+		velocity = dash.dash_velocity() + _knockback
+		if Input.is_action_just_pressed("attack"):
+			_try_attack()
+		return
+	if Input.is_action_just_pressed("dash") and dash.try_dash(get_global_mouse_position() - global_position):
+		velocity = dash.dash_velocity() + _knockback
+		return
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	# Shallow water, reeds, quicksand... slow you down.
 	var speed: float = GameScale.world(base_move_speed) * stats.get_move_speed_multiplier() \
@@ -161,14 +179,22 @@ func _update_animation() -> void:
 func _try_attack() -> void:
 	if _attack_cooldown_left > 0.0:
 		return
-	exhaustion.add(ExhaustionComponent.ATTACK_COST)
-	_aim_at_mouse()
 	# Exhausted (reached 100, not yet below 70) = less damage.
-	hitbox.damage = base_attack_damage * exhaustion.damage_factor()
-	hitbox.knockback_force = GameScale.world(attack_knockback) * stats.get_knockback_multiplier()
-	hitbox.activate(ATTACK_ACTIVE_TIME)
-	_swing_left = ATTACK_ACTIVE_TIME
-	_attack_slow_left = ATTACK_SLOW_TIME
+	var damage: float = base_attack_damage * exhaustion.damage_factor()
+	var knockback_force: float = GameScale.world(attack_knockback) * stats.get_knockback_multiplier()
+	if dash.is_dashing():
+		# Dash attack: along the dash, stronger, hits everything on the way (once per dash).
+		if not dash.try_strike(damage, knockback_force):
+			return
+		_swing_left = dash.duration
+	else:
+		_aim_at_mouse()
+		hitbox.damage = damage
+		hitbox.knockback_force = knockback_force
+		hitbox.activate(ATTACK_ACTIVE_TIME)
+		_swing_left = ATTACK_ACTIVE_TIME
+		_attack_slow_left = ATTACK_SLOW_TIME
+	exhaustion.add(ExhaustionComponent.ATTACK_COST)
 	_attack_cooldown_left = base_attack_cooldown / (stats.get_attack_speed_multiplier() * exhaustion.speed_factor())
 	var aim: Vector2 = Vector2.from_angle(attack_pivot.rotation)
 	character.play(character.attack_action(), LpcCharacter.direction_of(aim), ATTACK_ANIMATION_TIME)
@@ -199,6 +225,7 @@ func _on_hit_received(damage: float, knockback: Vector2, critical: bool) -> void
 
 func _on_died() -> void:
 	state = State.DEAD
+	dash.cancel()
 	hurtbox.invulnerable = true
 	hitbox.deactivate()
 	visual.modulate = Color(0.75, 0.75, 0.8, 1.0)

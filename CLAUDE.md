@@ -117,7 +117,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health follows).
 - Exhaustion replaces stamina (user decision): 0..100, grows with sprint (Shift) and attacks, recovers after a
   pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70.
-- Dash attack is back (v0.1.6+, user spec): `DashAttack` component (scripts/components/dash_attack.gd), the same for
+- Dash attack is back (v0.1.6+, user spec; no separate button, user decision): Space dashes toward the mouse, an
+  attack (left click) during the dash becomes the dash attack and adds its own exhaustion (+3). `DashAttack` component (scripts/components/dash_attack.gd), the same for
   player and monsters. Short dash (passes through bodies, not walls), a strike during it does +30% and hits all on the
   way, +15 exhaustion, 1.5 s cooldown, blocked while exhausted, ghost trail, no invulnerability by default (flag),
   optional wind-up lean (monsters warn before dashing). Defaults are constants; monsters override the exports.
@@ -187,7 +188,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - `tools/` dev tools started through the `DebugRunner` autoload
 
 ## Input map
-`move_up/down/left/right` = WASD, `attack` = left mouse, `sprint` = Shift, `restart` = R, `map` = M, `character_sheet` = C,
+`move_up/down/left/right` = WASD, `attack` = left mouse, `sprint` = Shift, `dash` = Space, `restart` = R, `map` = M, `character_sheet` = C,
 `debug_new_seed` F1, `debug_reveal_map` F2, `debug_invincible` F3, `debug_show_seed` F4, `toggle_night` = N (town).
 
 ## Running / checking

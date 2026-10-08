@@ -29,7 +29,7 @@ STAT_PERCEPTION,Perception
 STAT_LUCK,Luck
 STAT_STRENGTH_DESC,"Raw power and toughness. More health, harder hits that push enemies farther, less damage taken and more carry weight."
 STAT_AGILITY_DESC,"Speed and reflexes. You attack and move faster, and enemies miss you more often."
-STAT_VITALITY_DESC,"Endurance. Sprinting and attacking tire you less."
+STAT_VITALITY_DESC,"Endurance. Sprinting, dashing and attacking tire you less."
 STAT_MAGIC_DESC,"Arcane power. Stronger spells, more mana and a bit more damage."
 MAGIC_LOCKED_DESC,"Locked: your magic has not awakened yet. It cannot be raised and gives no mana."
 STAT_INTELLIGENCE_DESC,"Mind. No effect in combat."
@@ -68,6 +68,7 @@ DERIVED_REVEAL,Map reveal radius
 DERIVED_KNOCKBACK,Knockback
 DERIVED_CARRY,Carry weight
 DERIVED_EXHAUSTION,Exhaustion gained
+DERIVED_DASH,Dash (Space)
 DERIVED_HEALTH_FROM,"From Strength: {base} + {per} per point. Strength {stat} gives {value}."
 DERIVED_MANA_FROM,"From Magic: {base} + {per} per point, 0 while Magic is locked. Magic {stat} gives {value}."
 DERIVED_DEFENSE_FROM,"From Strength: {per} per point. You take {taken}% of the damage (damage x 100 / (100 + defense))."
@@ -83,6 +84,7 @@ DERIVED_REVEAL_FROM,"From Perception: {base} + {per} tiles per point, rounded do
 DERIVED_KNOCKBACK_FROM,"From Strength: +{per}% per point."
 DERIVED_CARRY_FROM,"From Strength: {base} + {per} per point."
 DERIVED_EXHAUSTION_FROM,"From Vitality: -{per}% per point, at least {min}%. Sprint adds {sprint} per second, an attack {attack}; it drops after a short rest. Above {tired} you are slower; at 100 you cannot sprint and deal less damage until it drops below {tired}."
+DERIVED_DASH_FROM,"A short dash toward the mouse that passes through enemies (walls stop it). Costs {cost} exhaustion, then {cooldown} s to wait; not while exhausted. Attack during the dash: +{bonus}% damage to everything on the way, and the attack adds its own exhaustion too."
 WANTED_TITLE,WANTED
 WANTED_REWARD,{reward}g
 WANTED_UNKNOWN,Unknown
