@@ -123,10 +123,15 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   (stands still, crouches, ChargeBar above the head, +30 exhaustion/s until full, then no more); release = long dash
   1.5x-3x, no damage; attack while holding = dash attack at once (thrust, hits all on the way, 1.2x-2x damage);
   exhaustion hitting 100 while charging launches the long dash. Agility: x(1 + 0.05/point) dash distance and dash
-  attack damage (`Stats.get_dash_power_multiplier`). `DashAttack` component (scripts/components/dash_attack.gd), the
+  attack damage (`Stats.get_dash_power_multiplier`). Player dashes are x0.8 (`DASH_DISTANCE_FACTOR`, user asked -20%).
+  `DashAttack` component (scripts/components/dash_attack.gd), the
   same for player and monsters: passes through bodies (not walls), `try_dash(dir, distance_scale, ignore_exhaustion)`,
-  `try_strike(damage, knockback, multiplier)` (default +30%), ghost trail, no invulnerability by default (flag),
+  `try_strike(damage, knockback, multiplier)` (default +30%), no invulnerability by default (flag),
   optional wind-up lean (monsters warn before dashing). Defaults are constants; monsters override the exports.
+  Visuals (user: no color change on the dasher, no blue ghosts): `AirFlow` (scripts/effects/air_flow.gd, on the
+  GameFeel layer) = wind streaks + dust; GATHER while charging / during a wind-up, TRAIL while dashing, intensity
+  grows with the charge / dash distance. Dash attack = thrust held on frame 4 (`LpcCharacter.play(.., hold_frame)`,
+  `release()` when the dash ends); the long dash uses the walk animation (legs capped at 2x).
   Monsters: `MonsterData` "Dash attack" group (`dash_attack_chance`, `_hurt` below `hurt_health_ratio`, `dash_range`,
   wind-up 0.4 s lean, speed/time/knockback). Rolled once per attack. Young goblin: 0.28 (1 in 3-4), hurt 0.4 (1 in
   2-3); the direction locks at the lean, so stepping aside dodges it; a hit during the lean cancels it. Brute and

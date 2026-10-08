@@ -2,7 +2,8 @@ class_name DashAttack
 extends Node
 ## Short, fast dash in a chosen direction, used the same way by the player and by monsters.
 ## The dasher passes through other bodies (walls still stop it). A strike during the dash hits harder
-## (DAMAGE_BONUS) and hits everything the attack hitbox touches on the way.
+## (DAMAGE_BONUS) and hits everything the attack hitbox touches on the way. Air rushes around the dasher (AirFlow,
+## more of it on longer dashes); no tint on the dasher itself.
 ## Costs exhaustion and has a cooldown; not usable while exhausted (the owner's ExhaustionComponent reached 100).
 ## Optional wind-up: the owner leans back first (the warning monsters give before a dash attack).
 ## The owner asks dash_velocity() every physics frame and moves with it while is_busy().
@@ -24,9 +25,11 @@ const COOLDOWN: float = 1.5
 const INVULNERABLE: bool = false
 ## A strike made late in the dash still stays active at least this long.
 const MIN_STRIKE_TIME: float = 0.1
-## Ghost trail: one fading copy of the sprite every GHOST_INTERVAL seconds.
-const GHOST_INTERVAL: float = 0.03
-const GHOST_TINT: Color = Color(0.6, 0.85, 1.0, 0.6)
+## Air during the dash: the default dash gets AIR_INTENSITY_MIN, a dash AIR_FULL_DISTANCE times as far gets the most.
+const AIR_INTENSITY_MIN: float = 0.15
+const AIR_FULL_DISTANCE: float = 3.0
+## Air gathering during a wind-up (monsters).
+const WINDUP_AIR_INTENSITY: float = 0.6
 ## Wind-up lean: the picture tilts and moves back (reference pixels) against the dash direction.
 const LEAN_ANGLE: float = 0.3
 const LEAN_DISTANCE: float = 3.0
@@ -45,7 +48,7 @@ const PASS_THROUGH_MASK: int = 1
 @export var knockback_multiplier: float = 1.0
 
 @export_group("Owner parts")
-## The picture that leaves the ghost trail and leans during the wind-up (every visible AnimatedSprite2D in it).
+## The picture that leans during the wind-up.
 @export var visual: Node2D
 ## The owner's attack hitbox and the pivot that points it; null = the dash cannot strike (e.g. a fleeing archer).
 @export var hitbox: Hitbox
@@ -58,7 +61,6 @@ var _direction: Vector2 = Vector2.ZERO
 var _windup_left: float = 0.0
 var _dash_left: float = 0.0
 var _cooldown_left: float = 0.0
-var _ghost_left: float = 0.0
 var _struck: bool = false
 var _made_invulnerable: bool = false
 var _saved_mask: int = -1
@@ -67,6 +69,8 @@ var _visual_rotation: float = 0.0
 ## This dash, compared with the default one (see try_dash).
 var _speed_scale: float = 1.0
 var _time_scale: float = 1.0
+var _air_intensity: float = 0.0
+var _air: AirFlow
 
 
 func is_dashing() -> bool:
@@ -101,6 +105,7 @@ func try_dash(direction: Vector2, distance_scale: float = 1.0, ignore_exhaustion
 	_direction = direction.normalized()
 	_speed_scale = sqrt(maxf(distance_scale, 0.01))
 	_time_scale = _speed_scale
+	_air_intensity = lerpf(AIR_INTENSITY_MIN, 1.0, clampf(inverse_lerp(1.0, AIR_FULL_DISTANCE, distance_scale), 0.0, 1.0))
 	_struck = false
 	_cooldown_left = cooldown
 	if exhaustion != null:
@@ -108,6 +113,7 @@ func try_dash(direction: Vector2, distance_scale: float = 1.0, ignore_exhaustion
 	if windup_time > 0.0:
 		_windup_left = windup_time
 		_lean(true)
+		_set_air(AirFlow.Mode.GATHER, WINDUP_AIR_INTENSITY)
 	else:
 		_start_dash()
 	return true
@@ -147,6 +153,7 @@ func time_left() -> float:
 func cancel() -> void:
 	if is_winding_up():
 		_lean(false)
+		_set_air(AirFlow.Mode.OFF, 0.0)
 	_windup_left = 0.0
 	if is_dashing():
 		_end_dash()
@@ -162,17 +169,13 @@ func _physics_process(delta: float) -> void:
 		return
 	if _dash_left > 0.0:
 		_dash_left -= delta
-		_ghost_left -= delta
-		if _ghost_left <= 0.0:
-			_ghost_left = GHOST_INTERVAL
-			_spawn_ghosts()
 		if _dash_left <= 0.0:
 			_end_dash()
 
 
 func _start_dash() -> void:
 	_dash_left = duration * _time_scale
-	_ghost_left = 0.0
+	_set_air(AirFlow.Mode.TRAIL, _air_intensity)
 	if invulnerable and hurtbox != null and not hurtbox.invulnerable:
 		hurtbox.invulnerable = true
 		_made_invulnerable = true
@@ -192,15 +195,42 @@ func _end_dash() -> void:
 		# Deferred: a dash can end inside a physics callback (the owner was hit).
 		get_parent().set_deferred("collision_mask", _saved_mask)
 		_saved_mask = -1
+	_set_air(AirFlow.Mode.OFF, 0.0)
 	dash_finished.emit()
 
 
-func _spawn_ghosts() -> void:
-	if visual == null:
+## Air drawn in while charging (the player holding Space): `charge` 0..1, below 0 = stop gathering.
+func gather(charge: float) -> void:
+	if charge >= 0.0:
+		_set_air(AirFlow.Mode.GATHER, charge)
+	elif _air != null and is_instance_valid(_air) and _air.mode == AirFlow.Mode.GATHER:
+		_set_air(AirFlow.Mode.OFF, 0.0)
+
+
+func _set_air(mode: AirFlow.Mode, intensity: float) -> void:
+	if _air != null and not is_instance_valid(_air):
+		_air = null
+	if mode == AirFlow.Mode.OFF:
+		if _air != null:
+			_air.mode = AirFlow.Mode.OFF
+		_air = null
 		return
-	for sprite in visual.find_children("*", "AnimatedSprite2D", true, false):
-		if (sprite as AnimatedSprite2D).is_visible_in_tree():
-			GameFeel.spawn_ghost(sprite, GHOST_TINT)
+	if _air == null:
+		_air = AirFlow.new()
+		_air.target = get_parent() as Node2D
+		GameFeel.add_overlay(_air)
+	_air.mode = mode
+	_air.intensity = intensity
+	_air.direction = _direction
+
+
+## The air effect now (null when none), for tests.
+func air() -> AirFlow:
+	return _air if _air != null and is_instance_valid(_air) else null
+
+
+func _exit_tree() -> void:
+	_set_air(AirFlow.Mode.OFF, 0.0)
 
 
 ## Wind-up warning: tilt back and step back from the dash direction; `on` = false puts the picture back.

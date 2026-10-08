@@ -465,13 +465,15 @@ func run(_options: Dictionary) -> void:
 	await get_tree().physics_frame
 	_check(not dash.is_busy() and player._charge_bar.visible and player.global_position == still_at,
 		"holding Space: nothing launches, the player stands still, the charge bar shows")
+	_check(dash.air() != null and dash.air().mode == AirFlow.Mode.GATHER and dash.air().particle_count() > 0,
+		"charging: air gathers around the player (%d particles)" % (dash.air().particle_count() if dash.air() else 0))
 	_check(player.exhaustion.current > Player.DASH_CHARGE_EXHAUSTION_PER_SECOND * 0.95 * 0.3,
 		"charging tires (%.1f exhaustion)" % player.exhaustion.current)
 	var charge: float = player._dash_charge()
 	_check(charge > 0.4 and charge < 0.7, "about half charged after 0.6 s (%.2f)" % charge)
 	await _release_space()
 	var scale_now: float = dash._speed_scale * dash._speed_scale
-	var expected_scale: float = 1.25 * lerpf(Player.DASH_CHARGED_DISTANCE_MIN, Player.DASH_CHARGED_DISTANCE_MAX, charge)
+	var expected_scale: float = 1.25 * Player.DASH_DISTANCE_FACTOR * lerpf(Player.DASH_CHARGED_DISTANCE_MIN, Player.DASH_CHARGED_DISTANCE_MAX, charge)
 	_check(dash.is_dashing() and absf(scale_now - expected_scale) < 0.15 and not player.hitbox.monitoring,
 		"released: a long dash without damage (%.2fx the default dash, expected about %.2fx)" % [scale_now, expected_scale])
 	_check(not player._charge_bar.visible, "the charge bar hides after the launch")
@@ -494,11 +496,18 @@ func run(_options: Dictionary) -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_send_click(false)
-	_check(dash.is_dashing() and is_equal_approx(dash._speed_scale * dash._speed_scale, 1.25 * Player.DASH_CHARGED_DISTANCE_MAX),
+	_check(dash.is_dashing() and is_equal_approx(dash._speed_scale * dash._speed_scale,
+		1.25 * Player.DASH_DISTANCE_FACTOR * Player.DASH_CHARGED_DISTANCE_MAX),
 		"attack while holding Space: launches at once, as far as a full long dash")
 	_check(is_equal_approx(player.hitbox.damage, player.base_attack_damage * Player.DASH_ATTACK_DAMAGE_MAX * 1.25),
 		"full dash attack: x2 damage, x1.25 from Agility (%.1f)" % player.hitbox.damage)
-	_check(player.character.action == "thrust", "the dash attack plays the thrust (%s)" % player.character.action)
+	_check(player.character.action == "thrust" and player.character.is_holding(),
+		"the dash attack flies with the thrust held out (%s)" % player.character.action)
+	await get_tree().create_timer(0.1, true, false, true).timeout
+	_check(dash.air() != null and dash.air().mode == AirFlow.Mode.TRAIL and dash.air().particle_count() > 0
+		and is_equal_approx(dash.air().intensity, 1.0), "a full dash attack: the most air rushing past")
+	_check(player.visual.modulate == Color.WHITE and not effects.get_children().any(func(n: Node) -> bool: return n is Sprite2D),
+		"no blue tint or ghost copies, the player keeps its colors")
 	_send_key(KEY_SPACE, false)
 	while Input.is_action_pressed("dash"):
 		await get_tree().process_frame
@@ -506,6 +515,7 @@ func run(_options: Dictionary) -> void:
 		await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(not dash.is_busy(), "releasing Space after the dash attack launches nothing more")
+	_check(not player.character.is_holding(), "the held thrust ends with the dash")
 	dash._cooldown_left = 0.0
 	player._attack_cooldown_left = 0.0
 
@@ -558,8 +568,8 @@ func run(_options: Dictionary) -> void:
 		await get_tree().physics_frame
 	var dashed: float = (player.global_position.x - dash_start.x) / GameScale.world(1.0)
 	_check(dashed > 45.0 and dashed < 70.0, "the dash passes through the goblins, about 58 px (%.1f)" % dashed)
-	var ghosts: int = effects.get_children().filter(func(n: Node) -> bool: return n is Sprite2D).size()
-	_check(ghosts >= 3, "the dash leaves a ghost trail (%d ghosts)" % ghosts)
+	var air_left: Array = effects.get_children().filter(func(n: Node) -> bool: return n is AirFlow)
+	_check(air_left.size() > 0 and dash.air() == null, "after the dash the air fades out on its own")
 	dash._cooldown_left = 0.0
 	dash.windup_time = 0.4
 	var rest_rotation: float = player.visual.rotation

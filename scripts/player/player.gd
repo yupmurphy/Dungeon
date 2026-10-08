@@ -25,6 +25,8 @@ const DASH_TAP_TIME: float = 0.2
 ## The short dash: a little exhaustion and a short wait.
 const DASH_EXHAUSTION_COST: float = 8.0
 const DASH_COOLDOWN: float = 0.6
+## Every player dash (short, long, dash attack) goes this far compared with the default DashAttack distance.
+const DASH_DISTANCE_FACTOR: float = 0.8
 ## Space held this long (seconds) = fully charged; holding longer keeps the full charge.
 const DASH_FULL_CHARGE_TIME: float = 1.0
 ## Exhaustion per second while charging (stops once fully charged).
@@ -37,6 +39,12 @@ const DASH_ATTACK_DAMAGE_MIN: float = 1.2
 const DASH_ATTACK_DAMAGE_MAX: float = 2.0
 ## While charging the character crouches a little (picture squashed by this much at full charge).
 const DASH_CHARGE_SQUASH: float = 0.08
+## Dash attack picture: the thrust reaches DASH_ATTACK_HOLD_FRAME (arm out) in this many seconds and holds it
+## until the dash ends.
+const DASH_ATTACK_LUNGE_TIME: float = 0.08
+const DASH_ATTACK_HOLD_FRAME: int = 4
+## While dashing the legs move at most this many times faster than walking (the dash is far faster).
+const DASH_ANIMATION_SPEED_MAX: float = 2.0
 
 @export var stats: Stats
 ## Level and XP (shown on the character sheet).
@@ -116,6 +124,7 @@ func _ready() -> void:
 	dash.exhaustion_cost = DASH_EXHAUSTION_COST
 	dash.cooldown = DASH_COOLDOWN
 	add_child(dash)
+	dash.dash_finished.connect(_on_dash_finished)
 	_charge_bar = ChargeBar.new()
 	add_child(_charge_bar)
 
@@ -222,7 +231,7 @@ func _launch_dash(input_dir: Vector2, attack: bool) -> bool:
 	_show_charge(-1.0)
 	# Agility makes every dash longer and the dash attack stronger.
 	var power: float = stats.get_dash_power_multiplier()
-	var distance: float = power
+	var distance: float = power * DASH_DISTANCE_FACTOR
 	if charged:
 		distance *= lerpf(DASH_CHARGED_DISTANCE_MIN, DASH_CHARGED_DISTANCE_MAX, charge)
 	if not dash.try_dash(_facing(input_dir), distance, true):
@@ -235,12 +244,15 @@ func _launch_dash(input_dir: Vector2, attack: bool) -> bool:
 		_attack_cooldown_left = base_attack_cooldown / (stats.get_attack_speed_multiplier() * exhaustion.speed_factor())
 		# The aim stays along the dash while flying.
 		_swing_left = dash.time_left()
-		character.play("thrust", LpcCharacter.direction_of(dash.direction()), dash.time_left())
+		# Flies with the weapon held out in front.
+		character.play("thrust", LpcCharacter.direction_of(dash.direction()), DASH_ATTACK_LUNGE_TIME,
+			DASH_ATTACK_HOLD_FRAME)
 	return true
 
 
-## Charge bar and crouch; `charge` < 0 = not charging.
+## Charge bar, crouch and air gathering around the player; `charge` < 0 = not charging.
 func _show_charge(charge: float) -> void:
+	dash.gather(charge)
 	_charge_bar.visible = charge >= 0.0
 	_charge_bar.ratio = maxf(charge, 0.0)
 	var squash: float = DASH_CHARGE_SQUASH * maxf(charge, 0.0)
@@ -267,7 +279,10 @@ func _update_animation() -> void:
 	var moving: Vector2 = velocity - _knockback
 	var walk_speed: float = GameScale.world(base_move_speed)
 	if moving.length() > GameScale.world(WALK_THRESHOLD):
-		character.loop("walk", LpcCharacter.direction_of(moving), moving.length() / walk_speed)
+		var legs: float = moving.length() / walk_speed
+		if dash.is_dashing():
+			legs = minf(legs, DASH_ANIMATION_SPEED_MAX)
+		character.loop("walk", LpcCharacter.direction_of(moving), legs)
 	else:
 		character.loop("idle", LpcCharacter.direction_of(get_global_mouse_position() - global_position))
 
@@ -340,3 +355,10 @@ func _refresh_look() -> void:
 	character.body_type = equipment.body_type
 	character.items = equipment.look_items()
 	character.rebuild()
+
+
+## The dash attack's held thrust ends with the dash.
+func _on_dash_finished() -> void:
+	if character.is_holding():
+		character.release()
+		_swing_left = 0.0

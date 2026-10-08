@@ -37,6 +37,8 @@ var _layers: Array[AnimatedSprite2D] = []
 var _time: float = 0.0
 var _speed: float = 1.0
 var _finished: bool = false
+## >= 0: the action stops on this frame and stays busy until release() (the dash attack holds the thrust).
+var _hold_frame: int = -1
 
 
 func _ready() -> void:
@@ -89,14 +91,17 @@ func attack_action() -> String:
 
 
 ## Starts an action from its first frame. `duration` > 0 stretches a one-shot action to last that long.
-func play(new_action: String, new_direction: LpcCatalog.Direction, duration: float = 0.0) -> void:
+## `hold_frame` >= 0: reach that frame in `duration`, then stay on it (busy) until release().
+func play(new_action: String, new_direction: LpcCatalog.Direction, duration: float = 0.0, hold_frame: int = -1) -> void:
 	action = new_action
 	direction = new_direction
 	_time = 0.0
 	_finished = false
+	_hold_frame = hold_frame
 	_speed = 1.0
 	if duration > 0.0:
-		_speed = _frame_count() / FPS.get(action, 10.0) / duration
+		var frames: int = hold_frame + 1 if hold_frame >= 0 else _frame_count()
+		_speed = frames / FPS.get(action, 10.0) / duration
 	_apply_frame()
 
 
@@ -112,6 +117,17 @@ func is_busy() -> bool:
 	return action not in LOOPING and not _finished
 
 
+func is_holding() -> bool:
+	return _hold_frame >= 0
+
+
+## Ends a held action: the next loop() takes over.
+func release() -> void:
+	if _hold_frame >= 0:
+		_hold_frame = -1
+		_finished = true
+
+
 func _process(delta: float) -> void:
 	_time += delta * _speed
 	_apply_frame()
@@ -125,6 +141,8 @@ func _apply_frame() -> void:
 		frame = WALK_FIRST_FRAME + frame % maxi(count - WALK_FIRST_FRAME, 1)
 	elif action in LOOPING:
 		frame = frame % maxi(count, 1)
+	elif _hold_frame >= 0:
+		frame = mini(frame, mini(_hold_frame, count - 1))
 	elif frame >= count:
 		frame = count - 1
 		if not _finished:
