@@ -21,7 +21,7 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - **Small, reusable scenes.** One scene = one job (`player`, `enemy`, `prop`, `wall_torch`, `portal`, `hud`).
   Rooms/levels only compose them.
 - **Components instead of duplicated code.** Shared behavior lives in `scripts/components/` as child nodes
-  (`HealthComponent`, `ExhaustionComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, camera shake). Player and enemies share them.
+  (`HealthComponent`, `ExhaustionComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, `DashAttack`, camera shake). Player and enemies share them.
 - **Game data is separated from logic** as `Resource` classes (`scripts/resources/`) with instances in `resources/`
   (`.tres`). Adding a monster or changing balance = new/edited `.tres`, no logic rewrite.
   - `Stats` (player): 7 main stats: Strength, Agility, Vitality, Magic, Intelligence, Perception, Luck (user
@@ -116,7 +116,11 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   (`Progression` on the player), main stats with debug -, +, +10 buttons, derived values; hover = tooltip built by
   `StatTexts` (words from texts.csv, numbers from Stats). Player listens to `stats.changed` (max health follows).
 - Exhaustion replaces stamina (user decision): 0..100, grows with sprint (Shift) and attacks, recovers after a
-  pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70. No dash/dodge.
+  pause; above 70 slower movement/attacks, at 100 no sprint and less damage until below 70.
+- Dash attack is back (v0.1.6+, user spec): `DashAttack` component (scripts/components/dash_attack.gd), the same for
+  player and monsters. Short dash (passes through bodies, not walls), a strike during it does +30% and hits all on the
+  way, +15 exhaustion, 1.5 s cooldown, blocked while exhausted, ghost trail, no invulnerability by default (flag),
+  optional wind-up lean (monsters warn before dashing). Defaults are constants; monsters override the exports.
 - Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
   (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
 
