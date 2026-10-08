@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="MonsterData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/stats/goblin_stats.tres" id="2_stats"]
+[ext_resource type="Texture2D" path="res://assets/monsters/goblin/goblin_archer.png" id="3_sheet"]
+[ext_resource type="Texture2D" path="res://assets/monsters/goblin/arrow.png" id="4_arrow"]
+[ext_resource type="Resource" path="res://resources/monsters/goblin_grown.tres" id="5_grown"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Goblin Archer"
+stats = ExtResource("2_stats")
+max_health = 30.0
+xp_reward = 1
+region_id = &"forest"
+sprite_sheet = ExtResource("3_sheet")
+sheet_run_columns = Vector2i(1, 8)
+sheet_attack_columns = Vector2i(9, 6)
+sheet_death_frames = 6
+sprite_offset = Vector2(0, -11)
+body_color = Color(0.25, 0.55, 0.25, 1)
+visual_size = 32.0
+body_radius = 5.0
+move_speed = 50.0
+detect_range = 140.0
+lose_range = 260.0
+attack_range = 110.0
+windup_time = 1.0
+attack_active_time = 0.15
+lunge_speed = 0.0
+recovery_time = 1.2
+attack_damage = 22.0
+attack_knockback = 120.0
+projectile_texture = ExtResource("4_arrow")
+projectile_speed = 140.0
+projectile_range = 200.0
+projectile_turn_rate = 35.0
+keep_distance = 70.0
+group_size = Vector2i(2, 3)
+group_leader = ExtResource("5_grown")
+leader_chance = 0.5

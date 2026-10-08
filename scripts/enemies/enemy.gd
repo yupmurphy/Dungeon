@@ -1,7 +1,9 @@
 class_name Enemy
 extends CharacterBody2D
-## Data-driven melee enemy. Chases the player when it sees them, telegraphs its attack by
+## Data-driven enemy. Chases the player when it sees them, telegraphs its attack by
 ## turning red for `windup_time`, lunges, then recovers. Everything tunable lives in MonsterData.
+## Ranged monsters (MonsterData.projectile_texture) aim instead, with a line toward the player, shoot a
+## Projectile only with a clear line of fire, and back away while reloading if the player is too close.
 
 signal died(enemy: Enemy)
 
@@ -20,6 +22,11 @@ const SPARK_COLOR: Color = Color(1.0, 0.95, 0.8)
 const SIGHT_FADE: float = 20.0
 ## Time the death animation (if the monster has one) plays before the body fades out.
 const DEATH_ANIMATION_TIME: float = 0.7
+## Aim line of ranged monsters (reference pixels); it grows more opaque as the shot comes.
+const AIM_LINE_WIDTH: float = 1.0
+const AIM_LINE_COLOR: Color = Color(1.0, 0.2, 0.15)
+const AIM_LINE_MAX_ALPHA: float = 0.7
+const WORLD_LAYER: int = 1
 
 @export var data: MonsterData
 
@@ -33,6 +40,7 @@ var _flash_left: float = 0.0
 var _shader: ShaderMaterial
 ## Whoever looks at us (the player), for the Perception sight radius.
 var _viewer: Player
+var _aim_line: Line2D
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var hurtbox: Hurtbox = $Hurtbox
@@ -82,6 +90,13 @@ func _ready() -> void:
 	hurtbox.hit_missed.connect(_on_hit_missed)
 	hitbox.activated.connect(slash_visual.show)
 	hitbox.deactivated.connect(slash_visual.hide)
+	if data.is_ranged():
+		_aim_line = Line2D.new()
+		_aim_line.width = GameScale.world(AIM_LINE_WIDTH)
+		_aim_line.default_color = AIM_LINE_COLOR
+		_aim_line.points = PackedVector2Array([Vector2.ZERO, Vector2.ZERO])
+		_aim_line.visible = false
+		add_child(_aim_line)
 	# Health bar and name, shown by the player's Perception.
 	var info := EnemyInfo.new()
 	info.enemy = self
@@ -120,13 +135,17 @@ func _physics_process(delta: float) -> void:
 		State.CHASE:
 			move = _tick_chase()
 		State.WINDUP:
+			if data.is_ranged():
+				_tick_aim()
 			if _state_left <= 0.0:
 				_begin_attack()
 		State.ATTACK:
-			move = _attack_dir * GameScale.world(data.lunge_speed)
+			if not data.is_ranged():
+				move = _attack_dir * GameScale.world(data.lunge_speed)
 			if _state_left <= 0.0:
 				_set_state(State.RECOVER, data.recovery_time / data.stats.get_attack_speed_multiplier())
 		State.RECOVER:
+			move = _keep_away()
 			if _state_left <= 0.0:
 				_set_state(State.CHASE, 0.0)
 		State.DEAD:
@@ -143,6 +162,8 @@ func _physics_process(delta: float) -> void:
 func _set_state(new_state: State, duration: float) -> void:
 	state = new_state
 	_state_left = duration
+	if _aim_line != null:
+		_aim_line.visible = new_state == State.WINDUP
 
 
 func _find_target() -> Player:
@@ -169,7 +190,7 @@ func _tick_chase() -> Vector2:
 		_target = null
 		_set_state(State.IDLE, 0.0)
 		return Vector2.ZERO
-	if distance <= GameScale.world(data.attack_range):
+	if distance <= GameScale.world(data.attack_range) and (not data.is_ranged() or _clear_shot()):
 		# Direction is locked now, so a player who moves away can dodge the attack.
 		_attack_dir = to_target.normalized()
 		_set_state(State.WINDUP, data.windup_time)
@@ -184,10 +205,58 @@ func _tick_chase() -> Vector2:
 
 func _begin_attack() -> void:
 	attack_pivot.rotation = _attack_dir.angle()
-	hitbox.activate(data.attack_active_time)
+	if data.is_ranged():
+		_shoot()
+	else:
+		hitbox.activate(data.attack_active_time)
 	if not animator.directional:
 		animator.play_attack(data.attack_active_time)
 	_set_state(State.ATTACK, data.attack_active_time)
+
+
+## Nothing solid (walls, trees, rocks) between us and the target.
+func _clear_shot() -> bool:
+	var query := PhysicsRayQueryParameters2D.create(global_position, _target.global_position, WORLD_LAYER)
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
+
+
+## While aiming: follow the target (until the aim locks) and show the aim line.
+func _tick_aim() -> void:
+	if _state_left > data.aim_lock_time and is_instance_valid(_target):
+		_attack_dir = (_target.global_position - global_position).normalized()
+	var length: float = GameScale.world(data.attack_range)
+	if is_instance_valid(_target):
+		length = minf(global_position.distance_to(_target.global_position), length)
+	_aim_line.points = PackedVector2Array([Vector2.ZERO, _attack_dir * length])
+	var progress: float = 1.0 - clampf(_state_left / maxf(data.windup_time, 0.01), 0.0, 1.0)
+	_aim_line.modulate.a = progress * AIM_LINE_MAX_ALPHA
+
+
+func _shoot() -> void:
+	var shot := Projectile.new()
+	shot.texture = data.projectile_texture
+	shot.speed = GameScale.world(data.projectile_speed)
+	shot.max_distance = GameScale.world(data.projectile_range)
+	shot.turn_rate = deg_to_rad(data.projectile_turn_rate)
+	shot.target = _target
+	shot.damage = data.attack_damage
+	shot.attacker = data.stats
+	shot.knockback_force = hitbox.knockback_force
+	shot.rotation = _attack_dir.angle()
+	shot.position = position + _attack_dir * GameScale.world(data.body_radius + 2.0)
+	get_parent().add_child(shot)
+
+
+## Ranged monsters back away from a target that came too close (while reloading).
+func _keep_away() -> Vector2:
+	if data.keep_distance <= 0.0 or not is_instance_valid(_target):
+		return Vector2.ZERO
+	var away: Vector2 = global_position - _target.global_position
+	if away.length() >= GameScale.world(data.keep_distance):
+		return Vector2.ZERO
+	animator.face_vector(-away)
+	return away.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
+		* FloorLayout.speed_factor_at(global_position)
 
 
 func _update_facing() -> void:

@@ -59,6 +59,20 @@ extends Resource
 @export var attack_damage: float = 15.0
 @export var attack_knockback: float = 200.0
 
+@export_group("Ranged")
+## Set = the monster shoots this (e.g. an arrow, pointing right) instead of striking: the wind-up becomes aiming,
+## with a line toward the target, then the shot flies. attack_range is then the shooting distance.
+@export var projectile_texture: Texture2D
+## Reference pixels per second / reference pixels.
+@export var projectile_speed: float = 150.0
+@export var projectile_range: float = 200.0
+## Degrees per second the shot turns toward the target (partly homing); 0 = straight.
+@export var projectile_turn_rate: float = 0.0
+## Backs away from the target while reloading if it is closer than this.
+@export var keep_distance: float = 0.0
+## The aim stops following the target this long before the shot, so a sidestep at the right moment dodges it.
+@export var aim_lock_time: float = 0.25
+
 @export_group("Defense")
 ## 0 = full knockback, 1 = immune.
 @export_range(0.0, 1.0) var knockback_resistance: float = 0.0
@@ -72,6 +86,10 @@ extends Resource
 ## Groups also gather around every place of this kind in their zone (FloorLayout feature, e.g. goblin_camp).
 @export var home_feature: StringName = &""
 @export var groups_per_home: int = 0
+
+
+func is_ranged() -> bool:
+	return projectile_texture != null
 
 
 func get_max_health() -> float:

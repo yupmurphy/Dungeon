@@ -2,9 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/resources/region_data.gd" id="1_region"]
 [ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="2_monster"]
-[ext_resource type="Resource" path="res://resources/monsters/bat.tres" id="3_bat"]
-[ext_resource type="Resource" path="res://resources/monsters/spider.tres" id="4_spider"]
-[ext_resource type="Resource" path="res://resources/monsters/goblin.tres" id="5_goblin"]
+[ext_resource type="Resource" path="res://resources/monsters/goblin.tres" id="3_goblin"]
 
 [resource]
 script = ExtResource("1_region")
@@ -14,6 +12,6 @@ kind = 0
 biome = 0
 tile_tint = Color(0.78, 0.85, 1, 1)
 map_color = Color(0.5, 0.62, 0.9, 1)
-monsters = Array[ExtResource("2_monster")]([ExtResource("3_bat"), ExtResource("4_spider"), ExtResource("5_goblin")])
+monsters = Array[ExtResource("2_monster")]([ExtResource("3_goblin")])
 monsters_per_100_tiles = 0.35
 decor_per_100_tiles = 1.2

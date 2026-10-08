@@ -54,12 +54,12 @@ func play_attack(duration: float) -> void:
 		sprite.speed_scale = frame_count / (sprite.sprite_frames.get_animation_speed(sprite.animation) * duration)
 
 
-## Plays the death animation if the frames have one; false = nothing to play (fade only).
 ## Cancels a swing (the monster was interrupted).
 func stop_attack() -> void:
 	_attack_left = 0.0
 
 
+## Plays the death animation if the frames have one; false = nothing to play (fade only).
 func play_death() -> bool:
 	if sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(&"death"):
 		return false
@@ -117,8 +117,15 @@ func update_motion(velocity: Vector2, delta: float) -> void:
 
 
 func _play(animation_name: StringName) -> void:
+	var base: StringName = animation_name
 	if directional:
 		animation_name = StringName("%s_%s" % [animation_name, _facing])
 	if sprite.animation != animation_name and sprite.sprite_frames != null \
 			and sprite.sprite_frames.has_animation(animation_name):
+		# Turning mid-animation (an archer following its target while aiming) keeps the animation's progress.
+		var turning: bool = directional and String(sprite.animation).begins_with(String(base) + "_")
+		var frame: int = sprite.frame
+		var progress: float = sprite.frame_progress
 		sprite.play(animation_name)
+		if turning:
+			sprite.set_frame_and_progress(frame, progress)

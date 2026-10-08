@@ -15,3 +15,17 @@ Young goblin (young_goblin.png), baked by tools/goblin_baker.gd from the Univers
 Grown goblin (adult_goblin.png): "[LPC] Goblin" by Stephen "Redshrike" Challener (graphic artist) and William.Thompsonj
 (contributor), body sheet with the pack's sword (dagger) overlay combined into one sheet.
 License: CC-BY 4.0 / CC-BY 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0. https://opengameart.org/content/lpc-goblin
+
+Weapons of the young goblins (same generator, moved into the child's hands by tools/goblin_baker.gd):
+- Knife (young_goblin.png): LPC dagger by bluecarrot16, Johannes Sjolund (wulax), Matthew Krohn (makrohn).
+  OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0. https://opengameart.org/content/lpc-medieval-fantasy-character-sprites ,
+  https://opengameart.org/content/lpc-extended-weapon-animations
+- Bow (goblin_archer.png): LPC normal bow, original by Johannes Sjolund (wulax), walk animations by Pierre Vigier
+  (pvigier), layers by bluecarrot16. OGA-BY 3.0+ / GPL 3.0 / CC-BY 4.0.
+  https://opengameart.org/content/lpc-medieval-fantasy-character-sprites , https://opengameart.org/content/lpc-walk-animations-for-bows
+- Arrow (goblin_archer.png, arrow.png): Johannes Sjolund (wulax). OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0.
+  https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
+- Archer's front arm (goblin_archer.png): from the LPC male body shoot animation by bluecarrot16, JaidynReiman,
+  Benjamin K. Smith (BenCreating), Evert, Eliza Wyatt (ElizaWy), TheraHedwig, MuffinElZangano, Durrani,
+  Johannes Sjolund (wulax), Stephen Challener (Redshrike). OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0.
+  https://opengameart.org/content/lpc-character-bases

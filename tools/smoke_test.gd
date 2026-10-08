@@ -324,6 +324,34 @@ func run(_options: Dictionary) -> void:
 	await get_tree().physics_frame
 	_check(is_instance_valid(goblin) and goblin.sprite.animation == &"death", "a dying goblin plays its fall")
 
+	print("--- goblin archer")
+	var archer := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	archer.data = load("res://resources/monsters/goblin_archer.tres")
+	archer.process_mode = Node.PROCESS_MODE_INHERIT
+	room.get_node("World").add_child(archer)
+	player.global_position = Vector2(300, 400)
+	archer.global_position = Vector2(300, 400) + GameScale.world_vector(Vector2(90, 0))
+	var reached: Array[int] = [0]
+	var count_hit := func(_damage: float, _knockback: Vector2, _critical: bool) -> void: reached[0] += 1
+	var count_miss := func() -> void: reached[0] += 1
+	player.hurtbox.hit_received.connect(count_hit)
+	player.hurtbox.hit_missed.connect(count_miss)
+	var saw_aim_line: bool = false
+	var saw_arrow: bool = false
+	for i in 150:
+		await get_tree().physics_frame
+		player.global_position = Vector2(300, 400)
+		saw_aim_line = saw_aim_line or (archer.state == Enemy.State.WINDUP and archer._aim_line.visible)
+		saw_arrow = saw_arrow or room.get_node("World").get_children().any(func(n: Node) -> bool: return n is Projectile)
+	_check(archer.health.max_health == 30.0 and archer.data.is_ranged(), "the goblin archer has 30 health and shoots")
+	_check(saw_aim_line, "the archer aims with a visible line before shooting")
+	_check(saw_arrow, "the archer shoots an arrow")
+	_check(reached[0] > 0, "the arrow reaches the player")
+	player.hurtbox.hit_received.disconnect(count_hit)
+	player.hurtbox.hit_missed.disconnect(count_miss)
+	archer.queue_free()
+	player.health.heal(1000.0)
+
 	print("--- hurt and death animations")
 	player.hurtbox.receive_hit(Combat.Hit.new(5.0), Vector2.RIGHT, 0.0)
 	_check(player.character.action == "flinch", "a hit makes the player flinch (%s)" % player.character.action)

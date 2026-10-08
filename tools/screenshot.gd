@@ -4,7 +4,7 @@ extends Node
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
 ## Modes on the dungeon floor: idle, map (whole map revealed, big map open), sheet (character page, --hover=stat:2), overview,
 ## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
-## Modes in the combat test room: fight, room. Town: town (--at=<x>,<y> in tiles, --zoom, --night, --map).
+## Modes in the combat test room: fight, room, goblins (--frames=<n> to wait). Town: town (--at=<x>,<y> in tiles, --zoom, --night, --map).
 
 const SETTLE_FRAMES: int = 40
 const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
@@ -16,7 +16,7 @@ func run(options: Dictionary) -> void:
 	if output.is_empty():
 		output = "user://screenshot.png"
 	var mode: String = options.get("--mode", "idle")
-	if mode in ["fight", "room"]:
+	if mode in ["fight", "room", "goblins"]:
 		get_tree().change_scene_to_file.call_deferred(TEST_ROOM)
 	elif mode == "town":
 		get_tree().change_scene_to_file.call_deferred(TOWN)
@@ -61,6 +61,20 @@ func run(options: Dictionary) -> void:
 				await get_tree().physics_frame
 			for i in 4:
 				await get_tree().process_frame
+		"goblins":
+			# The goblins side by side: knife goblin, grown goblin, and an archer aiming (line), then shooting.
+			for name in ["Spider", "Bat"]:
+				room.get_node("World/" + name).queue_free()
+			var spots: Array[Vector2] = [Vector2(-40, -20), Vector2(-10, -30), Vector2(50, -25), Vector2(60, 10)]
+			var kinds: Array[String] = ["goblin", "goblin_grown", "goblin_archer", "goblin_archer"]
+			for i in kinds.size():
+				var monster := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+				monster.data = load("res://resources/monsters/%s.tres" % kinds[i])
+				room.get_node("World").add_child(monster)
+				monster.global_position = player.global_position + GameScale.world_vector(spots[i])
+			player.hurtbox.god_mode = true
+			for i in int(options.get("--frames", "75")):
+				await get_tree().physics_frame
 		"overview", "room":
 			# Zoomed out, without darkness, to check the tile layout.
 			var camera := player.get_node("Camera2D") as Camera2D
