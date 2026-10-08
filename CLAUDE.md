@@ -133,9 +133,12 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   grows with the charge / dash distance. Dash attack = thrust held on frame 4 (`LpcCharacter.play(.., hold_frame)`,
   `release()` when the dash ends); the long dash uses the walk animation (legs capped at 2x).
   Monsters: `MonsterData` "Dash attack" group (`dash_attack_chance`, `_hurt` below `hurt_health_ratio`, `dash_range`,
-  wind-up 0.4 s lean, speed/time/knockback). Rolled once per attack. Young goblin: 0.28 (1 in 3-4), hurt 0.4 (1 in
-  2-3); the direction locks at the lean, so stepping aside dodges it; a hit during the lean cancels it. Brute and
-  archer dashes not done yet.
+  wind-up 0.4 s lean, speed/time/cooldown/knockback, `dash_stop_distance`, `dash_flee_range`). No charging: lean,
+  short dash that stops `dash_stop_distance` before the target, THEN the strike (+30%, dash knockback). Rolled once
+  per attack. Young goblin: 0.28 (1 in 3-4), hurt 0.4 (1 in 2-3); the direction locks at the lean, so stepping aside
+  dodges it; a hit during the lean cancels it. Grown Goblin = the heavy one (stands in for the Brute, which does not
+  exist): slower dash (200 x 0.28), knockback x1.7. Archer: `dash_flee_range` 40 = dashes away (no lean, no strike,
+  picks a direction without a wall), cooldown 3 s.
 - Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
   (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
 

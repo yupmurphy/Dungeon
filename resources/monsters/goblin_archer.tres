@@ -39,3 +39,5 @@ keep_distance = 70.0
 group_size = Vector2i(2, 3)
 group_leader = ExtResource("5_grown")
 leader_chance = 0.5
+dash_flee_range = 40.0
+dash_cooldown = 3.0

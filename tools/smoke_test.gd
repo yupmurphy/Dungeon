@@ -340,6 +340,10 @@ func run(_options: Dictionary) -> void:
 	var dasher_data: MonsterData = goblin_data.duplicate()
 	dasher_data.dash_attack_chance = 1.0
 	dasher_data.dash_attack_chance_hurt = 1.0
+	# The room's own monsters (a wandering bat) would hit the player too: paused for the dash tests.
+	var bystanders: Array[Node] = get_tree().get_nodes_in_group("enemy")
+	for bystander in bystanders:
+		bystander.process_mode = Node.PROCESS_MODE_DISABLED
 	for dodge in [false, true]:
 		var dasher := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
 		dasher.data = dasher_data
@@ -347,40 +351,124 @@ func run(_options: Dictionary) -> void:
 		room.get_node("World").add_child(dasher)
 		var stand: Vector2 = Vector2(300, 400)
 		player.global_position = stand
+		player._knockback = Vector2.ZERO
 		dasher.global_position = stand + GameScale.world_vector(Vector2(-50, 0))
 		player.health.heal(1000.0)
 		var health_before: float = player.health.current_health
 		Combat.forced_rolls.assign([0.99, 0.99])
 		var leaned: bool = false
 		var lean_moved: bool = false
+		var lean_air: bool = false
 		var dashed: bool = false
-		for i in 60:
+		var dash_air: bool = false
+		var hit_while_dashing: bool = false
+		var struck: bool = false
+		var landed_at: Vector2 = Vector2.ZERO
+		for i in 90:
 			await get_tree().physics_frame
 			if dasher.dash.is_winding_up():
 				leaned = leaned or dasher.visual.rotation != 0.0
 				lean_moved = lean_moved or dasher.velocity.length() > 1.0
+				lean_air = lean_air or (dasher.dash.air() != null and dasher.dash.air().mode == AirFlow.Mode.GATHER)
 				# The warning is the moment to react: step aside, out of the dash line.
 				if dodge:
 					stand = Vector2(300, 400) + GameScale.world_vector(Vector2(0, 40))
-			dashed = dashed or dasher.dash.is_dashing()
+			if dasher.dash.is_dashing():
+				dashed = true
+				dash_air = dash_air or (dasher.dash.air() != null and dasher.dash.air().mode == AirFlow.Mode.TRAIL)
+				hit_while_dashing = hit_while_dashing or dasher.hitbox.monitoring
+			if dashed and not struck and dasher.hitbox.monitoring:
+				struck = true
+				landed_at = dasher.global_position
 			player.global_position = stand
-			if dashed and not dasher.dash.is_busy():
+			if struck and dasher.state == Enemy.State.RECOVER:
 				break
 		if not dodge:
-			_check(dasher.state == Enemy.State.RECOVER or dasher.state == Enemy.State.DASH, "the goblin chose a dash attack")
+			_check(dasher.state == Enemy.State.RECOVER, "the goblin chose a dash attack and recovers after it")
 			_check(leaned and not lean_moved, "it leans back first, standing still (the warning)")
-			_check(dashed, "then it dashes")
+			_check(lean_air and dash_air, "air gathers during the lean, then rushes past during the dash")
+			_check(dashed and not hit_while_dashing and struck, "a short dash first, then the strike (not during the dash)")
+			var gap: float = (stand.x - landed_at.x) / GameScale.world(1.0)
+			_check(gap > 5.0 and gap < 25.0, "the dash stops just before the player, not through them (%.1f px left)" % gap)
 			var expected_hit: float = Combat.damage_taken(Combat.damage_dealt(dasher_data.stats, dasher_data.attack_damage * 1.3,
 				false), player.stats)
 			_check(is_equal_approx(health_before - player.health.current_health, expected_hit),
-				"the dash attack hits the player with +30%% (%.1f, expected %.1f)" % [health_before - player.health.current_health,
-				expected_hit])
+				"the strike after the dash hits the player with +30%% (%.1f, expected %.1f)" % [health_before -
+				player.health.current_health, expected_hit])
 		else:
-			_check(dashed and player.health.current_health == health_before,
+			_check(dashed and struck and player.health.current_health == health_before,
 				"stepping aside during the lean dodges the dash attack (%.1f -> %.1f)" % [health_before,
 				player.health.current_health])
 		dasher.queue_free()
 		Combat.forced_rolls.clear()
+
+	print("--- grown goblin: heavy dash attack")
+	var grown_data: MonsterData = load("res://resources/monsters/goblin_grown.tres")
+	_check(grown_data.can_dash_attack() and grown_data.dash_windup_time == 0.4, "the grown goblin also dash attacks, 0.4 s warning")
+	_check(grown_data.dash_speed < goblin_data.dash_speed and grown_data.dash_knockback_multiplier >= 1.5,
+		"its dash is slower, its knockback bigger (x%.1f)" % grown_data.dash_knockback_multiplier)
+	var heavy_data: MonsterData = grown_data.duplicate()
+	heavy_data.dash_attack_chance = 1.0
+	heavy_data.dash_attack_chance_hurt = 1.0
+	var heavy := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	heavy.data = heavy_data
+	heavy.process_mode = Node.PROCESS_MODE_INHERIT
+	room.get_node("World").add_child(heavy)
+	player.global_position = Vector2(300, 400)
+	player._knockback = Vector2.ZERO
+	heavy.global_position = Vector2(300, 400) + GameScale.world_vector(Vector2(-50, 0))
+	player.health.heal(1000.0)
+	var heavy_health: float = player.health.current_health
+	Combat.forced_rolls.assign([0.99, 0.99])
+	var thrown: float = 0.0
+	for i in 120:
+		await get_tree().physics_frame
+		thrown = maxf(thrown, player._knockback.length())
+		if heavy.state == Enemy.State.RECOVER:
+			break
+	Combat.forced_rolls.clear()
+	var normal_push: float = GameScale.world(heavy_data.attack_knockback) * heavy_data.stats.get_knockback_multiplier()
+	_check(player.health.current_health < heavy_health and thrown > normal_push * 1.5,
+		"the heavy dash attack throws the player far (%.0f, a normal hit %.0f)" % [thrown, normal_push])
+	heavy.queue_free()
+	player._knockback = Vector2.ZERO
+	player.health.heal(1000.0)
+	await get_tree().physics_frame
+
+	print("--- goblin archer: dashes only to flee")
+	var fleer := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	fleer.data = load("res://resources/monsters/goblin_archer.tres")
+	fleer.process_mode = Node.PROCESS_MODE_INHERIT
+	room.get_node("World").add_child(fleer)
+	player.global_position = Vector2(300, 400)
+	fleer.global_position = Vector2(300, 400) + GameScale.world_vector(Vector2(20, 0))
+	_check(not fleer.data.can_dash_attack() and fleer.dash != null, "the archer has a dash but never dash attacks")
+	var fled: bool = false
+	var fled_warned: bool = false
+	var fled_struck: bool = false
+	var fled_dir: Vector2 = Vector2.ZERO
+	for i in 40:
+		await get_tree().physics_frame
+		player.global_position = Vector2(300, 400)
+		fled_warned = fled_warned or fleer.dash.is_winding_up()
+		fled_struck = fled_struck or fleer.hitbox.monitoring
+		if fleer.dash.is_dashing():
+			fled = true
+			fled_dir = fleer.dash.direction()
+		elif fled:
+			break
+	var fled_to: float = fleer.global_position.distance_to(player.global_position) / GameScale.world(1.0)
+	_check(fled and fled_dir.dot(Vector2.RIGHT) > 0.7 and not fled_warned and not fled_struck,
+		"a player too close: the archer dashes away at once, no warning, no strike (%s)" % fled_dir)
+	_check(fled_to > 50.0, "and ends up far from the player (%.0f px)" % fled_to)
+	fleer.global_position = Vector2(300, 400) + GameScale.world_vector(Vector2(20, 0))
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(not fleer.dash.is_dashing() and fleer.dash.cooldown_left() > 0.0, "it can't flee again right away (cooldown)")
+	fleer.queue_free()
+	for bystander in bystanders:
+		if is_instance_valid(bystander):
+			bystander.process_mode = Node.PROCESS_MODE_INHERIT
 	var hurt_goblin := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
 	hurt_goblin.data = goblin_data
 	room.get_node("World").add_child(hurt_goblin)

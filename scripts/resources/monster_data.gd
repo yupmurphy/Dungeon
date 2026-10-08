@@ -72,19 +72,27 @@ extends Resource
 @export var aim_lock_time: float = 0.25
 
 @export_group("Dash attack")
-## Chance that an attack is a dash attack (DashAttack: lean back, dash through the target, +30% damage).
-## Rolled once per attack, when the target comes within dash_range. 0 = never.
+## Chance that an attack is a dash attack: lean back (the warning), a short dash toward the target, then a strike
+## where it lands (+30% damage). No charging, unlike the player. Rolled once per attack, when the target comes
+## within dash_range. 0 = never.
 @export_range(0.0, 1.0) var dash_attack_chance: float = 0.0
 ## The same chance while health is below hurt_health_ratio (hurt monsters take more risks).
 @export_range(0.0, 1.0) var dash_attack_chance_hurt: float = 0.0
 @export_range(0.0, 1.0) var hurt_health_ratio: float = 0.4
-## Reference pixels: farthest distance a dash attack starts from (the dash itself covers about 58 px).
+## Reference pixels: farthest distance a dash attack starts from (the dash itself covers at most about 58 px).
 @export var dash_range: float = 60.0
+## Reference pixels: the dash attack stops this far before the target (where it was at the lean), then strikes.
+@export var dash_stop_distance: float = 14.0
 ## Seconds the monster leans back before dashing (the warning).
 @export var dash_windup_time: float = 0.4
 @export var dash_speed: float = DashAttack.DASH_SPEED
 @export var dash_time: float = DashAttack.DASH_TIME
+@export var dash_cooldown: float = DashAttack.COOLDOWN
+## Knockback of the strike after the dash compared with the normal attack (a heavy goblin throws you far).
 @export var dash_knockback_multiplier: float = 1.0
+## Reference pixels: dash away (no strike, no warning) when the target comes this close. 0 = never.
+## For monsters that keep their distance (the archer); it uses dash_speed, dash_time and dash_cooldown.
+@export var dash_flee_range: float = 0.0
 
 @export_group("Defense")
 ## 0 = full knockback, 1 = immune.
@@ -111,3 +119,8 @@ func get_max_health() -> float:
 
 func can_dash_attack() -> bool:
 	return dash_attack_chance > 0.0 or dash_attack_chance_hurt > 0.0
+
+
+## Gets a DashAttack: to attack with it, or only to flee.
+func uses_dash() -> bool:
+	return can_dash_attack() or dash_flee_range > 0.0
