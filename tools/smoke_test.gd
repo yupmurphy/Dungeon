@@ -466,6 +466,105 @@ func run(_options: Dictionary) -> void:
 	await get_tree().physics_frame
 	_check(not fleer.dash.is_dashing() and fleer.dash.cooldown_left() > 0.0, "it can't flee again right away (cooldown)")
 	fleer.queue_free()
+
+	print("--- walking around walls (monsters) and slipping around corners")
+	# A small walled place far from the room: open cells 100..120, a wall at x = 110 from y = 104 down to 116.
+	var tile: float = GameScale.TILE_SIZE
+	var maze := FloorLayout.new()
+	maze.setup(Vector2i(128, 128), 1, 1)
+	for y in range(100, 121):
+		for x in range(100, 121):
+			maze.paint(x, y, Terrain.Type.ROCK if x == 110 and y >= 104 and y <= 116 else Terrain.Type.CAVE)
+	var walls := Node2D.new()
+	room.get_node("World").add_child(walls)
+	for y in range(99, 122):
+		for x in range(99, 122):
+			if not maze.is_floor(x, y):
+				_add_box(walls, (Vector2(x, y) + Vector2(0.5, 0.5)) * tile, Vector2(tile, tile))
+	var old_active: FloorLayout = FloorLayout.active
+	FloorLayout.active = maze
+	FloorPaths.reset()
+	var around: PackedVector2Array = FloorPaths.find(Vector2(106.5, 114.5) * tile, Vector2(114.5, 114.5) * tile,
+		Vector2(114.5, 114.5) * tile)
+	var below_wall: bool = false
+	for point in around:
+		below_wall = below_wall or point.y > 117.0 * tile
+	_check(around.size() >= 6 and below_wall, "a path goes around the end of the wall (%d steps)" % around.size())
+	var walker_data: MonsterData = goblin_data.duplicate()
+	walker_data.dash_attack_chance = 0.0
+	walker_data.dash_attack_chance_hurt = 0.0
+	var watcher := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	watcher.data = walker_data
+	watcher.process_mode = Node.PROCESS_MODE_INHERIT
+	room.get_node("World").add_child(watcher)
+	watcher.global_position = Vector2(106.5, 108.5) * tile
+	player.global_position = Vector2(114.5, 108.5) * tile
+	for i in 30:
+		await get_tree().physics_frame
+	_check(watcher.state == Enemy.State.IDLE, "a player behind a wall, close enough: the goblin does not notice them")
+	player.global_position = Vector2(108.5, 108.5) * tile
+	for i in 3:
+		await get_tree().physics_frame
+	_check(watcher.state != Enemy.State.IDLE, "in plain view: noticed")
+	watcher.queue_free()
+	maze.paint(108, 104, Terrain.Type.TREE)
+	_check(not FloorLayout.sight_clear(Vector2(108.5, 102.5) * tile, Vector2(108.5, 106.5) * tile)
+		and FloorLayout.sight_clear(Vector2(106.5, 102.5) * tile, Vector2(106.5, 106.5) * tile),
+		"a tree hides what is behind it, open floor does not")
+	maze.paint(108, 104, Terrain.Type.CAVE)
+	var walker := (load("res://scenes/enemies/enemy.tscn") as PackedScene).instantiate() as Enemy
+	walker.data = walker_data
+	walker.process_mode = Node.PROCESS_MODE_INHERIT
+	room.get_node("World").add_child(walker)
+	walker.global_position = Vector2(106.5, 114.5) * tile
+	var hide_at: Vector2 = Vector2(114.5, 114.5) * tile
+	# First seen in the open, then the player hides behind the wall.
+	player.global_position = Vector2(108.5, 114.5) * tile
+	for i in 3:
+		await get_tree().physics_frame
+	player.global_position = hide_at
+	player.hurtbox.god_mode = true
+	var walked_around: bool = false
+	var went_below: bool = false
+	for i in 600:
+		await get_tree().physics_frame
+		player.global_position = hide_at
+		player._knockback = Vector2.ZERO
+		went_below = went_below or walker.global_position.y > 116.5 * tile
+		if walker.global_position.x > 110.5 * tile and walker.state == Enemy.State.WINDUP:
+			walked_around = true
+			break
+	_check(walked_around and went_below, "a goblin walks around the wall to the player hiding behind it, then attacks")
+	walker.queue_free()
+	player.hurtbox.god_mode = false
+	FloorLayout.active = old_active
+	FloorPaths.reset()
+	walls.queue_free()
+
+	# Slipping: walking up into a tree-sized block a little off center goes around it; a wide wall still stops you.
+	var open_at: Vector2 = Vector2(4000, 4000)
+	for wide in [false, true]:
+		var block := Node2D.new()
+		room.get_node("World").add_child(block)
+		var width: float = tile * 8.0 if wide else tile
+		_add_box(block, open_at + Vector2(GameScale.world(5.0), -tile * 1.5), Vector2(width, tile))
+		player.global_position = open_at
+		await get_tree().physics_frame
+		Input.action_press("move_up")
+		for i in 90:
+			await get_tree().physics_frame
+		Input.action_release("move_up")
+		await get_tree().physics_frame
+		var passed: bool = player.global_position.y < open_at.y - tile * 2.0
+		if wide:
+			_check(not passed and absf(player.global_position.x - open_at.x) < 4.0,
+				"walking into a wide wall: you stop there, no sliding (%s)" % (player.global_position - open_at))
+		else:
+			_check(passed and player.global_position.x < open_at.x,
+				"walking into a tree head-on, a bit off center: you slip past its nearer edge (%s)" %
+				(player.global_position - open_at))
+		block.queue_free()
+		await get_tree().physics_frame
 	for bystander in bystanders:
 		if is_instance_valid(bystander):
 			bystander.process_mode = Node.PROCESS_MODE_INHERIT
@@ -755,3 +854,16 @@ func _release_space() -> void:
 		await get_tree().process_frame
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+
+
+## A solid box (like a wall cell or a tree) centered at `center`, `size` in world pixels.
+func _add_box(parent: Node, center: Vector2, size: Vector2) -> void:
+	var box := StaticBody2D.new()
+	box.collision_layer = 1
+	var shape := CollisionShape2D.new()
+	var rectangle := RectangleShape2D.new()
+	rectangle.size = size
+	shape.shape = rectangle
+	box.add_child(shape)
+	box.position = center
+	parent.add_child(box)

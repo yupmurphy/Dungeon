@@ -2,6 +2,7 @@ class_name Enemy
 extends CharacterBody2D
 ## Data-driven enemy. Chases the player when it sees them, telegraphs its attack with the start of its swing
 ## for `windup_time`, lunges, then recovers. Everything tunable lives in MonsterData.
+## With a wall in the way it walks around it (FloorPaths), and slips around corners it bumps into (CornerSlide).
 ## Ranged monsters (MonsterData.projectile_texture) aim instead (drawing the bow), shoot a
 ## Projectile only with a clear line of fire, and back away while reloading if the player is too close.
 ## Some monsters (MonsterData.dash_attack_chance) sometimes make a dash attack instead (DashAttack, the same
@@ -30,6 +31,9 @@ const WORLD_LAYER: int = 1
 const DASH_MIN_SCALE: float = 0.3
 ## Fleeing: tries straight away from the target first, then turned by these angles (degrees), to avoid walls.
 const FLEE_ANGLES: Array[float] = [0.0, 45.0, -45.0, 90.0, -90.0]
+## Chasing around walls: a new path this often (seconds); a waypoint counts as reached this close (reference px).
+const PATH_REFRESH_TIME: float = 0.4
+const WAYPOINT_REACHED: float = 4.0
 
 @export var data: MonsterData
 
@@ -49,6 +53,9 @@ var dash: DashAttack
 var _dash_rolled: bool = false
 ## The dash under way is an attack (strikes when it lands), not a flight.
 var _dash_is_attack: bool = false
+## Way around the walls to the target (world points), empty when it walks straight.
+var _path: PackedVector2Array = PackedVector2Array()
+var _path_left: float = 0.0
 var _knockback_force: float = 0.0
 
 @onready var health: HealthComponent = $HealthComponent
@@ -176,7 +183,8 @@ func _physics_process(delta: float) -> void:
 	velocity = move + _knockback
 	move_and_slide()
 	if state != State.DEAD:
-		_update_facing()
+		CornerSlide.apply(self, move, delta)
+		_update_facing(move)
 		animator.update_motion(move, delta)
 	_update_tint()
 
@@ -195,7 +203,10 @@ func _find_target() -> Player:
 
 func _tick_idle() -> void:
 	_target = _find_target()
-	if _target != null and global_position.distance_to(_target.global_position) <= GameScale.world(data.detect_range):
+	# Only a player it can see: behind a wall, a tree or reeds it is not noticed. Once noticed, the chase goes on
+	# around walls (FloorPaths) until lose_range.
+	if _target != null and global_position.distance_to(_target.global_position) <= GameScale.world(data.detect_range) \
+			and _sees(_target.global_position):
 		_dash_rolled = false
 		_set_state(State.CHASE, 0.0)
 
@@ -225,7 +236,7 @@ func _tick_chase() -> Vector2:
 				_attack_dir = to_target.normalized()
 				_set_state(State.DASH, 0.0)
 				return Vector2.ZERO
-	if distance <= GameScale.world(data.attack_range) and (not data.is_ranged() or _clear_shot()):
+	if distance <= GameScale.world(data.attack_range) and _clear_shot():
 		# Direction is locked now, so a player who moves away can dodge the attack.
 		_attack_dir = to_target.normalized()
 		_set_state(State.WINDUP, data.windup_time)
@@ -233,8 +244,41 @@ func _tick_chase() -> Vector2:
 		animator.face_vector(_attack_dir)
 		animator.play_attack(data.windup_time + data.attack_active_time)
 		return Vector2.ZERO
-	return to_target.normalized() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
+	return _chase_direction() * GameScale.world(data.move_speed) * data.stats.get_move_speed_multiplier() \
 		* FloorLayout.speed_factor_at(global_position)
+
+
+## Straight at the target when nothing is in the way; otherwise along a path around the walls (FloorPaths),
+## renewed every PATH_REFRESH_TIME. A target hiding behind a wall is walked around to, not pushed against.
+func _chase_direction() -> Vector2:
+	var target_position: Vector2 = _target.global_position
+	if _walk_clear(target_position):
+		_path.clear()
+		return (target_position - global_position).normalized()
+	_path_left -= get_physics_process_delta_time()
+	if _path_left <= 0.0 or _path.is_empty():
+		_path = FloorPaths.find(global_position, target_position, target_position)
+		# A little random, so a group doesn't all think on the same frame.
+		_path_left = PATH_REFRESH_TIME * randf_range(0.8, 1.2)
+	while not _path.is_empty() and global_position.distance_to(_path[0]) < GameScale.world(WAYPOINT_REACHED):
+		_path.remove_at(0)
+	# Cuts the corner when the point after the next one is already in plain view.
+	if _path.size() >= 2 and _walk_clear(_path[1]):
+		_path.remove_at(0)
+	if _path.is_empty():
+		return (target_position - global_position).normalized()
+	return (_path[0] - global_position).normalized()
+
+
+## A body as wide as ours could walk straight to `point` (two rays along its sides, walls and props only).
+func _walk_clear(point: Vector2) -> bool:
+	var side: Vector2 = (point - global_position).normalized().orthogonal() * GameScale.world(data.body_radius)
+	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	for offset in [side, -side]:
+		var query := PhysicsRayQueryParameters2D.create(global_position + offset, point + offset, WORLD_LAYER)
+		if not space.intersect_ray(query).is_empty():
+			return false
+	return true
 
 
 func _begin_attack() -> void:
@@ -300,6 +344,14 @@ func _try_flee() -> bool:
 	return false
 
 
+## Line of sight to `point`: no wall, tree or prop in the way (physics) and nothing that hides on the floor grid
+## (rock, trees, reeds).
+func _sees(point: Vector2) -> bool:
+	var query := PhysicsRayQueryParameters2D.create(global_position, point, WORLD_LAYER)
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty() \
+		and FloorLayout.sight_clear(global_position, point)
+
+
 ## Nothing solid (walls, trees, rocks) between us and the target.
 func _clear_shot() -> bool:
 	var query := PhysicsRayQueryParameters2D.create(global_position, _target.global_position, WORLD_LAYER)
@@ -339,9 +391,12 @@ func _keep_away() -> Vector2:
 		* FloorLayout.speed_factor_at(global_position)
 
 
-func _update_facing() -> void:
+func _update_facing(move: Vector2) -> void:
 	if state in [State.WINDUP, State.ATTACK, State.DASH]:
 		animator.face_vector(_attack_dir)
+	elif state == State.CHASE and not _path.is_empty() and move != Vector2.ZERO:
+		# Walking around a wall: looks where it goes.
+		animator.face_vector(move)
 	elif is_instance_valid(_target):
 		animator.face_vector(_target.global_position - global_position)
 

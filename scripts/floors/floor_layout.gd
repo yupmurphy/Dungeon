@@ -65,6 +65,8 @@ var spawns_by_chunk: Dictionary = {}
 
 ## The floor the player is on, for gameplay code that asks about the ground (e.g. slowing terrain).
 static var active: FloorLayout
+## sight_clear() looks at the line every this much of a tile.
+const SIGHT_STEP: float = 0.25
 
 ## 1 = walkable, 0 = blocked. Always matches Terrain.walkable(_terrain) except under solid big props.
 var _cells: PackedByteArray
@@ -168,6 +170,19 @@ static func speed_factor_at(world_position: Vector2) -> float:
 		return 1.0
 	var cell := Vector2i((world_position / GameScale.TILE_SIZE).floor())
 	return Terrain.speed_factor(active.terrain_at(cell.x, cell.y))
+
+
+## Nothing on the floor grid hides `to` from `from` (world positions): rock, trees, reeds block sight
+## (checked every SIGHT_STEP of a tile). True without an active floor.
+static func sight_clear(from: Vector2, to: Vector2) -> bool:
+	if active == null:
+		return true
+	var steps: int = maxi(1, ceili(from.distance_to(to) / (GameScale.TILE_SIZE * SIGHT_STEP)))
+	for i in range(1, steps):
+		var cell := Vector2i((from.lerp(to, float(i) / steps) / GameScale.TILE_SIZE).floor())
+		if active.blocks_sight(cell.x, cell.y):
+			return false
+	return true
 
 
 func add_feature(kind: StringName, cell: Vector2i, slot: int) -> void:

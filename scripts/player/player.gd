@@ -158,7 +158,11 @@ func _physics_process(delta: float) -> void:
 			_physics_normal()
 		State.DEAD:
 			velocity = _knockback
+	var wanted: Vector2 = velocity - _knockback
 	move_and_slide()
+	if state != State.DEAD:
+		# Walking into a wall or a tree head-on slides toward its nearer edge instead of getting stuck.
+		CornerSlide.apply(self, wanted, delta)
 
 	if state != State.DEAD:
 		_update_animation()

@@ -139,6 +139,13 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   dodges it; a hit during the lean cancels it. Grown Goblin = the heavy one (stands in for the Brute, which does not
   exist): slower dash (200 x 0.28), knockback x1.7. Archer: `dash_flee_range` 40 = dashes away (no lean, no strike,
   picks a direction without a wall), cooldown 3 s.
+- Monster awareness and movement (user): an idle monster notices the player only in `detect_range` AND in line of
+  sight (`Enemy._sees`: physics ray + `FloorLayout.sight_clear` over blocks_sight cells: rock, trees, reeds); a hit
+  also wakes it. Once chasing it follows the player around walls: straight when `_walk_clear` (2 rays a body wide),
+  else A* waypoints from `FloorPaths` (AStarGrid2D window of 81x81 cells around the player, rebuilt when the player
+  moves 16 cells; none without FloorLayout.active = straight). Melee attacks need a clear line too.
+  `CornerSlide.apply(body, wanted, delta)` after move_and_slide (player + monsters): walking head-on into a wall,
+  tree or prop slips sideways toward a free edge within 14 ref px; other characters are not slipped around.
 - Perception thresholds: 10+ shows monster health bars, 20+ monster names colored by power vs the player
   (`EnemyInfo` on the GameFeel layer, `Combat.power_rating` = max health x one hit; ratios in enemy_info.gd).
 
