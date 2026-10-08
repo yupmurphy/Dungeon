@@ -24,11 +24,11 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   (`HealthComponent`, `ExhaustionComponent`, `Hitbox`, `Hurtbox`, `SpriteAnimator`, `DashAttack`, camera shake). Player and enemies share them.
 - **Game data is separated from logic** as `Resource` classes (`scripts/resources/`) with instances in `resources/`
   (`.tres`). Adding a monster or changing balance = new/edited `.tres`, no logic rewrite.
-  - `Stats` (player): 7 main stats: Strength, Agility, Vitality, Magic, Intelligence, Perception, Luck (user
+  - `Stats` (player): 6 main stats: Strength, Agility, Magic, Intelligence, Perception, Luck (user
     decision). All start at 5 except Magic: 0 and locked until a story event (`magic_unlocked`; debug button).
     Magic: magic damage +4%/pt, mana 20 + 5/pt. Intelligence: passive, no combat effect (later: item appraisal,
     learning spells). General damage bonus = Strength, Agility, Magic, Perception (+1%/pt each). Strength keeps
-    health and defense (poison resistance removed until poison exists). Vitality: -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
+    health and defense (poison resistance removed until poison exists). Strength also: -1%/pt exhaustion gain. Monsters use Strength, Agility, Intelligence (later: AI behavior),
     Perception. Only main stats are saved. Stats owns every derived formula (health, mana, damage, speeds...)
     as getters, with every number a constant at the top of stats.gd (balanced often). Monsters use the same class.
     Other scripts must call its getters instead of re-implementing the math.

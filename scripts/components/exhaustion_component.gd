@@ -22,7 +22,7 @@ const TIRED_SPEED_FACTOR: float = 0.8
 const EXHAUSTED_DAMAGE_FACTOR: float = 0.6
 
 var current: float = 0.0
-## Multiplier for every gain (Vitality lowers it); set by the owner from its Stats.
+## Multiplier for every gain (Strength lowers it); set by the owner from its Stats.
 var gain_multiplier: float = 1.0
 ## Reached MAX and has not dropped below TIRED_THRESHOLD yet.
 var exhausted: bool = false

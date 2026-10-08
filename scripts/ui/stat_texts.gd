@@ -11,7 +11,7 @@ class Derived:
 	var tooltip: String
 
 
-const STAT_KEYS: Array[String] = ["STRENGTH", "AGILITY", "VITALITY", "MAGIC", "INTELLIGENCE", "PERCEPTION", "LUCK"]
+const STAT_KEYS: Array[String] = ["STRENGTH", "AGILITY", "MAGIC", "INTELLIGENCE", "PERCEPTION", "LUCK"]
 
 
 static func stat_name(stat: Stats.Stat) -> String:
@@ -42,15 +42,14 @@ static func stat_effects(stat: Stats.Stat, value: int) -> PackedStringArray:
 			lines.append(_text("EFFECT_DEFENSE", {"value": _num(value * Stats.DEFENSE_PER_STRENGTH)}))
 			lines.append(_text("EFFECT_KNOCKBACK", {"value": _num(value * Stats.KNOCKBACK_PER_STRENGTH * 100.0)}))
 			lines.append(_text("EFFECT_CARRY", {"value": _num(value * Stats.CARRY_WEIGHT_PER_STRENGTH)}))
+			lines.append(_text("EFFECT_EXHAUSTION", {"value": _num(minf(value * Stats.EXHAUSTION_GAIN_PER_STRENGTH,
+				1.0 - Stats.EXHAUSTION_GAIN_MIN) * 100.0)}))
 		Stats.Stat.AGILITY:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_AGILITY * 100.0)}))
 			lines.append(_text("EFFECT_ATTACK_SPEED", {"value": _num(value * Stats.ATTACK_SPEED_PER_AGILITY * 100.0)}))
 			lines.append(_text("EFFECT_MOVE_SPEED", {"value": _num(value * Stats.MOVE_SPEED_PER_AGILITY * 100.0)}))
 			lines.append(_text("EFFECT_EVADE", {"value": _num(minf(value * Stats.EVADE_PER_AGILITY, Stats.EVADE_MAX) * 100.0),
 				"max": _num(Stats.EVADE_MAX * 100.0)}))
-		Stats.Stat.VITALITY:
-			lines.append(_text("EFFECT_EXHAUSTION", {"value": _num(minf(value * Stats.EXHAUSTION_GAIN_PER_VITALITY,
-				1.0 - Stats.EXHAUSTION_GAIN_MIN) * 100.0)}))
 		Stats.Stat.MAGIC:
 			lines.append(_text("EFFECT_DAMAGE", {"value": _num(value * Stats.DAMAGE_BONUS_PER_MAGIC * 100.0)}))
 			lines.append(_text("EFFECT_MAGIC_DAMAGE", {"value": _num(value * Stats.MAGIC_DAMAGE_PER_MAGIC * 100.0)}))
@@ -113,7 +112,7 @@ static func derived(stats: Stats) -> Array[Derived]:
 	list.append(_derived("CARRY", _num(stats.get_carry_weight()),
 		{"base": _num(Stats.CARRY_WEIGHT_BASE), "per": _num(Stats.CARRY_WEIGHT_PER_STRENGTH)}))
 	list.append(_derived("EXHAUSTION", "%s%%" % _num(stats.get_exhaustion_gain_multiplier() * 100.0),
-		{"per": _num(Stats.EXHAUSTION_GAIN_PER_VITALITY * 100.0), "min": _num(Stats.EXHAUSTION_GAIN_MIN * 100.0),
+		{"per": _num(Stats.EXHAUSTION_GAIN_PER_STRENGTH * 100.0), "min": _num(Stats.EXHAUSTION_GAIN_MIN * 100.0),
 		"sprint": _num(ExhaustionComponent.SPRINT_PER_SECOND), "attack": _num(ExhaustionComponent.ATTACK_COST),
 		"tired": _num(ExhaustionComponent.TIRED_THRESHOLD)}))
 	list.append(_derived("DASH", "+%s / %s s" % [_num(Player.DASH_EXHAUSTION_COST), _num(Player.DASH_COOLDOWN)],

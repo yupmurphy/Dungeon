@@ -182,7 +182,7 @@ func run(_options: Dictionary) -> void:
 	_check(sprint_speed > walk_speed * 1.5, "sprint is faster than walking (%d vs %d)" % [sprint_speed, walk_speed])
 	tired.current = 0.0
 	tired.add(ExhaustionComponent.ATTACK_COST)
-	_check(is_equal_approx(tired.current, 2.85), "an attack adds 3, x 0.95 from Vitality 5 (%.2f)" % tired.current)
+	_check(is_equal_approx(tired.current, 2.85), "an attack adds 3, x 0.95 from Strength 5 (%.2f)" % tired.current)
 	tired.add(200.0)
 	_check(tired.current == 100.0 and tired.exhausted and not tired.can_sprint(), "at 100: exhausted, no sprint")
 	_check(tired.damage_factor() == 0.6 and tired.speed_factor() == 0.8, "exhausted: -40% damage, 20% slower")
@@ -622,7 +622,7 @@ func run(_options: Dictionary) -> void:
 	_check(dash.is_dashing() and dash.direction().dot(toward_mouse.normalized()) > 0.99,
 		"a tap on Space, standing: dashes toward the mouse (where the character looks)")
 	_check(is_equal_approx(player.exhaustion.current, Player.DASH_EXHAUSTION_COST * 0.95),
-		"a dash adds 8 exhaustion, x 0.95 from Vitality 5 (%.2f)" % player.exhaustion.current)
+		"a dash adds 8 exhaustion, x 0.95 from Strength 5 (%.2f)" % player.exhaustion.current)
 	_check(not dash.try_dash(Vector2.RIGHT), "no second dash while dashing / on cooldown")
 	while dash.is_dashing():
 		await get_tree().physics_frame

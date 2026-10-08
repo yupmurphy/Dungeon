@@ -35,7 +35,7 @@ func run(_options: Dictionary) -> void:
 				"resource_name", "resource_path"]:
 			saved.append(property["name"])
 	saved.sort()
-	_check(saved == ["agility", "intelligence", "luck", "magic", "magic_unlocked", "perception", "strength", "vitality"],
+	_check(saved == ["agility", "intelligence", "luck", "magic", "magic_unlocked", "perception", "strength"],
 		"saved properties are exactly the main stats (%s)" % ", ".join(saved))
 
 	print("--- pools")
@@ -67,8 +67,8 @@ func run(_options: Dictionary) -> void:
 	_check_value(_with(Stats.Stat.AGILITY, 30).get_evade_chance(), 0.3, "Agility 30 -> 30% of enemy hits miss")
 	_check_value(_with(Stats.Stat.AGILITY, 80).get_evade_chance(), 0.8, "Agility 80 -> 80% miss")
 	_check_value(_with(Stats.Stat.AGILITY, 100).get_evade_chance(), 0.8, "Agility 100 -> still 80% miss (cap)")
-	_check_value(_with(Stats.Stat.VITALITY, 5).get_exhaustion_gain_multiplier(), 0.95, "Vitality 5 -> 95% exhaustion gained")
-	_check_value(_with(Stats.Stat.VITALITY, 500).get_exhaustion_gain_multiplier(), 0.1, "Vitality 500 -> 10% (floor)")
+	_check_value(_with(Stats.Stat.STRENGTH, 5).get_exhaustion_gain_multiplier(), 0.95, "Strength 5 -> 95% exhaustion gained")
+	_check_value(_with(Stats.Stat.STRENGTH, 500).get_exhaustion_gain_multiplier(), 0.1, "Strength 500 -> 10% (floor)")
 	_check_value(_with(Stats.Stat.PERCEPTION, 5).get_crit_chance(), 0.05, "Perception 5 -> 5% critical")
 	_check_value(_with(Stats.Stat.PERCEPTION, 150).get_crit_chance(), 1.0, "Perception 150 -> 100% critical (cap)")
 	_check(_with(Stats.Stat.PERCEPTION, 20).get_sight_radius() > _with(Stats.Stat.PERCEPTION, 5).get_sight_radius(),

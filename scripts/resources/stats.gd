@@ -4,15 +4,15 @@ extends Resource
 ## Only the main stats are stored; every derived value (health, mana, speeds...) is computed
 ## from them by the getters below, so rebalancing = editing the constants here or a .tres file.
 
-enum Stat { STRENGTH, AGILITY, VITALITY, MAGIC, INTELLIGENCE, PERCEPTION, LUCK }
+enum Stat { STRENGTH, AGILITY, MAGIC, INTELLIGENCE, PERCEPTION, LUCK }
 
 ## Every stat starts here for a new character (and is the default for monsters).
 const STARTING_VALUE: int = 5
 const MIN_VALUE: int = 0
 
 ## Property name of each stat, indexed by Stat.
-const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"vitality", &"magic", &"intelligence",
-	&"perception", &"luck"]
+const PROPERTY_NAMES: Array[StringName] = [&"strength", &"agility", &"magic", &"intelligence", &"perception",
+	&"luck"]
 
 # --- Pools: health from Strength, mana from Magic (0 while Magic is locked) ---
 const HEALTH_BASE: float = 50.0
@@ -38,6 +38,9 @@ const CARRY_WEIGHT_BASE: float = 20.0
 const CARRY_WEIGHT_PER_STRENGTH: float = 3.0
 ## Knockback of your attacks: x (1 + this per point).
 const KNOCKBACK_PER_STRENGTH: float = 0.03
+## Exhaustion gained x (1 - this per point), never less than EXHAUSTION_GAIN_MIN (Strength).
+const EXHAUSTION_GAIN_PER_STRENGTH: float = 0.01
+const EXHAUSTION_GAIN_MIN: float = 0.1
 
 # --- Agility ---
 const ATTACK_SPEED_PER_AGILITY: float = 0.03
@@ -48,11 +51,6 @@ const EVADE_PER_AGILITY: float = 0.01
 const EVADE_MAX: float = 0.8
 ## Dash distance and dash attack power: x (1 + this per point).
 const DASH_POWER_PER_AGILITY: float = 0.05
-
-# --- Vitality ---
-## Exhaustion gained x (1 - this per point), never less than EXHAUSTION_GAIN_MIN.
-const EXHAUSTION_GAIN_PER_VITALITY: float = 0.01
-const EXHAUSTION_GAIN_MIN: float = 0.1
 
 # --- Perception ---
 const CRIT_CHANCE_PER_PERCEPTION: float = 0.01
@@ -86,10 +84,6 @@ const DEFENSE_SCALE: float = 100.0
 @export var agility: int = STARTING_VALUE:
 	set(value):
 		agility = maxi(value, MIN_VALUE)
-		emit_changed()
-@export var vitality: int = STARTING_VALUE:
-	set(value):
-		vitality = maxi(value, MIN_VALUE)
 		emit_changed()
 @export var magic: int = MAGIC_STARTING_VALUE:
 	set(value):
@@ -184,9 +178,9 @@ func get_evade_chance() -> float:
 	return minf(agility * EVADE_PER_AGILITY, EVADE_MAX)
 
 
-## Multiplier for every exhaustion gain (sprint, attacks).
+## Multiplier for every exhaustion gain (sprint, attacks, dashes), from Strength.
 func get_exhaustion_gain_multiplier() -> float:
-	return maxf(1.0 - vitality * EXHAUSTION_GAIN_PER_VITALITY, EXHAUSTION_GAIN_MIN)
+	return maxf(1.0 - strength * EXHAUSTION_GAIN_PER_STRENGTH, EXHAUSTION_GAIN_MIN)
 
 
 ## Chance (0..1) that this character's hit is critical.
