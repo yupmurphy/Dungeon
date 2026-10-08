@@ -253,6 +253,7 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
     <godot> --headless --path . -- --town-test                 # town scene checks (doors, overlaps, gates, walls, night)
     <godot> --headless --path . -- --generate-items            # items table -> resources/items/*.tres (after every table edit)
+            # or double-click tools/generate_items.bat; in PowerShell put & before the quoted godot path
     <godot> --headless --path . -- --items-test                # generated items match the table
     <godot> --path . -- --screenshot=<png> --mode=town --at=<x>,<y> --zoom=<z> [--night] [--no-limits]
 
