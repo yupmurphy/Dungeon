@@ -92,6 +92,21 @@ func _check_generator() -> void:
 	var torches: int = sample.count_spawns(FloorLayout.SpawnKind.TORCH)
 	_check(monsters >= 150, "floor holds many monsters (%d planned)" % monsters)
 	_check(props >= 300 and torches > 0, "floor holds lots of decoration (%d props, %d torches)" % [props, torches])
+	# Cave look (taken from Notion's work): torches and wall details face the room, no glowing crystals.
+	var wall_details: int = 0
+	var facing_ok: bool = true
+	var crystals: int = 0
+	for spawn in sample.spawns:
+		if spawn.kind in [FloorLayout.SpawnKind.TORCH, FloorLayout.SpawnKind.WALL_DECOR]:
+			wall_details += 1
+			var room: Vector2i = spawn.cell + spawn.wall_direction
+			facing_ok = facing_ok and sample.is_rock(spawn.cell.x, spawn.cell.y) and sample.is_floor(room.x, room.y) \
+				and spawn.wall_direction != Vector2i.UP
+		elif spawn.kind == FloorLayout.SpawnKind.PROP and spawn.art == "crystal":
+			crystals += 1
+	_check(sample.count_spawns(FloorLayout.SpawnKind.WALL_DECOR) > 0 and facing_ok,
+		"torches and wall details hang on rock, facing the room (%d)" % wall_details)
+	_check(crystals == 0, "no glowing crystals in the caves (%d)" % crystals)
 	# Goblins with knives: the only monsters of the Galleries, in groups (each has a neighbor close by), and some
 	# live around the goblin camp. The Forest has the archers, led by grown goblins.
 	var goblins: Array[Vector2i] = []
@@ -324,6 +339,12 @@ func _check_scene() -> void:
 	_check(FloorLayout.speed_factor_at(shallow_at) < 1.0 and FloorLayout.speed_factor_at(quicksand_at) < 0.5
 		and FloorLayout.speed_factor_at(player.global_position) == 1.0,
 		"shallow water and quicksand slow movement, cave floor doesn't")
+	var start_layer: TileMapLayer = floor_level.chunks._layers[layout.hub_slot]
+	var near_start: Array[Vector2i] = start_layer.get_used_cells().filter(func(c: Vector2i) -> bool:
+		return Vector2(c).distance_to(Vector2(layout.start_cell)) < 20.0)
+	_check(near_start.any(func(c: Vector2i) -> bool: return start_layer.get_cell_source_id(c) == FloorTiles.CAVE_WALL_SOURCE)
+		and near_start.any(func(c: Vector2i) -> bool: return start_layer.get_cell_source_id(c) == FloorTiles.CAVE_FLOOR_SOURCE),
+		"the Galleries use the cave art (natural rock walls and floor)")
 	var chunks: ChunkManager = floor_level.chunks
 	var enemies: Array[Node] = get_tree().get_nodes_in_group("enemy")
 	var stream_reach: float = (chunks.unload_radius + 1) * layout.chunk_size * GameScale.TILE_SIZE

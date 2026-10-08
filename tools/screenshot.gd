@@ -3,12 +3,15 @@ extends Node
 ## Run (NOT headless, it needs a GPU):
 ##   <godot.exe> --path . -- --screenshot=<file.png> --mode=<mode> [--seed=<n>]
 ## Modes on the dungeon floor: idle, map (whole map revealed, big map open), sheet (character page, --hover=stat:2), overview,
-## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave).
+## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave), cave (walls up
+## close near the start, --zoom=1 --dark for the real look).
 ## Modes in the combat test room: fight, room, goblins (--frames=<n> to wait). Town: town (--at=<x>,<y> in tiles, --zoom, --night, --map).
 
 const SETTLE_FRAMES: int = 40
 const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
 const TOWN: String = "res://scenes/town/town.tscn"
+## Tiles searched around the start for the "cave" mode.
+const CAVE_PREVIEW_SEARCH: int = 55
 
 
 func run(options: Dictionary) -> void:
@@ -86,7 +89,7 @@ func run(options: Dictionary) -> void:
 				fog.visible = false
 			for i in 5:
 				await get_tree().process_frame
-		"gate", "arena", "start", "place":
+		"gate", "arena", "start", "place", "cave":
 			# Zoomed out, without darkness: a gate of the closed zone, the boss arena entrance, the start,
 			# or a notable place (--place=<kind>, e.g. goblin_camp, mine, oasis, spider_nest, bridge).
 			var floor_layout: FloorLayout = (room as FloorLevel).layout
@@ -95,6 +98,8 @@ func run(options: Dictionary) -> void:
 				target = floor_layout.gates[0].cell
 			elif mode == "arena":
 				target = floor_layout.boss_entrance
+			elif mode == "cave":
+				target = _cave_preview_cell(floor_layout)
 			elif mode == "place":
 				var kind := StringName(options.get("--place", "goblin_camp"))
 				for feature in floor_layout.features:
@@ -150,3 +155,25 @@ func run(options: Dictionary) -> void:
 	image.save_png(output)
 	print("Saved ", output, " ", image.get_size())
 	get_tree().quit()
+
+
+## A floor cell next to a narrow bit of rock near the start (more wall shapes in view than in a round room).
+func _cave_preview_cell(layout: FloorLayout) -> Vector2i:
+	var best: Vector2i = layout.start_cell
+	var best_score: int = 0
+	for dy in range(-CAVE_PREVIEW_SEARCH, CAVE_PREVIEW_SEARCH + 1):
+		for dx in range(-CAVE_PREVIEW_SEARCH, CAVE_PREVIEW_SEARCH + 1):
+			var wall: Vector2i = layout.start_cell + Vector2i(dx, dy)
+			if not layout.is_rock(wall.x, wall.y) or layout.slot_at(wall.x, wall.y) != layout.hub_slot:
+				continue
+			var score: int = 0
+			var beside: Vector2i = wall
+			for offset in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+				var cell: Vector2i = wall + offset
+				if layout.is_floor(cell.x, cell.y):
+					score += 1
+					beside = cell
+			if score > best_score:
+				best_score = score
+				best = beside
+	return best

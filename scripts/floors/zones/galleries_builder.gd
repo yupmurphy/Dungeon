@@ -1,14 +1,19 @@
 class_name GalleriesBuilder
 extends ZoneBuilder
 ## Goblin Galleries (the closed hub): organic cave chambers joined by winding tunnels, inside solid rock.
-## Three big halls have a role: the goblin camp (tents around a fire), the mine (rails, carts, glowing
-## crystals) and the chieftain's hall (throne, banners, bones; the mini-boss comes in a later stage).
-## Always dark: only torches, the camp fire and the crystals give light.
+## Three big halls have a role: the goblin camp (tents around a fire), the mine (rails, carts,
+## barrels) and the chieftain's hall (throne, banners, bones; the mini-boss comes in a later stage).
+## Always dark: only torches and the camp fire give light (no glowing crystals: user decision).
 
 const START_RADIUS: float = 9.0
 const HALL_RADIUS: Vector2 = Vector2(28.0, 34.0)
 ## Most chambers are big; a few small ones stay here and there.
 const CHAMBER_RADIUS: Vector2 = Vector2(15.0, 24.0)
+## A minority of ordinary caves are spacious; small caves and tunnels still exist.
+const LARGE_CHAMBER_RADIUS: Vector2 = Vector2(25.0, 31.0)
+const LARGE_CHAMBER_CHANCE: float = 0.25
+const REINFORCEMENT_REACH: float = 1.3
+const REINFORCEMENT_BACK_SHARE: float = 0.25
 const SMALL_CHAMBER_RADIUS: Vector2 = Vector2(6.0, 10.0)
 const SMALL_CHAMBER_CHANCE: float = 0.2
 ## Gap kept between chambers (tiles), so tunnels have room to wind.
@@ -90,7 +95,12 @@ func _place_chambers() -> void:
 		var angle: float = rng.randf() * TAU
 		var edge: float = FloorGenerator.hub_radius(hub_edge, angle) - RING_MARGIN
 		var distance: float = sqrt(rng.randf()) * edge
-		var size_range: Vector2 = SMALL_CHAMBER_RADIUS if rng.randf() < SMALL_CHAMBER_CHANCE else CHAMBER_RADIUS
+		var size_roll: float = rng.randf()
+		var size_range: Vector2 = CHAMBER_RADIUS
+		if size_roll < SMALL_CHAMBER_CHANCE:
+			size_range = SMALL_CHAMBER_RADIUS
+		elif size_roll < SMALL_CHAMBER_CHANCE + LARGE_CHAMBER_CHANCE:
+			size_range = LARGE_CHAMBER_RADIUS
 		var radius: float = rng.randf_range(size_range.x, size_range.y)
 		if distance + radius > edge:
 			continue
@@ -259,14 +269,7 @@ func _decorate_mine(hall: Dictionary, used: Dictionary) -> void:
 		var x: int = at.x + rng.randi_range(-reach + 2, reach - 2)
 		used.erase(Vector2i(x, at.y + 1))
 		_place_near("cart", Vector2i(x, at.y + 1), used)
-	# Crystals against the walls of the mine, a few more in the tunnels around it.
-	var placed: int = 0
-	for attempt in 300:
-		if placed >= 14:
-			break
-		var spot := Vector2i((Vector2(at) + Vector2.from_angle(rng.randf() * TAU) * radius * rng.randf_range(0.6, 1.6)).floor())
-		if _against_rock(spot) and place_prop("crystal", spot, used):
-			placed += 1
+	# The mine is lit by wall torches only; the random glowing crystals were removed (user decision).
 	for k in 6:
 		var spot := Vector2i((Vector2(at) + Vector2.from_angle(rng.randf() * TAU) * radius * 0.5).floor())
 		place_tile_prop(66, true, spot, used)
@@ -276,6 +279,7 @@ func _decorate_chieftain(hall: Dictionary, used: Dictionary) -> void:
 	var at := Vector2i((hall["center"] as Vector2).floor())
 	var radius: float = hall["radius"]
 	layout.add_feature(&"chieftain_hall", at, slot)
+	_reinforce_hall(at, radius)
 	# Throne on the side away from the start, banners on both sides, bones scattered.
 	var away: Vector2 = (Vector2(at) - center()).normalized()
 	var throne := Vector2i((Vector2(at) + away * radius * 0.55).floor()) - Vector2i(1, 1)
@@ -304,3 +308,22 @@ func _against_rock(cell: Vector2i) -> bool:
 		if layout.is_rock(cell.x + offset.x, cell.y + offset.y):
 			return true
 	return false
+
+
+## Only the built back wall of the chieftain hall uses masonry; cave walls stay natural.
+## The reinforcement is a material mark, not an extra obstacle or a dug cell.
+func _reinforce_hall(at: Vector2i, radius: float) -> void:
+	var away: Vector2 = (Vector2(at) - center()).normalized()
+	var reach: int = ceili(radius * REINFORCEMENT_REACH)
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var cell: Vector2i = at + Vector2i(dx, dy)
+			var offset: Vector2 = Vector2(cell - at)
+			if offset.length() > reach or offset.dot(away) < radius * REINFORCEMENT_BACK_SHARE \
+					or layout.slot_at(cell.x, cell.y) != slot or not layout.is_rock(cell.x, cell.y):
+				continue
+			for neighbor in CaveArt.OFFSETS:
+				var beside: Vector2i = cell + neighbor
+				if layout.terrain_at(beside.x, beside.y) == Terrain.Type.CAVE:
+					layout.mark_masonry(cell.x, cell.y)
+					break

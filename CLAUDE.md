@@ -74,6 +74,14 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   Slots: 0..N-1 = `FloorData.regions`, N = boss arena. Cells marked "protected" (gates, arena entrance) never get
   props. `FloorPopulator` (seeded) plans every monster/prop/torch as `FloorLayout.Spawn` data, grouped by 32 x 32
   chunk; densities per 100 floor tiles live in `RegionData`; torches only in closed zones.
+- **Cave look of the Galleries (v0.1.4, taken from Notion AI's `notion-wip` branch, then given more volume).**
+  `CaveArt` (scripts/art/cave_art.gd) draws natural rock and floor procedurally: one wall tile per open-neighbor mask
+  x 3 variants (lit rim, top darkening inward, tall south face with ledges and cracks, west-lit side faces), floor
+  tiles with contact shadows and rubble; `FloorTiles` sources CAVE_WALL_SOURCE / CAVE_FLOOR_SOURCE, used by
+  `ChunkManager` for hub cells (the chieftain hall's back wall is masonry: `FloorLayout.mark_masonry`, Kenney bricks).
+  Wall torches and `WallDecoration`s (`WallArt`: cracks, roots, webs; goblin marks and bones near goblin places) hang
+  on rock facing the room (down, left or right; `Spawn.wall_direction`), capped per chunk. No glowing crystals (user
+  decision). Look at it with `--mode=cave --zoom=1 --dark`.
 - **Terrain / ecology (stage 2 of the rebuild).** Every cell has a `Terrain.Type` (scripts/floors/terrain.gd: walkable,
   speed factor, blocks sight, map color, art tile). Each region has a `biome` and a `ZoneBuilder`
   (scripts/floors/zones/): `GalleriesBuilder` (cave chambers + winding tunnels, camp / mine / chieftain halls),

@@ -19,8 +19,20 @@ const WALL_PROP_SHARE: float = 0.6
 const WALL_PROP_TRIES: int = 12
 ## Props keep this distance (in tiles) from gates and the arena entrance.
 const PASSAGE_CLEARANCE: int = 2
-## Chance that a wall face on the torch grid gets a torch (closed zones only).
+## Wall details (closed zones only), capped per streamed chunk.
+const TORCH_MOUNT_DIRECTIONS: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.DOWN]
 const TORCH_CHANCE: float = 0.5
+const WALL_DECOR_CHANCE: float = 0.18
+const WALL_DECOR_SPACING: int = 3
+const MAX_TORCHES_PER_CHUNK: int = 2
+const MAX_WALL_DECOR_PER_CHUNK: int = 4
+const WALL_DETAIL_SEED_MULTIPLIER: int = 6011
+const WALL_DETAIL_SEED_OFFSET: int = 29
+const GOBLIN_WALL_DECOR_RADIUS: float = 35.0
+const GOBLIN_WALL_DECOR_CHANCE: float = 0.35
+const NATURAL_WALL_DECOR: Array[String] = ["cracks", "cracks", "roots", "web"]
+const GOBLIN_WALL_DECOR: Array[String] = ["goblin_mark", "wall_bones"]
+const SIDES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 ## Group members stand within this many tiles of each other; placing them gives up after this many tries each.
 const GROUP_SPREAD: int = 2
 const GROUP_TRIES: int = 6
@@ -56,23 +68,83 @@ static func _floor_cells_by_slot(layout: FloorLayout) -> Array[PackedInt32Array]
 	return result
 
 
-## Torches on brick faces (rock with floor below), on a grid so they are spread out.
+## Torches and wall details (cracks, roots, webs; goblin marks and bones near goblin places) on rock next to
+## walkable ground, side walls of corridors too. Sparse and capped per chunk (lights and nodes cost).
+## They only face the room (down, left, right): a wall's back side is not seen from above.
 static func _add_torches(layout: FloorLayout, data: FloorData, slot: int, floors: PackedInt32Array,
-		rng: RandomNumberGenerator) -> void:
-	var w: int = layout.size.x
-	for i in floors:
-		var x: int = i % w
-		@warning_ignore("integer_division")
-		var y: int = i / w
-		if x % data.torch_spacing != 0 or not WallTiler.is_face(layout.is_rock, x, y - 1):
+		_rng: RandomNumberGenerator) -> void:
+	# Own random stream: adding wall details does not move the monsters and props of a seed.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = layout.seed_value * WALL_DETAIL_SEED_MULTIPLIER + WALL_DETAIL_SEED_OFFSET + slot
+	var candidates: Dictionary = {}
+	for index in floors:
+		var floor_cell: Vector2i = _cell_of(layout, index)
+		if layout.is_protected(floor_cell.x, floor_cell.y):
 			continue
-		if rng.randf() >= TORCH_CHANCE:
-			continue
+		for offset in SIDES:
+			var wall: Vector2i = floor_cell + offset
+			if layout.slot_at(wall.x, wall.y) == slot and layout.is_rock(wall.x, wall.y) \
+					and not layout.is_protected(wall.x, wall.y) and not candidates.has(wall):
+				candidates[wall] = -offset
+	var cells: Array = candidates.keys()
+	# Seeded shuffle, so details do not collect along the top edge of each chunk.
+	for index in range(cells.size() - 1, 0, -1):
+		var other: int = rng.randi_range(0, index)
+		var swap: Vector2i = cells[index]
+		cells[index] = cells[other]
+		cells[other] = swap
+	var torches: Dictionary = {}
+	var decor: Dictionary = {}
+	var torch_buckets: Dictionary = {}
+	var decor_buckets: Dictionary = {}
+	var torch_spacing: int = maxi(data.torch_spacing, WALL_DECOR_SPACING)
+	for cell: Vector2i in cells:
+		var chunk: Vector2i = layout.chunk_of(cell)
+		var facing: Vector2i = candidates[cell]
 		var spawn := FloorLayout.Spawn.new()
-		spawn.kind = FloorLayout.SpawnKind.TORCH
-		spawn.cell = Vector2i(x, y - 1)
+		spawn.cell = cell
 		spawn.slot = slot
+		spawn.wall_direction = facing
+		if facing in TORCH_MOUNT_DIRECTIONS and torches.get(chunk, 0) < MAX_TORCHES_PER_CHUNK \
+				and rng.randf() < TORCH_CHANCE and _far_enough(cell, torch_buckets, torch_spacing) \
+				and _far_enough(cell, decor_buckets, WALL_DECOR_SPACING):
+			spawn.kind = FloorLayout.SpawnKind.TORCH
+			torches[chunk] = torches.get(chunk, 0) + 1
+			_remember(cell, torch_buckets, torch_spacing)
+		elif facing in TORCH_MOUNT_DIRECTIONS and decor.get(chunk, 0) < MAX_WALL_DECOR_PER_CHUNK \
+				and rng.randf() < WALL_DECOR_CHANCE and _far_enough(cell, decor_buckets, WALL_DECOR_SPACING):
+			spawn.kind = FloorLayout.SpawnKind.WALL_DECOR
+			spawn.art = _wall_decor_kind(layout, slot, cell, rng)
+			decor[chunk] = decor.get(chunk, 0) + 1
+		else:
+			continue
 		layout.add_spawn(spawn)
+		_remember(cell, decor_buckets, WALL_DECOR_SPACING)
+
+
+## Nothing of the same kind closer than `spacing` (cells grouped in buckets of that size, checked around).
+static func _far_enough(cell: Vector2i, buckets: Dictionary, spacing: int) -> bool:
+	var bucket: Vector2i = Vector2i((Vector2(cell) / spacing).floor())
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			for other: Vector2i in buckets.get(bucket + Vector2i(dx, dy), []):
+				if Vector2(cell).distance_to(Vector2(other)) < spacing:
+					return false
+	return true
+
+
+static func _remember(cell: Vector2i, buckets: Dictionary, spacing: int) -> void:
+	var bucket: Vector2i = Vector2i((Vector2(cell) / spacing).floor())
+	buckets.get_or_add(bucket, []).append(cell)
+
+
+static func _wall_decor_kind(layout: FloorLayout, slot: int, cell: Vector2i, rng: RandomNumberGenerator) -> String:
+	for feature in layout.features:
+		if feature.slot == slot and feature.kind in [&"goblin_camp", &"chieftain_hall"] \
+				and Vector2(cell).distance_to(Vector2(feature.cell)) <= GOBLIN_WALL_DECOR_RADIUS \
+				and rng.randf() < GOBLIN_WALL_DECOR_CHANCE:
+			return GOBLIN_WALL_DECOR[rng.randi() % GOBLIN_WALL_DECOR.size()]
+	return NATURAL_WALL_DECOR[rng.randi() % NATURAL_WALL_DECOR.size()]
 
 
 static func _add_monsters(layout: FloorLayout, data: FloorData, region: RegionData, slot: int,
