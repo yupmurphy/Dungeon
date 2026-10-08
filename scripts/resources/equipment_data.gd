@@ -29,6 +29,9 @@ const LOOK_SLOTS: Array[Slot] = [Slot.HAIR]
 @export var set_id: StringName = &""
 ## Where it comes from: start, shop_smithy, drop_goblin...
 @export var source: StringName = &""
+## Stat -> value (e.g. defense: 4, attack_speed: 0.15 = +15%): the tier rule for its role x its slot's scale,
+## plus its own overrides (special items). A flexible list, not fixed fields; applied to Stats in stage 3.
+@export var bonuses: Dictionary = {}
 
 
 static func slot_from_name(slot_name: String) -> int:

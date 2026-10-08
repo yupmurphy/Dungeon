@@ -25,6 +25,34 @@ func run(_options: Dictionary) -> void:
 	var text: String = FileAccess.get_file_as_string(ItemPipeline.output_path("weapon_sword"))
 	_check(text.begins_with("; GENERATED"), "generated files say they must not be edited")
 
+	print("--- stats from the tier rules (stage 2)")
+	var leggings := Equipment.find(&"legs_leggings")
+	_check(leggings != null and is_equal_approx(leggings.bonuses.get(&"defense", 0.0), 4.9),
+		"leather tier 2 = 7 defense, legs get 0.7 of it: 4.9 (%s)" % (leggings.bonuses if leggings else {}))
+	var shirt := Equipment.find(&"torso_longsleeve")
+	_check(shirt != null and shirt.bonuses == {&"defense": 2.0}, "cloth tier 1 torso: 2 defense (%s)" % shirt.bonuses)
+	var knife := Equipment.find(&"weapon_goblin_knife")
+	_check(knife != null and is_equal_approx(knife.bonuses.get(&"attack_speed", 0.0), 0.25)
+		and is_equal_approx(knife.bonuses.get(&"damage", 0.0), 0.1),
+		"a special item's override replaces one value, the rest comes from its rule (%s)" % knife.bonuses)
+	_check(is_equal_approx(spear.bonuses.get(&"crit_chance", 0.0), 0.05) and is_equal_approx(spear.bonuses.get(&"damage", 0.0), 0.3),
+		"an override can add a stat the rule doesn't give (%s)" % spear.bonuses)
+	var special: Array[String] = ItemPipeline.special_items()
+	_check(special.size() <= 4, "only a few special items have overrides (%s)" % ", ".join(special))
+	var rule_errors: Array[String] = []
+	var rules: ItemPipeline.Rules = ItemPipeline.read_rules(rule_errors)
+	_check(rule_errors.is_empty(), "the tier and slot rule tables read without errors %s" % [rule_errors])
+	var no_rule := ItemPipeline.Row.new()
+	no_rule.line = 9
+	no_rule.values = {"id": "odd", "name": "Odd", "slot": "torso", "tier": "9", "role": "plate", "set_id": "",
+		"sprite": "torso_leather", "source": "drop_goblin", "overrides": ""}
+	var no_rule_errors: Array[String] = []
+	ItemPipeline.item_bonuses(no_rule, rules, no_rule_errors)
+	_check(no_rule_errors.size() == 1 and "no tier rule" in no_rule_errors[0], "an item without a tier rule is refused")
+	var parse_errors: Array[String] = []
+	var parsed: Dictionary = ItemPipeline.parse_bonuses("defense=3;evade;speed=fast", "test", parse_errors)
+	_check(parsed == {&"defense": 3.0} and parse_errors.size() == 2, "badly written bonuses are reported (%d)" % parse_errors.size())
+
 	print("--- bad tables are refused")
 	var bad := ItemPipeline.Row.new()
 	bad.line = 7

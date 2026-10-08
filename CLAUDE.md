@@ -70,14 +70,17 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
    differs from the table, is missing or is left over. Hair styles are looks, not items (`resources/equipment/`,
    `EquipmentData.LOOK_SLOTS`). New item = new row, never a hand-made .tres. Item ids never change once used
    (saves, drops).
-2. **Stat values come from a tier rules table** (values per tier and role). Per-item `overrides` are only for
-   special items, never to set a normal item's stats.
+2. **Stat values come from a tier rules table** (values per tier and role): `data/items/tier_rules.csv`
+   (`role,tier,bonuses`, values for a torso-sized piece or a weapon) x the slot's share in `slot_rules.csv`
+   (`slot,scale`). Per-item `overrides` (`stat=value;...`, exact values on top) are only for special items, never
+   to set a normal item's stats; the generator lists the special items. Bonuses are rounded to 0.001 and sorted
+   by stat name. The tables are documented in `data/items/README.md`.
 3. **Item bonuses are a flexible list of stat + value pairs**, not fixed fields. `stats.gd` adds the worn
    equipment's bonuses automatically: no per-item code.
 4. **Sets are defined once** in their own table, with bonuses at 2, 4 and 6 pieces. Items only reference `set_id`.
 5. **A validator checks all data:** unknown stats, unknown set ids, duplicate ids, missing sprites. Run it after
    every table change. The generator refuses a table with errors.
-Status: rule 1 done (v0.1.15, 20 example items); rules 2-5 are being built in stages.
+Status: rule 1 done (v0.1.15, 20 example items), rule 2 done (v0.1.16); rules 3-5 are being built in stages.
 
 ## Dungeon floors
 - **"Ecological" floor generator, being rebuilt in stages** (1 structure DONE, 2 Goblin Galleries caves with
