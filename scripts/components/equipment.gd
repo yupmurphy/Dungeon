@@ -52,7 +52,9 @@ func set_body_type(new_type: String) -> void:
 func look_items() -> Array[String]:
 	var ids: Array[String] = ["body", "head_human_" + body_type]
 	for slot: int in _worn:
-		ids.append(_worn[slot].lpc_item)
+		# Jewelry (and gloves, for now) are not drawn.
+		if not _worn[slot].lpc_item.is_empty():
+			ids.append(_worn[slot].lpc_item)
 	return ids
 
 

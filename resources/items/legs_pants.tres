@@ -7,11 +7,13 @@
 [resource]
 script = ExtResource("1_item")
 id = &"legs_pants"
-display_name = "Old Pants"
+display_name = "Pants"
 slot = 2
 lpc_item = "legs_pants"
-tier = 1
+tier = 0
 role = &"cloth"
 set_id = &""
 source = &"start"
-bonuses = {&"defense": 1.4}
+bonuses = {&"carry_weight": 2.0, &"defense": 1.4, &"evade": 0.007, &"exhaustion_gain": -0.01}
+weight = 0.7
+price = 7.0

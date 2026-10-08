@@ -11,7 +11,7 @@ func run(_options: Dictionary) -> void:
 	for line in report:
 		print("  " + line)
 	if errors.is_empty():
-		print("  special items (own overrides): %s" % ", ".join(ItemPipeline.special_items()))
+		print("  special items (special column): %s" % ", ".join(ItemPipeline.special_items()))
 	for error in errors:
 		printerr("  ERROR " + error)
 	print("items: %s (%d changed)" % ["FAILED" if not errors.is_empty() else "generated", report.size()])

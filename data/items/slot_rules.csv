@@ -1,6 +1,9 @@
-slot,scale
-torso,1.0
-legs,0.7
-helmet,0.5
-feet,0.4
-weapon,1.0
+slot,group,scale,drawn
+body,armor,1.0,1
+pants,armor,0.7,1
+boots,armor,0.4,1
+helmet,armor,0.5,1
+gloves,armor,0.4,0
+weapon,weapon,1.0,1
+amulet,jewelry,1.0,0
+ring,jewelry,0.6,0

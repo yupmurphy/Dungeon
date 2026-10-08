@@ -30,7 +30,7 @@ const EQUIP_WIDTH: float = 172.0
 ## Live preview of the character (64 x 64 LPC frame) on the equipment column.
 const PREVIEW_RECT: Rect2 = Rect2(432, 58, 172, 86)
 const EQUIP_Y: float = 152.0
-const EQUIP_ROW_HEIGHT: float = 20.0
+const EQUIP_ROW_HEIGHT: float = 17.0
 const EQUIP_LIST_X: float = 482.0
 const COLUMN_TITLE_Y: float = 42.0
 const STATS_Y: float = 60.0

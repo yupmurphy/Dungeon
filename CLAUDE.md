@@ -61,26 +61,36 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 
 ## Items data pipeline (user rules - never edit hundreds of item files by hand)
 1. **One table defines every item:** `data/items/items.csv`, one row per item:
-   - columns `id,name,slot,tier,role,set_id,sprite,source,overrides`;
+   - columns `id,name,slot,tier,role,set_id,sprite,source,special`;
    - `sprite` = LPC catalog item;
-   - `overrides` = optional stat overrides.
+   - `special` = optional exact stat values, for special items only.
    `tools/items/item_generator.gd` (`-- --generate-items`, logic in `ItemPipeline`) writes one `EquipmentData` .tres
    per row into `resources/items/`. **Generated files are never edited by hand.** They carry a "GENERATED - DO NOT
    EDIT" header; to change an item, edit the table and regenerate. `-- --items-test` fails if a generated file
    differs from the table, is missing or is left over. Hair styles are looks, not items (`resources/equipment/`,
    `EquipmentData.LOOK_SLOTS`). New item = new row, never a hand-made .tres. Item ids never change once used
    (saves, drops).
-2. **Stat values come from a tier rules table** (values per tier and role): `data/items/tier_rules.csv`
-   (`role,tier,bonuses`, values for a torso-sized piece or a weapon) x the slot's share in `slot_rules.csv`
-   (`slot,scale`). Per-item `overrides` (`stat=value;...`, exact values on top) are only for special items, never
-   to set a normal item's stats; the generator lists the special items. Bonuses are rounded to 0.001 and sorted
-   by stat name. The tables are documented in `data/items/README.md`.
+2. **Stat values come from a tier rules table** (values per tier and role): tiers are letters F, D, C, B, A, S
+   (`EquipmentData.TIER_NAMES`, `tier` = index). Tables in `data/items/` (explained for the user in its README.md,
+   which the user edits alone, keep it current):
+   - `stats.csv`: every stat, kind `bonus` (added to the wearer) / `item` (weight, price) / `weapon` (melee, splash,
+     attack_range). Adding a stat = a row here + a column only where needed; rows may stop early (= 0).
+   - `roles.csv`: role + group (armor / weapon / jewelry) + weapon properties.
+   - `slot_rules.csv`: slot + group + scale + drawn.
+   - `tier_rules.csv`: role x tier, one column per stat (0 = nothing).
+   - `slot_bonuses.csv`: slot x tier, what the slot adds itself (boots speed, helmet sight/light...).
+   Item value = tier rule x slot scale + slot bonus, then the item's `special` column (`stat=value;...`, exact) only
+   for special items; the generator lists them. Rounded to 0.001, sorted by name, zeros left out. A role must
+   match the slot's group; undrawn slots (gloves, amulet, ring) have no sprite.
+   Slots: body, pants, boots, helmet, gloves, weapon, amulet, ring (+ hair = look); new slots go at the END of the
+   `Slot` enum.
 3. **Item bonuses are a flexible list of stat + value pairs**, not fixed fields. `stats.gd` adds the worn
    equipment's bonuses automatically: no per-item code.
 4. **Sets are defined once** in their own table, with bonuses at 2, 4 and 6 pieces. Items only reference `set_id`.
 5. **A validator checks all data:** unknown stats, unknown set ids, duplicate ids, missing sprites. Run it after
    every table change. The generator refuses a table with errors.
-Status: rule 1 done (v0.1.15, 20 example items), rule 2 done (v0.1.16); rules 3-5 are being built in stages.
+Status: rule 1 done (v0.1.15), rule 2 done (v0.1.17, detailed tables; 23 example items); rules 3-5 are being
+built in stages.
 
 ## Dungeon floors
 - **"Ecological" floor generator, being rebuilt in stages** (1 structure DONE, 2 Goblin Galleries caves with

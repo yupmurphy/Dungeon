@@ -267,17 +267,17 @@ func run(_options: Dictionary) -> void:
 	for slot in EquipmentData.Slot.values():
 		for piece in Equipment.all_pieces(slot):
 			unique = unique and not ids.has(piece.id) and not String(piece.id).is_empty() \
-				and LpcCatalog.has_item(piece.lpc_item) and Equipment.find(piece.id) == piece
+				and (piece.lpc_item.is_empty() or LpcCatalog.has_item(piece.lpc_item)) and Equipment.find(piece.id) == piece
 			ids[piece.id] = true
-	_check(unique and ids.size() >= 20, "%d pieces, each with a unique id and its LPC art" % ids.size())
+	_check(unique and ids.size() >= 20, "%d pieces, each with a unique id and its LPC art (if drawn)" % ids.size())
 	_check(player.equipment.get_piece(EquipmentData.Slot.WEAPON).id == &"weapon_sword"
 		and player.character.attack_action() == "slash", "starts with a sword: attacks are slashes")
 	sheet.open()
-	var torso_list: OptionButton = sheet._equip_lists[EquipmentData.Slot.TORSO]
-	var leather: int = sheet._equip_choices[EquipmentData.Slot.TORSO].find(Equipment.find(&"torso_leather"))
+	var torso_list: OptionButton = sheet._equip_lists[EquipmentData.Slot.BODY]
+	var leather: int = sheet._equip_choices[EquipmentData.Slot.BODY].find(Equipment.find(&"torso_leather"))
 	torso_list.select(leather)
 	torso_list.item_selected.emit(leather)
-	_check(player.equipment.get_piece(EquipmentData.Slot.TORSO).id == &"torso_leather"
+	_check(player.equipment.get_piece(EquipmentData.Slot.BODY).id == &"torso_leather"
 		and "torso_leather" in player.character.items, "picking Leather armor in the list puts it on at once")
 	var weapon_list: OptionButton = sheet._equip_lists[EquipmentData.Slot.WEAPON]
 	var spear: int = sheet._equip_choices[EquipmentData.Slot.WEAPON].find(Equipment.find(&"weapon_spear"))
@@ -290,6 +290,11 @@ func run(_options: Dictionary) -> void:
 	_check(player.equipment.body_type == "female" and player.character.body_type == "female"
 		and sheet._preview.body_type == "female", "body type Female changes the player and the preview")
 	sheet._equip_lists["body"].item_selected.emit(0)
+	var looks_before: Array[String] = player.character.items.duplicate()
+	player.equipment.equip(Equipment.find(&"ring_copper"))
+	_check(player.equipment.get_piece(EquipmentData.Slot.RING) != null and player.character.items == looks_before,
+		"a ring is worn but not drawn on the character")
+	player.equipment.unequip(EquipmentData.Slot.RING)
 	player.equipment.equip(Equipment.find(&"weapon_sword"))
 	player.equipment.equip(Equipment.find(&"torso_longsleeve"))
 	sheet.close()

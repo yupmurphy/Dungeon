@@ -6,14 +6,14 @@
 
 [resource]
 script = ExtResource("1_item")
-id = &"legs_goblin_wraps"
-display_name = "Goblin leg wraps"
-slot = 2
-lpc_item = "legs_leggings"
+id = &"gloves_leather"
+display_name = "Leather gloves"
+slot = 6
+lpc_item = ""
 tier = 1
 role = &"leather"
-set_id = &"goblin_raider"
-source = &"drop_goblin"
-bonuses = {&"agility": 1.4, &"carry_weight": 3.0, &"defense": 4.2, &"evade": 0.011, &"exhaustion_gain": -0.016}
-weight = 2.1
-price = 28.0
+set_id = &"hunter"
+source = &"shop_smithy"
+bonuses = {&"agility": 0.8, &"attack_speed": 0.032, &"crit_chance": 0.008, &"defense": 2.4, &"evade": 0.006}
+weight = 1.2
+price = 16.0

@@ -1,0 +1,17 @@
+role,group,melee,splash,attack_range
+cloth,armor,,,
+robe,armor,,,
+leather,armor,,,
+chain,armor,,,
+plate,armor,,,
+dagger,weapon,1,0,18
+sword,weapon,1,0,24
+axe,weapon,1,1,24
+mace,weapon,1,1,22
+spear,weapon,1,0,36
+bow,weapon,0,0,160
+staff,weapon,0,1,120
+might,jewelry,,,
+finesse,jewelry,,,
+arcane,jewelry,,,
+fortune,jewelry,,,

@@ -6,14 +6,14 @@
 
 [resource]
 script = ExtResource("1_item")
-id = &"legs_goblin_wraps"
-display_name = "Goblin leg wraps"
-slot = 2
-lpc_item = "legs_leggings"
+id = &"amulet_bone"
+display_name = "Bone amulet"
+slot = 7
+lpc_item = ""
 tier = 1
-role = &"leather"
+role = &"might"
 set_id = &"goblin_raider"
 source = &"drop_goblin"
-bonuses = {&"agility": 1.4, &"carry_weight": 3.0, &"defense": 4.2, &"evade": 0.011, &"exhaustion_gain": -0.016}
-weight = 2.1
-price = 28.0
+bonuses = {&"health": 8.0, &"magic_damage": 0.032, &"mana": 5.0, &"strength": 2.0}
+weight = 0.1
+price = 63.0

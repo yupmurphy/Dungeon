@@ -1,0 +1,27 @@
+stat,kind,description
+strength,bonus,Strength points
+agility,bonus,Agility points
+magic,bonus,Magic points
+intelligence,bonus,Intelligence points
+perception,bonus,Perception points
+luck,bonus,Luck points
+health,bonus,Max health
+mana,bonus,Max mana
+defense,bonus,Defense (damage taken x 100 / (100 + defense))
+evade,bonus,Chance that enemies miss you (0.01 = 1%)
+damage,bonus,Damage bonus (0.1 = +10%)
+magic_damage,bonus,Magic damage bonus (0.1 = +10%)
+attack_speed,bonus,Attack speed (0.1 = +10%; negative = slower)
+crit_chance,bonus,Critical chance (0.01 = 1%)
+crit_damage,bonus,Extra damage of critical hits (0.1 = +10%)
+knockback,bonus,Knockback of your hits (0.1 = +10%)
+move_speed,bonus,Movement speed (0.1 = +10%; negative = slower)
+exhaustion_gain,bonus,Exhaustion gained (0.1 = +10% more; negative = you tire less)
+carry_weight,bonus,Carry weight
+light_radius,bonus,Light around you (reference pixels; 16 = one tile)
+sight_radius,bonus,How far you see monsters (reference pixels; 16 = one tile)
+weight,item,How heavy the item is
+price,item,Price in gold
+melee,weapon,1 = hits up close; 0 = from afar
+splash,weapon,1 = hits everything in an area; 0 = one target
+attack_range,weapon,Attack distance (reference pixels; 16 = one tile)
