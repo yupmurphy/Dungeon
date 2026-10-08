@@ -66,6 +66,9 @@ extends Resource
 @export_group("Spawning")
 ## Spawned in groups of this many (min, max), close together.
 @export var group_size: Vector2i = Vector2i(1, 1)
+## Sometimes a group is led by another kind of monster (e.g. a grown goblin with the young ones).
+@export var group_leader: MonsterData
+@export_range(0.0, 1.0) var leader_chance: float = 0.0
 ## Groups also gather around every place of this kind in their zone (FloorLayout feature, e.g. goblin_camp).
 @export var home_feature: StringName = &""
 @export var groups_per_home: int = 0

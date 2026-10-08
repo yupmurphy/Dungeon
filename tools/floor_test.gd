@@ -96,7 +96,7 @@ func _check_generator() -> void:
 	var goblins: Array[Vector2i] = []
 	var wrong_zone: bool = false
 	for spawn in sample.spawns:
-		if spawn.kind == FloorLayout.SpawnKind.MONSTER and spawn.monster.display_name == "Goblin":
+		if spawn.kind == FloorLayout.SpawnKind.MONSTER and spawn.monster.display_name.ends_with("Goblin"):
 			goblins.append(spawn.cell)
 			wrong_zone = wrong_zone or FLOOR_DATA.regions[spawn.slot].id != &"goblin_galleries"
 	var alone: int = 0
@@ -110,6 +110,11 @@ func _check_generator() -> void:
 		if feature.kind == &"goblin_camp":
 			near_camp += goblins.filter(func(c: Vector2i) -> bool: return Vector2(c).distance_to(Vector2(feature.cell)) <= 9.0).size()
 	_check(near_camp >= 2, "goblins gather around their camp (%d)" % near_camp)
+	var grown: int = 0
+	for spawn in sample.spawns:
+		if spawn.kind == FloorLayout.SpawnKind.MONSTER and spawn.monster.display_name == "Grown Goblin":
+			grown += 1
+	_check(grown > 0 and grown * 3 < goblins.size(), "some groups are led by a grown goblin (%d of %d)" % [grown, goblins.size()])
 
 
 ## {slot: {terrain type: share of the zone's cells}}.

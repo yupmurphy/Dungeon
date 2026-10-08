@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="1_data"]
 [ext_resource type="Resource" path="res://resources/stats/goblin_stats.tres" id="2_stats"]
 [ext_resource type="Texture2D" path="res://assets/monsters/goblin/young_goblin.png" id="3_sheet"]
+[ext_resource type="Resource" path="res://resources/monsters/goblin_grown.tres" id="4_grown"]
 
 [resource]
 script = ExtResource("1_data")
@@ -25,5 +26,7 @@ windup_time = 0.55
 attack_size = Vector2(16, 20)
 attack_damage = 12.0
 group_size = Vector2i(2, 4)
+group_leader = ExtResource("4_grown")
+leader_chance = 0.3
 home_feature = &"goblin_camp"
 groups_per_home = 2

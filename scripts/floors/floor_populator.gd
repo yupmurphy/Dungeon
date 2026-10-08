@@ -123,6 +123,8 @@ static func _spawn_group(layout: FloorLayout, data: FloorData, monster: MonsterD
 		spawn.cell = spot
 		spawn.slot = slot
 		spawn.monster = monster
+		if placed == 0 and monster.group_leader != null and rng.randf() < monster.leader_chance:
+			spawn.monster = monster.group_leader
 		layout.add_spawn(spawn)
 		placed += 1
 
