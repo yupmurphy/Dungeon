@@ -2,11 +2,14 @@ class_name Equipment
 extends Node
 ## What a character wears: body type + one EquipmentData per slot (or nothing). Emits `changed` on every change;
 ## the owner rebuilds its look (LpcCharacter) from look_items().
-## All pieces live as .tres in resources/equipment/ (made by tools/lpc_import.gd).
+## Items are generated from data/items/items.csv into resources/items/ (never edit them by hand); hair styles
+## (looks) live in resources/equipment/ (made by tools/lpc_import.gd).
 
 signal changed
 
-const EQUIPMENT_DIR: String = "res://resources/equipment/"
+const ITEMS_DIR: String = "res://resources/items/"
+const LOOKS_DIR: String = "res://resources/equipment/"
+const PIECE_DIRS: Array[String] = [ITEMS_DIR, LOOKS_DIR]
 const BODY_TYPES: Array[String] = ["male", "female"]
 
 @export var body_type: String = "male"
@@ -56,15 +59,19 @@ func look_items() -> Array[String]:
 ## Every piece made for one slot, sorted by name (for the debug lists).
 static func all_pieces(slot: EquipmentData.Slot) -> Array[EquipmentData]:
 	var pieces: Array[EquipmentData] = []
-	for file in DirAccess.get_files_at(EQUIPMENT_DIR):
-		var piece := load(EQUIPMENT_DIR + file.trim_suffix(".remap")) as EquipmentData
-		if piece != null and piece.slot == slot:
-			pieces.append(piece)
+	for dir in PIECE_DIRS:
+		for file in DirAccess.get_files_at(dir):
+			var piece := load(dir + file.trim_suffix(".remap")) as EquipmentData
+			if piece != null and piece.slot == slot:
+				pieces.append(piece)
 	pieces.sort_custom(func(a: EquipmentData, b: EquipmentData) -> bool: return a.display_name < b.display_name)
 	return pieces
 
 
-## The piece with this id (resources/equipment/<id>.tres), or null.
+## The piece with this id (resources/items/<id>.tres or resources/equipment/<id>.tres), or null.
 static func find(id: StringName) -> EquipmentData:
-	var path: String = EQUIPMENT_DIR + String(id) + ".tres"
-	return load(path) as EquipmentData if ResourceLoader.exists(path) else null
+	for dir in PIECE_DIRS:
+		var path: String = dir + String(id) + ".tres"
+		if ResourceLoader.exists(path):
+			return load(path) as EquipmentData
+	return null

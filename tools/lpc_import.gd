@@ -14,7 +14,8 @@ const CREDITS: String = "res://assets/CREDITS.csv"
 const CREDITS_PAGE: String = "res://CREDITS.md"
 ## Start of the hand-written town art rows in CREDITS.csv, kept when the file is regenerated.
 const TOWN_CREDITS_MARKER: String = "# Town art in assets/town/"
-## One EquipmentData .tres per wearable item (made once; later edits to the .tres are kept).
+## One EquipmentData .tres per look (hair style; made once). Items are NOT made here: they come from
+## data/items/items.csv (tools/items/item_generator.gd).
 const EQUIPMENT_DIR: String = "res://resources/equipment/"
 const BODY_TYPES: Array[String] = ["male", "female"]
 const ANIMATIONS: Array[String] = ["idle", "walk", "slash", "thrust", "hurt"]
@@ -320,14 +321,14 @@ static func _csv_fields(line: String) -> PackedStringArray:
 	return fields
 
 
-## EquipmentData for every item whose slot is an equipment slot (not body / head). Existing files are kept.
+## EquipmentData for every look (hair; not body / head, not items). Existing files are kept.
 func _write_equipment(catalog: Dictionary) -> int:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(EQUIPMENT_DIR))
 	var created: int = 0
 	for id: String in catalog:
 		var slot: int = EquipmentData.slot_from_name(catalog[id]["slot"])
 		var path: String = EQUIPMENT_DIR + id + ".tres"
-		if slot < 0 or FileAccess.file_exists(path):
+		if slot < 0 or slot not in EquipmentData.LOOK_SLOTS or FileAccess.file_exists(path):
 			continue
 		var piece := EquipmentData.new()
 		piece.id = StringName(id)

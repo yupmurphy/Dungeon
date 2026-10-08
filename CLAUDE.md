@@ -59,6 +59,26 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 - Physics layers are named in `project.godot`: 1 world, 2 player_body, 3 enemy_body, 4 player_hurtbox,
   5 enemy_hurtbox, 6 player_hitbox, 7 enemy_hitbox. A hitbox's mask lists the hurtbox layer it can damage.
 
+## Items data pipeline (user rules - never edit hundreds of item files by hand)
+1. **One table defines every item:** `data/items/items.csv`, one row per item:
+   - columns `id,name,slot,tier,role,set_id,sprite,source,overrides`;
+   - `sprite` = LPC catalog item;
+   - `overrides` = optional stat overrides.
+   `tools/items/item_generator.gd` (`-- --generate-items`, logic in `ItemPipeline`) writes one `EquipmentData` .tres
+   per row into `resources/items/`. **Generated files are never edited by hand.** They carry a "GENERATED - DO NOT
+   EDIT" header; to change an item, edit the table and regenerate. `-- --items-test` fails if a generated file
+   differs from the table, is missing or is left over. Hair styles are looks, not items (`resources/equipment/`,
+   `EquipmentData.LOOK_SLOTS`). New item = new row, never a hand-made .tres. Item ids never change once used
+   (saves, drops).
+2. **Stat values come from a tier rules table** (values per tier and role). Per-item `overrides` are only for
+   special items, never to set a normal item's stats.
+3. **Item bonuses are a flexible list of stat + value pairs**, not fixed fields. `stats.gd` adds the worn
+   equipment's bonuses automatically: no per-item code.
+4. **Sets are defined once** in their own table, with bonuses at 2, 4 and 6 pieces. Items only reference `set_id`.
+5. **A validator checks all data:** unknown stats, unknown set ids, duplicate ids, missing sprites. Run it after
+   every table change. The generator refuses a table with errors.
+Status: rule 1 done (v0.1.15, 20 example items); rules 2-5 are being built in stages.
+
 ## Dungeon floors
 - **"Ecological" floor generator, being rebuilt in stages** (1 structure DONE, 2 Goblin Galleries caves with
   themed halls, 3 swamp = the model zone, 4 forest + desert, 5 spawners/territories/day-night + F7).
@@ -176,8 +196,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
   `LpcCatalog` cuts sheets into SpriteFrames; `LpcCharacter` stacks one AnimatedSprite2D per layer and drives the
   same frame on all of them (idle, walk, slash, thrust; flinch = first frames of the LPC fall, death = the whole
   fall; layers without the animation hide). LPC has 4 directions only: diagonals use the side view.
-- **Paper doll:** `EquipmentData` (resources/equipment/<id>.tres, made by the import tool, edits kept): `id` (unique,
-  for future stats/drops/saves), display name, slot (hair, torso, legs, feet, helmet, weapon), `lpc_item`. The
+- **Paper doll:** `EquipmentData` (items: generated in resources/items/ from the items table, see "Items data
+  pipeline"; hair looks: resources/equipment/, made by the import tool): `id` (unique, for stats/drops/saves), display name, slot (hair, torso, legs, feet, helmet, weapon), `lpc_item`. The
   player's `Equipment` node holds body type + one piece per slot and emits `changed`; the player rebuilds its
   LpcCharacter. The weapon's art decides the attack (spear = thrust, others slash). Character sheet (C) has an
   Equipment column: live preview + one debug list per slot.
@@ -207,7 +227,8 @@ Indie PC game in **Godot 4.7 + GDScript**. Source of truth for design: `Dungeon 
 ## Layout
 - `scenes/` reusable scenes (`player/`, `enemies/`, `levels/`, `floors/`, `ui/`, `effects/`)
 - `scripts/` GDScript (`autoload/`, `components/`, `resources/`, `player/`, `enemies/`, `levels/`, `floors/`, `ui/`, `effects/`)
-- `resources/` data (`stats/`, `monsters/`, `regions/`, `floors/`, `sprites/` SpriteFrames, `tilesets/`, `shaders/`)
+- `data/` source tables for generated data (`items/items.csv`; importer "skip")
+- `resources/` data (`stats/`, `monsters/`, `items/` (generated), `equipment/` (hair), `regions/`, `floors/`, `sprites/` SpriteFrames, `tilesets/`, `shaders/`)
 - `assets/` art pack
 - `tools/` dev tools started through the `DebugRunner` autoload
 
@@ -231,6 +252,8 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
             # any mode: --perception=<n> sets the player's Perception first
     <godot> --headless --path . -- --build-room                # regenerate tileset + test room tiles
     <godot> --headless --path . -- --town-test                 # town scene checks (doors, overlaps, gates, walls, night)
+    <godot> --headless --path . -- --generate-items            # items table -> resources/items/*.tres (after every table edit)
+    <godot> --headless --path . -- --items-test                # generated items match the table
     <godot> --path . -- --screenshot=<png> --mode=town --at=<x>,<y> --zoom=<z> [--night] [--no-limits]
 
 The user runs the game from the editor's embedded Game tab: if keys do nothing, the Game tab toolbar is

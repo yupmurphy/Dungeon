@@ -28,7 +28,7 @@ func run(options: Dictionary) -> void:
 		await get_tree().process_frame
 	var room: Node = get_tree().current_scene
 	var player := room.get_node("World/Player") as Player
-	# --equip=<id>,<id> wears these pieces, --body=male|female (see resources/equipment/).
+	# --equip=<id>,<id> wears these pieces, --body=male|female (see resources/items/ and resources/equipment/).
 	if options.has("--body"):
 		player.equipment.set_body_type(options["--body"])
 	for id in String(options.get("--equip", "")).split(",", false):

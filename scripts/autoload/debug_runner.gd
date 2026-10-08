@@ -11,6 +11,8 @@ extends Node
 ##   -- --build-town [--force]                      lay out the town scene (scenes/town/town.tscn), once
 ##   -- --bake-goblin=<LPC generator clone>          bake the young goblin sheet (assets/monsters/goblin/)
 ##   -- --town-test                                   town scene checks (layout, doors, walls, gates, night)
+##   -- --generate-items                              items table (data/items/items.csv) -> resources/items/*.tres
+##   -- --items-test                                  items pipeline checks (generated files match the table)
 ## Tools run inside the real game (with autoloads), which a plain `--script` run does not provide.
 
 const TOOLS: Dictionary = {
@@ -24,6 +26,8 @@ const TOOLS: Dictionary = {
 	"--build-town": "res://tools/town_builder.gd",
 	"--bake-goblin": "res://tools/goblin_baker.gd",
 	"--town-test": "res://tools/town_test.gd",
+	"--generate-items": "res://tools/items/item_generator.gd",
+	"--items-test": "res://tools/items/items_test.gd",
 }
 
 
