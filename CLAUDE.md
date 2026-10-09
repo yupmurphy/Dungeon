@@ -224,8 +224,12 @@ built in stages.
   `TownLighting` (CanvasModulate) fades day / night and switches every "town_lights" node (`lit`) and the player torch.
   `TownSmoke` = chimney / forge particles; `town_water.gdshader` = glints on the stream.
 - Map: minimap + big map (M) read any `MapSource` (group "map_source"): `ExplorationMap` on floors (fog of war),
-  `TownMap` in town (drawn once at start from the scene: ground layers, walls, buildings in roof colors, landmarks
-  with their own color + legend, so hand edits show up on the map).
+  `TownMap` in town (drawn once at start from the scene: ground layers, walls, ordinary houses in one quiet color with
+  an outline, landmarks in their own color with their NAME written on the big map (`MapSource.markers()`, dot = false),
+  gates, the bridge, the way to the dungeon; hand edits show up on the map).
+- `TownProp`: `flip_h` mirrors with draw_set_transform (a negative rect width shifted the picture by its width away
+  from its collision). Market stalls = whole awning + shared lower part (`"base"`, `TownArt.STALL_BASE`). The stream
+  runs under the bridge as water alternative tile 1 (no collision) only under the bridge picture.
 
 ## Art
 - **Characters are LPC** (Liberated Pixel Cup, 64 x 64 frames, rows up/left/down/right; hurt = one row, the fall).
@@ -296,6 +300,7 @@ Godot is not in PATH. Executable: `D:\Godot\Godot_v4.7.2-stable_win64.exe`. Tool
             # or double-click tools/generate_items.bat; in PowerShell put & before the quoted godot path
     <godot> --headless --path . -- --items-test                # generated items match the table
     <godot> --path . -- --screenshot=<png> --mode=town --at=<x>,<y> --zoom=<z> [--night] [--no-limits]
+            # any mode: --collisions draws every collision shape (finds invisible obstacles)
 
 The user runs the game from the editor's embedded Game tab: if keys do nothing, the Game tab toolbar is
 probably in 2D/3D selection mode instead of "Input".

@@ -6,6 +6,7 @@ extends Node
 ## gate / arena / start (zoomed out view of a hub gate, the boss arena entrance, the start cave), cave (walls up
 ## close near the start, --zoom=1 --dark for the real look).
 ## Modes in the combat test room: fight, room, goblins (--frames=<n> to wait). Town: town (--at=<x>,<y> in tiles, --zoom, --night, --map).
+## Any mode: --collisions shows the collision shapes.
 
 const SETTLE_FRAMES: int = 40
 const TEST_ROOM: String = "res://scenes/levels/test_room.tscn"
@@ -19,6 +20,9 @@ func run(options: Dictionary) -> void:
 	if output.is_empty():
 		output = "user://screenshot.png"
 	var mode: String = options.get("--mode", "idle")
+	# --collisions draws every collision shape (to find invisible obstacles).
+	if options.has("--collisions"):
+		get_tree().debug_collisions_hint = true
 	if mode in ["fight", "room", "goblins"]:
 		get_tree().change_scene_to_file.call_deferred(TEST_ROOM)
 	elif mode == "town":

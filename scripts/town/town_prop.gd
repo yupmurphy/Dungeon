@@ -89,7 +89,8 @@ func _info() -> Dictionary:
 ## Height of the picture in pixels (for things placed on top, like smoke).
 func height() -> float:
 	var info: Dictionary = _info()
-	return (info["rect"] as Rect2i).size.y + (_pole_height() if on_pole else 0.0)
+	var base: float = (info["base"] as Rect2i).size.y if info.has("base") else 0.0
+	return (info["rect"] as Rect2i).size.y + base + (_pole_height() if on_pole else 0.0)
 
 
 func _pole_height() -> float:
@@ -128,12 +129,17 @@ func _draw() -> void:
 		draw_texture_rect_region(TownArt.sheet("trunk"), Rect2(-trunk.size.x / 2.0, -trunk.size.y + 8.0, trunk.size.x,
 			trunk.size.y), Rect2(trunk))
 		lift = trunk.size.y - 26.0
-	var size: Vector2 = region.size
-	var rect := Rect2(-size.x / 2.0, -size.y - lift, size.x, size.y)
+	# Mirrored around the prop's center line (a negative rect width would shift the picture by its width).
 	if flip_h:
-		rect.size.x = -rect.size.x
-		rect.position.x = size.x / 2.0
-	draw_texture_rect_region(texture, rect, region)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0, 1.0))
+	if info.has("base"):
+		# Two-part props (market stalls): a shared lower part, the picture (the awning) sits on top of it.
+		var base := Rect2(info["base"])
+		draw_texture_rect_region(texture, Rect2(-base.size.x / 2.0, -base.size.y - lift, base.size.x, base.size.y), base)
+		lift += base.size.y
+	var size: Vector2 = region.size
+	draw_texture_rect_region(texture, Rect2(-size.x / 2.0, -size.y - lift, size.x, size.y), region)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if lit and info.has("light"):
 		var glow: Vector2 = info["light"] - Vector2(0, lift)
 		draw_circle(glow, 4.0, Color(1.0, 0.9, 0.5, 0.6))

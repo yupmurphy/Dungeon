@@ -74,6 +74,10 @@ func run(_options: Dictionary) -> void:
 	_check(_blocked(player, Vector2(70.5, 9.5), Vector2(0, -6)), "the north wall blocks")
 	_check(not _free(Vector2(9.5, 25.5) * T), "the stream blocks")
 	_check(_free(Vector2(9.5, 38.5) * T), "the bridge crosses the stream")
+	_check(not _free(Vector2(9.5, 40.5) * T), "beside the bridge the stream still blocks (no walking on water)")
+	var water := town.get_node("Water") as TileMapLayer
+	_check(water.get_cell_source_id(Vector2i(9, 38)) == TownTiles.Source.WATER,
+		"the stream flows under the bridge (water, not a dirt gap)")
 	_check(_blocked(player, Vector2(31.5, 26), Vector2(0, -3)), "a building blocks")
 
 	print("--- map (minimap and M)")

@@ -10,6 +10,10 @@ const MAP_TOP: float = 24.0
 const LEGEND_WIDTH: float = 150.0
 ## Start and portal dots on the map.
 const MARKER_RADIUS: float = 3.5
+## Dark outline around map labels (pixels).
+const LABEL_OUTLINE: int = 3
+## Names written on the map are a bit smaller than the legend, so neighbors don't overlap.
+const LABEL_FONT_SIZE: int = 8
 
 var exploration: MapSource
 var player: Node2D
@@ -42,10 +46,15 @@ func _draw() -> void:
 	draw_texture_rect(exploration.map_texture, map_rect, false)
 	for marker in exploration.markers():
 		var at: Vector2 = map_rect.position + (Vector2(marker["cell"]) + Vector2(0.5, 0.5)) * scale_factor
-		draw_circle(at, MARKER_RADIUS, marker["color"])
-		draw_arc(at, MARKER_RADIUS + 2.0, 0.0, TAU, 16, Color(0, 0, 0, 0.8), 1.0)
-		draw_string(font, at + Vector2(MARKER_RADIUS + 3.0, 4.0), marker["label"], HORIZONTAL_ALIGNMENT_LEFT, -1,
-			FONT_SIZE, marker["color"])
+		var label: String = marker["label"]
+		if marker.get("dot", true):
+			draw_circle(at, MARKER_RADIUS, marker["color"])
+			draw_arc(at, MARKER_RADIUS + 2.0, 0.0, TAU, 16, Color(0, 0, 0, 0.8), 1.0)
+			_label(font, at + Vector2(MARKER_RADIUS + 3.0, 4.0), label, marker["color"])
+		else:
+			# A name written right on the place (town landmarks), centered.
+			var width: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE).x
+			_label(font, at + Vector2(-width / 2.0, 4.0), label, marker["color"])
 
 	if player != null and fmod(_blink, 0.8) < 0.55:
 		var dot: Vector2 = map_rect.position + player.global_position / GameScale.TILE_SIZE * scale_factor
@@ -63,3 +72,9 @@ func _draw() -> void:
 		draw_string(font, Vector2(x, y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 		y += 15.0
 	draw_string(font, Vector2(x, y), "M - close", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
+
+
+## Text with a dark outline, readable on any map color.
+func _label(font: Font, at: Vector2, text: String, color: Color) -> void:
+	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE, LABEL_OUTLINE, Color(0, 0, 0, 0.9))
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE, color)

@@ -89,6 +89,9 @@ const WINDOWS: Dictionary = {
 
 const FLOWER_BOX: Array = ["doors", Rect2i(448, 128, 32, 22)]
 
+## Lower part of the market stalls (shade under the awning and the two posts), under every stall's awning.
+const STALL_BASE: Rect2i = Rect2i(384, 1296, 96, 52)
+
 ## Props: sheet, rectangle, solid footprint (w, h px, at the bottom; Vector2i.ZERO = walk through),
 ## animation frames (count, step between frames on the sheet), optional light offset from the bottom center.
 const PROPS: Dictionary = {
@@ -126,9 +129,10 @@ const PROPS: Dictionary = {
 	"grave": {"sheet": "deco", "rect": Rect2i(130, 98, 29, 29), "solid": Vector2i(26, 10)},
 	"statue": {"sheet": "deco", "rect": Rect2i(0, 288, 32, 64), "solid": Vector2i(22, 12)},
 	"tower": {"sheet": "castle", "rect": Rect2i(448, 96, 64, 128), "solid": Vector2i(64, 40)},
-	"stall_orange": {"sheet": "deco", "rect": Rect2i(160, 816, 96, 144), "solid": Vector2i(92, 26)},
-	"stall_green": {"sheet": "deco", "rect": Rect2i(320, 816, 96, 144), "solid": Vector2i(92, 26)},
-	"stall_grey": {"sheet": "deco", "rect": Rect2i(0, 800, 96, 160), "solid": Vector2i(92, 26)},
+	# Market stalls: a whole front-view awning, on the shared lower part (shade and posts) of the green one.
+	"stall_orange": {"sheet": "deco", "rect": Rect2i(384, 1024, 96, 76), "base": STALL_BASE, "solid": Vector2i(92, 20)},
+	"stall_grey": {"sheet": "deco", "rect": Rect2i(384, 1120, 96, 88), "base": STALL_BASE, "solid": Vector2i(92, 20)},
+	"stall_green": {"sheet": "deco", "rect": Rect2i(384, 1216, 96, 80), "base": STALL_BASE, "solid": Vector2i(92, 20)},
 	"barrel": {"sheet": "containers", "rect": Rect2i(3, 7, 28, 38), "solid": Vector2i(26, 14)},
 	"barrel_open": {"sheet": "containers", "rect": Rect2i(130, 20, 28, 39), "solid": Vector2i(26, 14)},
 	"barrels": {"sheet": "containers", "rect": Rect2i(197, 5, 55, 50), "solid": Vector2i(52, 22)},
