@@ -44,7 +44,17 @@ const GENERATOR_CHECKS: Array[String] = [
 	"forest: a river with 2+ crossings, thick woods and clearings, old trees, 3+ spider nests",
 	"swamp: deep and shallow water, reeds, mud ground",
 	"desert: dunes, rock formations, quicksand, an oasis, 3+ giant bones",
+	"shape: the land covers 70-95% of the map",
+	"shape: stretched from one corner to the opposite one",
+	"shape: the land never touches the map's edge",
+	"shape: no straight edges",
 ]
+
+
+## Shape checks: how far in from each side of the map the land is looked for, and how much that depth must change
+## along a side (tiles), so the edge is never a straight line.
+const EDGE_SCAN: int = 200
+const MIN_EDGE_WAVE: int = 8
 
 
 func _check_generator() -> void:
@@ -55,6 +65,7 @@ func _check_generator() -> void:
 	var smallest_share: float = 1.0
 	var sample: FloorLayout = null
 	var phase_ms: Dictionary = {}
+	var coverages: Array[float] = []
 	for seed_value in range(_first_seed, _first_seed + _seed_count):
 		var started: int = Time.get_ticks_msec()
 		var layout: FloorLayout = FloorGenerator.generate(FLOOR_DATA, seed_value)
@@ -65,7 +76,8 @@ func _check_generator() -> void:
 			sample = layout
 		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
 		var shares: Dictionary = _terrain_shares(layout)
-		for label in _generator_problems(layout) + _ecology_problems(layout, shares):
+		coverages.append(layout.shape_coverage)
+		for label in _generator_problems(layout) + _ecology_problems(layout, shares) + _shape_problems(layout):
 			if not problems.has(label):
 				problems[label] = seed_value
 		if seed_value == _first_seed:
@@ -77,6 +89,7 @@ func _check_generator() -> void:
 	for phase: String in phase_ms:
 		phases.append("%s %.0f" % [phase, phase_ms[phase]])
 	print("  generation phases (ms): ", ", ".join(phases))
+	print("  land share per seed: ", ", ".join(coverages.map(func(c: float) -> String: return "%.0f%%" % (c * 100.0))))
 
 	for label in GENERATOR_CHECKS:
 		_check(not problems.has(label), label + ("" if not problems.has(label) else " (seed %d)" % problems[label]))
@@ -139,7 +152,52 @@ func _check_generator() -> void:
 		"the Forest holds goblin archers and grown goblins (%s)" % forest)
 
 
-## {slot: {terrain type: share of the zone's cells}}.
+## Labels of the shape rules (FloorShape) this layout breaks.
+func _shape_problems(layout: FloorLayout) -> Array[String]:
+	var problems: Array[String] = []
+	var w: int = layout.size.x
+	var h: int = layout.size.y
+	var coverage: Vector2 = FLOOR_DATA.shape_coverage
+	if layout.shape_coverage < coverage.x - 0.02 or layout.shape_coverage > coverage.y + 0.01:
+		problems.append("shape: the land covers 70-95% of the map")
+	var a: Vector2i = layout.shape_tips[0]
+	var b: Vector2i = layout.shape_tips[1]
+	var opposite: bool = (a.x < w / 2) != (b.x < w / 2) and (a.y < h / 2) != (b.y < h / 2)
+	if not opposite or not layout.is_land_index(a.y * w + a.x) or not layout.is_land_index(b.y * w + b.x):
+		problems.append("shape: stretched from one corner to the opposite one")
+	# Along every side of the map: how deep the border is there. Never 0 (land touching the side), and it changes
+	# a lot along the side (no straight line).
+	var straight: bool = false
+	var touches: bool = false
+	for side in 4:
+		var depths := PackedInt32Array()
+		var length: int = w if side < 2 else h
+		for along in length:
+			for depth in EDGE_SCAN:
+				var cell: Vector2i
+				match side:
+					0: cell = Vector2i(along, depth)
+					1: cell = Vector2i(along, h - 1 - depth)
+					2: cell = Vector2i(depth, along)
+					_: cell = Vector2i(w - 1 - depth, along)
+				if layout.is_land_index(cell.y * w + cell.x):
+					depths.append(depth)
+					touches = touches or depth == 0
+					break
+		# A side with a long stretch of land near it must not keep one depth along it.
+		if depths.size() > length / 4:
+			var sorted: Array = Array(depths)
+			sorted.sort()
+			if sorted[sorted.size() * 9 / 10] - sorted[sorted.size() / 10] < MIN_EDGE_WAVE:
+				straight = true
+	if touches:
+		problems.append("shape: the land never touches the map's edge")
+	if straight:
+		problems.append("shape: no straight edges")
+	return problems
+
+
+## {slot: {terrain type: share of the zone's cells}}, counting only the land inside the floor's shape.
 func _terrain_shares(layout: FloorLayout) -> Dictionary:
 	var counts: Array[PackedInt32Array] = []
 	for slot in layout.slot_count:
@@ -149,7 +207,8 @@ func _terrain_shares(layout: FloorLayout) -> Dictionary:
 	var terrain: PackedByteArray = layout.terrain_raw()
 	var slots: PackedByteArray = layout.slots_raw()
 	for i in terrain.size():
-		counts[slots[i]][terrain[i]] += 1
+		if layout.is_land_index(i):
+			counts[slots[i]][terrain[i]] += 1
 	var shares: Dictionary = {}
 	for slot in layout.slot_count:
 		var total: int = 0

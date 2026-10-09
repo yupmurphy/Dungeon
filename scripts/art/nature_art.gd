@@ -205,6 +205,18 @@ static func _draw_tile(img: Image, type: int, v: int) -> void:
 						img.set_pixel(roundi(p.x), roundi(p.y), silk)
 			if v == 1:
 				_dots(img, [Color(0.95, 0.95, 0.9)], 2, s)  # tiny egg sacs
+		Terrain.Type.CHASM:
+			# A drop into darkness: almost black, a faint cold haze and a few far specks.
+			_speckle(img, Color(0.03, 0.025, 0.05), 0.03, s)
+			_dots(img, [Color(0.09, 0.08, 0.14), Color(0.06, 0.05, 0.1)], 4 + v * 2, s)
+		Terrain.Type.THICKET:
+			# Undergrowth so dense nothing gets through: overlapping dark leaf clumps.
+			_speckle(img, Color(0.07, 0.17, 0.07), 0.08, s)
+			var rng := _rng(s)
+			for k in 6:
+				var at := Vector2(rng.randf_range(2.0, 13.0), rng.randf_range(2.0, 13.0))
+				_disc(img, at, rng.randf_range(2.0, 3.5), Color(0.1, 0.26, 0.1).lerp(Color(0.05, 0.14, 0.06), rng.randf()))
+				img.set_pixel(clampi(int(at.x) - 1, 0, 15), clampi(int(at.y) - 1, 0, 15), Color(0.2, 0.4, 0.16))
 
 
 # --- Props ---

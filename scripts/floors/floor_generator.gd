@@ -21,7 +21,6 @@ extends RefCounted
 ## Floor pockets smaller than this are filled instead of getting a passage.
 const MIN_POCKET: int = 30
 const WOBBLE_FREQUENCY: float = 0.006
-const BORDER_FREQUENCY: float = 0.04
 ## How many angles the hub edge is sampled at.
 const HUB_EDGE_SAMPLES: int = 720
 ## How deep the gate passage reaches into the hub.
@@ -35,6 +34,9 @@ const ENTRANCE_HALF_WIDTH: int = 2
 const PORTAL_WALL_DISTANCE: float = 4.0
 ## The arena may drift this share of its zone's width away from the zone's middle.
 const BOSS_ANGLE_JITTER: float = 0.15
+## The arena keeps this much floor around its walls inside the floor's shape; it is moved in by this step.
+const ARENA_SHAPE_MARGIN: float = 12.0
+const ARENA_PULL_STEP: float = 3.0
 const UNREACHED: int = 1 << 30
 ## Zones are worked out per block of this many tiles (then refined per cell near the hub).
 const ZONE_BLOCK: int = 4
@@ -45,6 +47,8 @@ const ISLAND_ROUNDS: int = 4
 ## Zone borders: a cell may be painted by the builder of the zone this far away (tiles), so zones blend.
 const BLEND_REACH: float = 9.0
 const BLEND_FREQUENCY: float = 0.07
+## Size of the patches of chasm / dense forest / rock in the border around the floor.
+const BORDER_KIND_FREQUENCY: float = 0.015
 
 
 static func generate(data: FloorData, seed_value: int) -> FloorLayout:
@@ -64,6 +68,13 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	assert(hub_slot >= 0 and not open_slots.is_empty(), "A floor needs one CLOSED and at least one OPEN region")
 	layout.hub_slot = hub_slot
 	layout.start_cell = layout.center
+	timings.clear()
+	var shape_clock: int = Time.get_ticks_usec()
+	var shape: FloorShape = FloorShape.build(data, layout.size, seed_value, rng)
+	layout.shape_coverage = shape.coverage
+	layout.shape_tips = shape.tips
+	layout.land = shape.inside
+	_lap("shape", shape_clock)
 
 	var sectors: Array[Dictionary] = _plan_sectors(data, open_slots, rng)
 	var hub_edge: PackedFloat32Array = _hub_edge(data, layout, seed_value)
@@ -71,11 +82,11 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	no_dig.resize(layout.size.x * layout.size.y)
 	no_dig.fill(0)
 
-	timings.clear()
 	var clock: int = Time.get_ticks_usec()
-	var arena: Dictionary = _plan_boss_arena(data, layout, sectors, rng)
+	var arena: Dictionary = _plan_boss_arena(data, layout, sectors, rng, shape)
 	var near_walls := PackedByteArray()
-	var strip: PackedInt32Array = _assign_zones(data, layout, sectors, hub_edge, no_dig, seed_value, arena, near_walls)
+	var strip: PackedInt32Array = _assign_zones(data, layout, sectors, hub_edge, no_dig, seed_value, arena, near_walls,
+		shape)
 	_mark_boss_arena(data, layout, arena, no_dig)
 	_fix_strip(layout, strip, near_walls)
 	var gate_plan: Array[Dictionary] = []
@@ -96,7 +107,7 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	for builder in builders:
 		builder.plan()
 	clock = _lap("plan", clock)
-	_paint(data, layout, builders, no_dig, seed_value)
+	_paint(data, layout, builders, no_dig, seed_value, shape)
 	clock = _lap("paint", clock)
 
 	for gate in gate_plan:
@@ -176,13 +187,12 @@ static func hub_radius(hub_edge: PackedFloat32Array, angle: float) -> float:
 @warning_ignore("integer_division")
 static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[Dictionary],
 		hub_edge: PackedFloat32Array, no_dig: PackedByteArray, seed_value: int, arena: Dictionary,
-		near_walls: PackedByteArray) -> PackedInt32Array:
+		near_walls: PackedByteArray, shape: FloorShape) -> PackedInt32Array:
 	var w: int = layout.size.x
 	var h: int = layout.size.y
 	var bw: int = ceili(float(w) / ZONE_BLOCK)
 	var open_slots: PackedByteArray = _open_zone_blocks(data, layout, sectors, hub_edge, seed_value, arena,
 		near_walls)
-	var border: PackedByteArray = noise_bytes(seed_value + 3, BORDER_FREQUENCY, w, h)
 	var slots: PackedByteArray = layout.slots_raw()
 	var cx: float = layout.center.x + 0.5
 	var cy: float = layout.center.y + 0.5
@@ -191,7 +201,6 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 	# Squared distances: cells clearly inside / outside the hub skip the exact (angle based) test.
 	var surely_inside: float = (hub_min - 1.0) * (hub_min - 1.0)
 	var surely_outside: float = (hub_max + data.hub_ring) * (hub_max + data.hub_ring)
-	var border_reach: int = data.border_max
 	var hub_slot: int = layout.hub_slot
 	var strip := PackedInt32Array()
 
@@ -200,6 +209,9 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 		var block_row: int = (y / ZONE_BLOCK) * bw
 		for x in w:
 			var i: int = y * w + x
+			# Outside the floor's shape: impassable border, never dug (it still belongs to the nearest zone).
+			if shape.inside[i] == 0:
+				no_dig[i] = 1
 			var dx: float = x + 0.5 - cx
 			var distance_squared: float = dx * dx + dy * dy
 			if distance_squared < surely_inside:
@@ -217,9 +229,6 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 			slots[i] = open_slots[block]
 			if near_walls[block] == 1:
 				strip.append(i)
-			var edge_distance: int = mini(mini(x, y), mini(w - 1 - x, h - 1 - y))
-			if edge_distance < border_reach and edge_distance < lerpf(data.border_min, data.border_max, border[i] / 255.0):
-				no_dig[i] = 1
 	return strip
 
 
@@ -401,10 +410,10 @@ static func noise_bytes(noise_seed: int, frequency: float, w: int, h: int,
 
 ## Every cell gets its ground from a zone builder. Near zone borders the builder is the one of the zone at
 ## a slightly shifted position (smooth noise), so forest thins into swamp, swamp into desert, and so on.
-## The hub and the arena never blend (they are walled), the map-edge band is rock.
+## The hub and the arena never blend (they are walled); outside the floor's shape is the border (FloorShape).
 @warning_ignore("integer_division")
 static func _paint(data: FloorData, layout: FloorLayout, builders: Array[ZoneBuilder], no_dig: PackedByteArray,
-		seed_value: int) -> void:
+		seed_value: int, shape: FloorShape) -> void:
 	var w: int = layout.size.x
 	var h: int = layout.size.y
 	var slots: PackedByteArray = layout.slots_raw()
@@ -412,6 +421,9 @@ static func _paint(data: FloorData, layout: FloorLayout, builders: Array[ZoneBui
 	var cells: PackedByteArray = layout.cells_raw()
 	var shift_x: PackedByteArray = noise_bytes(seed_value + 11, BLEND_FREQUENCY, w, h)
 	var shift_y: PackedByteArray = noise_bytes(seed_value + 12, BLEND_FREQUENCY, w, h)
+	var border_kind: PackedByteArray = noise_bytes(seed_value + 13, BORDER_KIND_FREQUENCY, w, h)
+	var chasm_below: float = data.border_chasm_share * 255.0
+	var thicket_below: float = (data.border_chasm_share + data.border_thicket_share) * 255.0
 	var hub_slot: int = layout.hub_slot
 	var boss_slot: int = layout.boss_slot
 	var walkable := PackedByteArray()
@@ -424,8 +436,10 @@ static func _paint(data: FloorData, layout: FloorLayout, builders: Array[ZoneBui
 			if slot == boss_slot:
 				continue
 			var type: int = Terrain.Type.ROCK
-			if no_dig[i] == 1 and slot != hub_slot:
-				type = Terrain.Type.ROCK  # map edge
+			if shape.inside[i] == 0:
+				# The impassable border around the floor: patches of chasm, dense forest and rock.
+				type = Terrain.Type.CHASM if border_kind[i] < chasm_below \
+					else Terrain.Type.THICKET if border_kind[i] < thicket_below else Terrain.Type.ROCK
 			elif slot == hub_slot:
 				type = builders[slot].paint(x, y, i)
 			else:
@@ -527,7 +541,7 @@ static func _carve_gate(data: FloorData, layout: FloorLayout, builders: Array[Zo
 ## Where the arena goes: {center: Vector2, direction: Vector2 (from the map's middle outwards)}.
 ## Planned before the zones are drawn, so the zones can be cleaned up around it.
 static func _plan_boss_arena(data: FloorData, layout: FloorLayout, sectors: Array[Dictionary],
-		rng: RandomNumberGenerator) -> Dictionary:
+		rng: RandomNumberGenerator, shape: FloorShape) -> Dictionary:
 	var sector: Dictionary = sectors[rng.randi() % sectors.size()]
 	var width: float = sector["to"] - sector["from"]
 	var angle: float = sector["mid"] + rng.randf_range(-BOSS_ANGLE_JITTER, BOSS_ANGLE_JITTER) * width
@@ -539,8 +553,24 @@ static func _plan_boss_arena(data: FloorData, layout: FloorLayout, sectors: Arra
 	var reach_x: float = (half.x - margin.x) / maxf(absf(direction.x), 0.001)
 	var reach_y: float = (half.y - margin.y) / maxf(absf(direction.y), 0.001)
 	var arena_center: Vector2 = Vector2(layout.center) + Vector2(0.5, 0.5) + direction * minf(reach_x, reach_y)
+	# Pulled toward the middle until the whole arena (and some ground around it) is inside the floor's shape.
+	var around: Vector2 = outer_radii + Vector2(ARENA_SHAPE_MARGIN, ARENA_SHAPE_MARGIN)
+	while not _ellipse_inside(shape, layout.size, arena_center, around) \
+			and arena_center.distance_to(Vector2(layout.center)) > ARENA_PULL_STEP:
+		arena_center -= direction * ARENA_PULL_STEP
 	layout.boss_center = Vector2i(arena_center.floor())
 	return {"center": arena_center, "direction": direction}
+
+
+## 16 points around an ellipse (and its center) are all inside the shape.
+static func _ellipse_inside(shape: FloorShape, size: Vector2i, center: Vector2, radii: Vector2) -> bool:
+	if not shape.is_inside(size, Vector2i(center.floor())):
+		return false
+	for k in 16:
+		var point: Vector2 = center + Vector2.from_angle(TAU * k / 16.0) * radii
+		if not shape.is_inside(size, Vector2i(point.floor())):
+			return false
+	return true
 
 
 ## The arena's cells (walls included) belong to the boss slot; its walls are never dug.

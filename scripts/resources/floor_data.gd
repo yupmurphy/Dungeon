@@ -37,6 +37,21 @@ extends Resource
 @export var boss_arena_radii: Vector2i = Vector2i(26, 20)
 @export var boss_arena_wall: int = 3
 
+@export_group("Shape")
+## The playable land is a long organic capsule from one corner of the map to the opposite one (FloorShape); the rest
+## is impassable border (rock, chasms, dense forest). Share of the map it covers: random between x and y.
+@export var shape_coverage: Vector2 = Vector2(0.7, 0.95)
+## The capsule's ends stop this share of the diagonal before the corners (rounded tips, no square corner).
+@export_range(0.0, 0.3) var shape_tip_inset: float = 0.1
+## Big bends and bulges (tiles the shape is pushed around by slow noise), and small bumps along its edge.
+@export var shape_warp: float = 70.0
+@export var shape_roughness: float = 10.0
+## Border along the map's edge, so the land never touches it in a straight line: depth between x and y tiles.
+@export var shape_edge_depth: Vector2i = Vector2i(4, 65)
+## Share of the border drawn as chasms and as dense forest (the rest is rock).
+@export_range(0.0, 1.0) var border_chasm_share: float = 0.3
+@export_range(0.0, 1.0) var border_thicket_share: float = 0.35
+
 @export_group("Content")
 ## One wall torch every this many tiles along the closed zone's walls.
 @export var torch_spacing: int = 7

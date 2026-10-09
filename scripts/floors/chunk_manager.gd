@@ -21,6 +21,8 @@ var load_time_total_usec: int = 0
 var loads_done: int = 0
 
 const NATURE_SOURCE: int = FloorTiles.NATURE_SOURCE
+## Share of dense-forest border cells that get a tree crown.
+const THICKET_CANOPY_SHARE: float = 0.45
 
 ## One tinted layer per zone for rock and cave floor (dungeon tiles); one untinted layer for nature.
 var _layers: Array[TileMapLayer] = []
@@ -151,7 +153,8 @@ func _load(chunk: Vector2i) -> void:
 				# Nature ground from the procedural atlas, not tinted.
 				var roll: float = _cell_roll(x, y)
 				_nature.set_cell(cell, NATURE_SOURCE, NatureArt.atlas_coords(Terrain.art_tile(type, roll)))
-				if type == Terrain.Type.TREE:
+				# Dense forest in the border gets crowns too (not on every cell, so it doesn't turn into one blob).
+				if type == Terrain.Type.TREE or (type == Terrain.Type.THICKET and roll < THICKET_CANOPY_SHARE):
 					var variant: int = int(roll * 1000.0) % NatureArt.CANOPY_VARIANTS
 					_canopies.set_cell(cell, FloorTiles.CANOPY_SOURCE, Vector2i(variant, 0))
 

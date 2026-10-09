@@ -95,6 +95,14 @@ built in stages.
 ## Dungeon floors
 - **"Ecological" floor generator, being rebuilt in stages** (1 structure DONE, 2 Goblin Galleries caves with
   themed halls, 3 swamp = the model zone, 4 forest + desert, 5 spawners/territories/day-night + F7).
+- **Floor 1 simplification (user spec, 3 stages: 1 shape, 2 structure = corner cave start + forest + portal at the
+  opposite corner, swamp/desert out of floor 1 but kept in code, 3 checks).** Stage 1 DONE (v0.1.18): `FloorShape`
+  (scripts/floors/floor_shape.gd) = organic capsule from one corner to the opposite (random diagonal), bent by slow
+  noise, rough edge, wavy border along the map edge (cubed slow noise = a few big bays); width picked so land =
+  random `FloorData.shape_coverage` (70-95%; the edge border caps it near 92%). Settings in FloorData "Shape" group.
+  Outside = impassable border, never dug: patches of ROCK, `CHASM` (see-through) and `THICKET` (dense forest, full
+  collision, some crowns), new Terrain types at the end of the enum. `FloorLayout.land` (mask), `shape_tips`,
+  `shape_coverage`; `is_land_index()`. The boss arena is pulled inward until it fits inside the shape.
 - `FloorGenerator` (pure code, seeded) -> `FloorLayout` (rock/floor grid + a zone slot per cell, no empty space).
   900 x 900 tiles (`FloorData.map_size`, the one setting for floor size; ~1.3-2 s to generate, a loading
   screen will hide it later - don't over-optimize). Zones are computed per 4x4 block (islands merged there),

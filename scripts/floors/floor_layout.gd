@@ -48,6 +48,11 @@ var region_count: int
 var center: Vector2i
 var start_cell: Vector2i
 var portal_cell: Vector2i
+## Share of the map that is land (FloorShape), and the two ends of the floor's capsule shape (near opposite corners).
+var shape_coverage: float = 1.0
+var shape_tips: Array[Vector2i] = []
+## 1 = inside the floor's shape (land), 0 = the impassable border around it. Empty = everything is land.
+var land: PackedByteArray
 var boss_center: Vector2i
 ## Bounding box of the arena (walls included).
 var boss_rect: Rect2i
@@ -65,6 +70,8 @@ var spawns_by_chunk: Dictionary = {}
 
 ## The floor the player is on, for gameplay code that asks about the ground (e.g. slowing terrain).
 static var active: FloorLayout
+## Blocked ground you can still see across.
+const SEE_THROUGH: Array[int] = [Terrain.Type.WATER_DEEP, Terrain.Type.CHASM]
 ## sight_clear() looks at the line every this much of a tile.
 const SIGHT_STEP: float = 0.25
 
@@ -157,11 +164,16 @@ func mark_masonry(x: int, y: int) -> void:
 		_masonry[y * size.x + x] = 1
 
 
+## Inside the floor's shape (not the impassable border around it); `i` = y * size.x + x.
+func is_land_index(i: int) -> bool:
+	return land.is_empty() or land[i] == 1
+
+
 func blocks_sight(x: int, y: int) -> bool:
 	if not in_bounds(x, y):
 		return true
 	return Terrain.blocks_sight(_terrain[y * size.x + x]) or _cells[y * size.x + x] == 0 \
-		and _terrain[y * size.x + x] != Terrain.Type.WATER_DEEP
+		and _terrain[y * size.x + x] not in SEE_THROUGH
 
 
 ## Movement multiplier of the ground at a world position (1.0 off the map or without an active floor).

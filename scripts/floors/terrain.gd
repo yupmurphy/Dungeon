@@ -18,6 +18,8 @@ enum Type {
 	QUICKSAND,      # slows a lot
 	OASIS_GRASS,
 	WEB,            # spider webs around nests: slows
+	CHASM,          # bottomless drop in the border around a floor: can't be crossed, can be seen across
+	THICKET,        # dense forest in the border around a floor: can't be crossed, hides what is behind
 }
 
 ## [walkable, speed factor, blocks sight, map color]
@@ -37,6 +39,8 @@ const INFO: Dictionary = {
 	Type.QUICKSAND: [true, 0.35, false, Color(0.62, 0.48, 0.25)],
 	Type.OASIS_GRASS: [true, 1.0, false, Color(0.4, 0.75, 0.35)],
 	Type.WEB: [true, 0.6, false, Color(0.85, 0.85, 0.9)],
+	Type.CHASM: [false, 1.0, false, Color(0.04, 0.03, 0.06)],
+	Type.THICKET: [false, 1.0, true, Color(0.05, 0.2, 0.07)],
 }
 
 ## Terrain types that are drawn from the procedural nature atlas (NatureArt), with their first tile
@@ -55,9 +59,11 @@ const ART: Dictionary = {
 	Type.QUICKSAND: [33, 2],
 	Type.OASIS_GRASS: [35, 2],
 	Type.WEB: [37, 2],
+	Type.CHASM: [39, 2],
+	Type.THICKET: [41, 3],
 }
 ## Number of tiles in the nature atlas.
-const ART_TILES: int = 39
+const ART_TILES: int = 44
 
 
 static func walkable(type: int) -> bool:
