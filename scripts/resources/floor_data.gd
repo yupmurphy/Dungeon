@@ -13,10 +13,13 @@ extends Resource
 ## Map size in tiles: THE setting for how big the floor is. Zones scale with it (the hub radius is a share
 ## of it); monster and decoration amounts follow the floor area (densities in RegionData).
 @export var map_size: Vector2i = Vector2i(900, 900)
-## Radius of the closed hub zone, as a share of half the map size.
-@export_range(0.2, 0.6) var hub_radius: float = 0.36
-## The hub's edge wobbles in and out by up to this share of its radius.
-@export_range(0.0, 0.3) var hub_radius_variation: float = 0.09
+## Share of the land taken by the closed hub zone (the start cave, at one end of the floor): random between x and y.
+@export var hub_share: Vector2 = Vector2(0.36, 0.44)
+## How far (tiles, along the floor) the line between the hub and the open zones wanders.
+@export var hub_border_wobble: float = 110.0
+## Places where the hub has no rock ring and blends into the open zone next to it: how many, and how wide (tiles).
+@export var hub_open_edges: Vector2i = Vector2i(2, 4)
+@export var hub_open_edge_width: Vector2i = Vector2i(50, 120)
 ## Thickness of the rock ring that closes the hub (crossed only by the gates).
 @export var hub_ring: int = 6
 ## Width of the gate passages through the ring.
@@ -40,11 +43,16 @@ extends Resource
 @export_group("Shape")
 ## The playable land is a long organic capsule from one corner of the map to the opposite one (FloorShape); the rest
 ## is impassable border (rock, chasms, dense forest). Share of the map it covers: random between x and y.
-@export var shape_coverage: Vector2 = Vector2(0.7, 0.95)
-## The capsule's ends stop this share of the diagonal before the corners (rounded tips, no square corner).
-@export_range(0.0, 0.3) var shape_tip_inset: float = 0.1
-## Big bends and bulges (tiles the shape is pushed around by slow noise), and small bumps along its edge.
-@export var shape_warp: float = 70.0
+@export var shape_coverage: Vector2 = Vector2(0.65, 0.88)
+## The capsule's ends stop this share of the diagonal before the corners (rounded tips): random between x and y.
+@export var shape_tip_inset: Vector2 = Vector2(0.05, 0.2)
+## How much the capsule's middle line bends (a C or an S), as a share of its length, at most.
+@export_range(0.0, 0.4) var shape_bend: float = 0.28
+## Its width swells and narrows along it by up to this share.
+@export_range(0.0, 0.8) var shape_width_variation: float = 0.55
+## Bulges and dents: tiles the shape is pushed around by slow noise (random between x and y), and small bumps along
+## its edge.
+@export var shape_warp: Vector2 = Vector2(30.0, 130.0)
 @export var shape_roughness: float = 10.0
 ## Border along the map's edge, so the land never touches it in a straight line: depth between x and y tiles.
 @export var shape_edge_depth: Vector2i = Vector2i(4, 65)

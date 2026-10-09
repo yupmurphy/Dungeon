@@ -22,9 +22,9 @@ const CLEARING_TREE_CHANCE: float = 0.03
 const NEST_COUNT: Vector2i = Vector2i(5, 8)
 const NEST_CLEARING: float = 4.5
 const OLD_TREES_PER_10K: float = 3.0
-## The river crosses the line from the start to the far end this far along it (share), and goes this many steps
+## The river crosses the line from the start cave's edge to the far end this far along it (share), and goes this many steps
 ## into the border on both sides.
-const RIVER_AT: Vector2 = Vector2(0.35, 0.6)
+const RIVER_AT: Vector2 = Vector2(0.25, 0.55)
 const RIVER_PAST_EDGE: int = 6
 ## Thickets: forest so dense nothing gets through (THICKET), where the density noise is above this. With the
 ## river and the clearings they make the ways through the forest wind.
@@ -152,8 +152,10 @@ func decorate(used: Dictionary) -> void:
 func _plan_river() -> void:
 	if layout.shape_tips.size() < 2:
 		return
-	var start: Vector2 = center()
 	var far: Vector2 = Vector2(layout.shape_tips[1]) + Vector2(0.5, 0.5)
+	# Measured from where the start cave ends (its edge toward the far end), not from its middle.
+	var toward: Vector2 = (far - center()).normalized()
+	var start: Vector2 = center() + toward * hub_outer_radius(toward.angle())
 	var middle: Vector2 = start.lerp(far, rng.randf_range(RIVER_AT.x, RIVER_AT.y))
 	var across: Vector2 = (far - start).normalized().orthogonal()
 	var meander := FastNoiseLite.new()

@@ -25,6 +25,12 @@ const CHAMBER_TRIES: int = 1500
 const EXTRA_TUNNEL_CHANCE: float = 0.35
 const TUNNEL_RADIUS: float = 1.6
 const WIDE_TUNNEL_RADIUS: float = 2.2
+## Mouths (stretches of the hub's edge without a ring): the cave behind each one, and the opening cut through.
+const MOUTH_CAVE_DEPTH: float = 16.0
+const MOUTH_CAVE_RADIUS: float = 9.0
+const MOUTH_OPENING_RADIUS: float = 4.0
+## Bigger hubs get more tries at placing chambers: one per this many tiles of hub area.
+const AREA_PER_TRY: float = 40.0
 
 ## [{center: Vector2, radius: float, role: StringName, phase: float, lobes: int}]
 var chambers: Array[Dictionary] = []
@@ -39,6 +45,7 @@ func plan() -> void:
 	for chamber in chambers:
 		_stamp_chamber(chamber)
 	_dig_tunnels()
+	_carve_mouths()
 
 
 func paint(_x: int, _y: int, i: int) -> int:
@@ -72,7 +79,7 @@ func decorate(used: Dictionary) -> void:
 
 func _place_chambers() -> void:
 	var c: Vector2 = center()
-	chambers.append(_chamber(c, START_RADIUS, &"start"))
+	chambers.append(_chamber(Vector2(layout.start_cell) + Vector2(0.5, 0.5), START_RADIUS, &"start"))
 	# The three halls: chieftain deep inside (far from the start), camp and mine at middle distance,
 	# in different directions.
 	var base_angle: float = rng.randf() * TAU
@@ -90,8 +97,16 @@ func _place_chambers() -> void:
 		var at: Vector2 = c + Vector2.from_angle(angle) * (FloorGenerator.hub_radius(hub_edge, angle)
 			- FloorGenerator.GATE_INNER_DEPTH - 4.0)
 		chambers.append(_chamber(at, 6.0, &"gate"))
-	# Ordinary chambers fill the rest.
-	for attempt in CHAMBER_TRIES:
+	# A cave at the inner end of every mouth (a stretch of the edge without a ring), so the mouth opens into a cave.
+	for k in _mouth_middles():
+		var angle: float = TAU * k / FloorGenerator.HUB_EDGE_SAMPLES
+		var at: Vector2 = c + Vector2.from_angle(angle) * (FloorGenerator.hub_radius(hub_edge, angle) - MOUTH_CAVE_DEPTH)
+		chambers.append(_chamber(at, MOUTH_CAVE_RADIUS, &"gate"))
+	# Ordinary chambers fill the rest (more tries for a bigger hub).
+	var area: float = 0.0
+	for r in hub_edge:
+		area += 0.5 * r * r * TAU / hub_edge.size()
+	for attempt in maxi(CHAMBER_TRIES, int(area / AREA_PER_TRY)):
 		var angle: float = rng.randf() * TAU
 		var edge: float = FloorGenerator.hub_radius(hub_edge, angle) - RING_MARGIN
 		var distance: float = sqrt(rng.randf()) * edge
@@ -327,3 +342,48 @@ func _reinforce_hall(at: Vector2i, radius: float) -> void:
 				if layout.terrain_at(beside.x, beside.y) == Terrain.Type.CAVE:
 					layout.mark_masonry(cell.x, cell.y)
 					break
+
+
+# --- Mouths ---
+
+## Middle sample of every run of open edge samples (FloorLayout.hub_open).
+func _mouth_middles() -> Array[int]:
+	var middles: Array[int] = []
+	var open: PackedByteArray = layout.hub_open
+	var n: int = FloorGenerator.HUB_EDGE_SAMPLES
+	if open.is_empty() or open.count(1) == 0 or open.count(1) == n:
+		return middles
+	# Start just after a closed sample, so no run is cut in two at the wrap.
+	var first: int = open.find(0)
+	var run_start: int = -1
+	for step in n + 1:
+		var k: int = (first + step) % n
+		if open[k] == 1 and run_start < 0:
+			run_start = step
+		elif open[k] == 0 and run_start >= 0:
+			middles.append((first + (run_start + step - 1) / 2) % n)
+			run_start = -1
+	return middles
+
+
+## Cave floor from the mouth's cave out through where the ring would be, all along the open stretch.
+func _carve_mouths() -> void:
+	var c: Vector2 = center()
+	var w: int = layout.size.x
+	var r: int = ceili(MOUTH_OPENING_RADIUS)
+	for k in FloorGenerator.HUB_EDGE_SAMPLES:
+		if layout.hub_open.is_empty() or layout.hub_open[k] == 0 or k % 2 == 1:
+			continue
+		var angle: float = TAU * k / FloorGenerator.HUB_EDGE_SAMPLES
+		var direction := Vector2.from_angle(angle)
+		var edge: float = FloorGenerator.hub_radius(hub_edge, angle)
+		var distance: float = edge - MOUTH_CAVE_DEPTH
+		while distance <= edge + data.hub_ring + 2.0:
+			var at: Vector2 = c + direction * distance
+			for dy in range(-r, r + 1):
+				for dx in range(-r, r + 1):
+					var cell := Vector2i(at.floor()) + Vector2i(dx, dy)
+					if layout.in_bounds(cell.x, cell.y) and Vector2(dx, dy).length() <= MOUTH_OPENING_RADIUS \
+							+ (roll(cell.x, cell.y, 9) - 0.5) * 2.0:
+						_cave[cell.y * w + cell.x] = 1
+			distance += 2.0

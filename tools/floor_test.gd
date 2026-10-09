@@ -29,11 +29,11 @@ const GENERATOR_CHECKS: Array[String] = [
 	"map has the size from FloorData",
 	"every tile belongs to a zone (no empty space)",
 	"map edge is rock",
-	"start is floor, in the middle of the closed zone",
+	"start is floor, in the closed zone",
 	"every floor tile reachable from start",
 	"each zone is one connected block",
 	"2-3 gates per open zone, spaced apart, each leads into its zone",
-	"closed zone is sealed except at its gates",
+	"closed zone is sealed except at its gates and mouths",
 	"open zones blend into each other (walkable borders)",
 	"portal is floor, inside the boss arena",
 	"boss arena has exactly one entrance",
@@ -51,6 +51,8 @@ const GENERATOR_CHECKS: Array[String] = [
 	"start: in the cave at one end of the floor",
 	"portal: near the other end",
 	"portal: can be walked to from the start",
+	"galleries: about 40% of the land",
+	"galleries: open into the forest in places",
 	"forest: a river with 2+ crossings lies between the start and the portal",
 ]
 
@@ -59,6 +61,11 @@ const GENERATOR_CHECKS: Array[String] = [
 ## along a side (tiles), so the edge is never a straight line.
 const EDGE_SCAN: int = 200
 const MIN_EDGE_WAVE: int = 8
+## Shapes of two seeds must differ on at least this share of the map (checked on every OUTLINE_STEP-th cell).
+const MIN_SHAPE_DIFFERENCE: float = 0.06
+const OUTLINE_STEP: int = 13
+## A mouth's opening reaches this many tiles past the end of its stretch without a ring.
+const MOUTH_SLACK: float = 7.0
 
 
 func _check_generator() -> void:
@@ -70,6 +77,8 @@ func _check_generator() -> void:
 	var sample: FloorLayout = null
 	var phase_ms: Dictionary = {}
 	var coverages: Array[float] = []
+	var hub_shares: Array[float] = []
+	var outlines: Array[PackedByteArray] = []
 	var marsh_counts: Dictionary = {}
 	for seed_value in range(_first_seed, _first_seed + _seed_count):
 		var started: int = Time.get_ticks_msec()
@@ -82,6 +91,11 @@ func _check_generator() -> void:
 		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
 		var shares: Dictionary = _terrain_shares(layout)
 		coverages.append(layout.shape_coverage)
+		hub_shares.append(_hub_share(layout))
+		var outline := PackedByteArray()
+		for i in range(0, layout.land.size(), OUTLINE_STEP):
+			outline.append(layout.land[i])
+		outlines.append(outline)
 		for label in _generator_problems(layout) + _ecology_problems(layout, shares) + _shape_problems(layout) \
 				+ _structure_problems(layout):
 			if not problems.has(label):
@@ -97,6 +111,17 @@ func _check_generator() -> void:
 		phases.append("%s %.0f" % [phase, phase_ms[phase]])
 	print("  generation phases (ms): ", ", ".join(phases))
 	print("  land share per seed: ", ", ".join(coverages.map(func(c: float) -> String: return "%.0f%%" % (c * 100.0))))
+	print("  galleries share per seed: ", ", ".join(hub_shares.map(func(c: float) -> String: return "%.0f%%" % (c * 100.0))))
+	# Shapes must really differ: for every pair of seeds, the share of the map that is land in one and not the other.
+	var closest: float = 1.0
+	for a in outlines.size():
+		for b in range(a + 1, outlines.size()):
+			var differ: int = 0
+			for k in outlines[a].size():
+				differ += 1 if outlines[a][k] != outlines[b][k] else 0
+			closest = minf(closest, float(differ) / outlines[a].size())
+	_check(outlines.size() < 2 or closest >= MIN_SHAPE_DIFFERENCE,
+		"floor shapes differ a lot between seeds (most alike pair: %.0f%% of the map differs)" % (closest * 100.0))
 
 	for label in GENERATOR_CHECKS:
 		_check(not problems.has(label), label + ("" if not problems.has(label) else " (seed %d)" % problems[label]))
@@ -180,6 +205,12 @@ func _structure_problems(layout: FloorLayout) -> Array[String]:
 		problems.append("portal: near the other end")
 	if not FloorGenerator.portal_reachable(layout):
 		problems.append("portal: can be walked to from the start")
+	# The galleries take about 40% of the land and open into the forest in a few places (no ring there).
+	var hub_share: float = _hub_share(layout)
+	if hub_share < FLOOR_DATA.hub_share.x - 0.06 or hub_share > FLOOR_DATA.hub_share.y + 0.06:
+		problems.append("galleries: about 40% of the land")
+	if layout.hub_open.count(1) == 0:
+		problems.append("galleries: open into the forest in places")
 	# The straight line from the start to the portal meets the river (deep water, a bridge or a ford).
 	var meets_river: bool = false
 	var steps: int = int(start.distance_to(portal))
@@ -194,6 +225,17 @@ func _structure_problems(layout: FloorLayout) -> Array[String]:
 		problems.append("forest: a river with 2+ crossings lies between the start and the portal")
 	return problems
 
+
+## Share of the land that belongs to the hub (the galleries), sampled on every 7th cell.
+func _hub_share(layout: FloorLayout) -> float:
+	var land: int = 0
+	var hub: int = 0
+	var slots: PackedByteArray = layout.slots_raw()
+	for i in range(0, slots.size(), 7):
+		if layout.is_land_index(i):
+			land += 1
+			hub += 1 if slots[i] == layout.hub_slot else 0
+	return float(hub) / maxf(land, 1.0)
 
 ## Labels of the shape rules (FloorShape) this layout breaks.
 func _shape_problems(layout: FloorLayout) -> Array[String]:
@@ -332,9 +374,8 @@ func _generator_problems(layout: FloorLayout) -> Array[String]:
 	if edge_floor:
 		problems.append("map edge is rock")
 	var start: Vector2i = layout.start_cell
-	if not layout.is_floor(start.x, start.y) or layout.slot_at(start.x, start.y) != layout.hub_slot \
-			or Vector2(start).distance_to(Vector2(layout.center)) > 2.0:
-		problems.append("start is floor, in the middle of the closed zone")
+	if not layout.is_floor(start.x, start.y) or layout.slot_at(start.x, start.y) != layout.hub_slot:
+		problems.append("start is floor, in the closed zone")
 	if _unreachable_floor(layout) > 0:
 		problems.append("every floor tile reachable from start")
 	for slot in layout.slot_count:
@@ -381,12 +422,19 @@ func _generator_problems(layout: FloorLayout) -> Array[String]:
 				if a == layout.hub_slot or b == layout.hub_slot:
 					var near_gate: bool = layout.gates.any(func(g: FloorLayout.Gate) -> bool:
 						return Vector2(g.cell).distance_to(Vector2(cell)) <= FLOOR_DATA.hub_ring + FLOOR_DATA.gate_width)
-					if not near_gate:
+					# Where the hub has no ring (a mouth, its carved opening a few tiles wider), it may meet the open zone.
+					var from_center: Vector2 = Vector2(cell) - Vector2(layout.center)
+					var slack: int = ceili(MOUTH_SLACK / maxf(from_center.length(), 1.0) / TAU * FloorGenerator.HUB_EDGE_SAMPLES)
+					var mouth: bool = false
+					for d in range(-slack, slack + 1):
+						mouth = mouth or FloorGenerator.hub_open_at(layout,
+							from_center.angle() + d * TAU / FloorGenerator.HUB_EDGE_SAMPLES)
+					if not near_gate and not mouth:
 						leaks += 1
 				if a == layout.boss_slot or b == layout.boss_slot:
 					boss_exits.append(cell)
 	if leaks > 0:
-		problems.append("closed zone is sealed except at its gates")
+		problems.append("closed zone is sealed except at its gates and mouths")
 	for i in open_slots.size():
 		for j in range(i + 1, open_slots.size()):
 			if contacts.get(Vector2i(open_slots[i], open_slots[j]), 0) < 20:

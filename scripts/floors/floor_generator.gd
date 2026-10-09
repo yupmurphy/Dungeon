@@ -38,8 +38,26 @@ const PORTAL_WALL_DISTANCE: float = 4.0
 ## The arena goes up to this far (tiles) to the side of the far end of the capsule, and up to this far back from it.
 const BOSS_SIDE_JITTER: float = 60.0
 const BOSS_BACK_JITTER: float = 50.0
-## The hub keeps this much ground around its ring inside the floor's shape.
-const HUB_SHAPE_MARGIN: float = 10.0
+## Hub planning: land sampled every this many cells; the share is raised a little because the ring and the
+## smoothing take some; border line wobble frequency; ray step; edge smoothing windows (samples); the edge stays
+## this far inside the ray's exit (plus the ring) and is never smaller than HUB_MIN_RADIUS; ringless stretches are
+## at least HUB_OPEN_SPACING tiles apart; the start is this share of the way from the middle to the edge.
+const HUB_SAMPLE_STEP: int = 4
+const HUB_SHARE_COMPENSATION: float = 1.1
+## Passes that measure the hub's real share of the land and correct it, and when it is close enough.
+const HUB_SHARE_PASSES: int = 4
+const HUB_SHARE_TOLERANCE: float = 0.015
+const HUB_BORDER_FREQUENCY: float = 0.009
+const HUB_RAY_STEP: float = 1.5
+const HUB_EDGE_MIN_WINDOW: int = 4
+const HUB_EDGE_SMOOTH_WINDOW: int = 6
+const HUB_EDGE_INSET: float = -1.0
+const HUB_MIN_RADIUS: float = 20.0
+const HUB_OPEN_SPACING: float = 40.0
+const HUB_START_DEPTH: float = 0.55
+## Steepest change of the hub's radius, in tiles per tile of arc (1 = 45 degrees), and how many passes enforce it.
+const HUB_EDGE_SLOPE: float = 0.8
+const HUB_EDGE_SLOPE_SWEEPS: int = 6
 ## The arena keeps this much floor around its walls inside the floor's shape; it is moved in by this step.
 const ARENA_SHAPE_MARGIN: float = 12.0
 const ARENA_PULL_STEP: float = 3.0
@@ -53,6 +71,10 @@ const ISLAND_ROUNDS: int = 4
 ## Zone borders: a cell may be painted by the builder of the zone this far away (tiles), so zones blend.
 const BLEND_REACH: float = 9.0
 const BLEND_FREQUENCY: float = 0.07
+## Where the hub opens into the open zone: how far into the hub and out of it the two mix, and how far a cell may
+## take its look from (tiles).
+const MOUTH_DEPTH: float = 28.0
+const MOUTH_BLEND_REACH: float = 22.0
 ## Size of the patches of chasm / dense forest / rock in the border around the floor.
 const BORDER_KIND_FREQUENCY: float = 0.015
 
@@ -85,10 +107,8 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	_lap("shape", shape_clock)
 
 	var sectors: Array[Dictionary] = _plan_sectors(data, open_slots, rng)
-	var hub_edge: PackedFloat32Array = _hub_edge(data, layout, seed_value)
-	# The hub (start cave) sits in the start end of the capsule: `center` is its middle from here on.
-	layout.center = _place_hub(data, layout, shape, hub_edge)
-	layout.start_cell = layout.center
+	# The hub (start cave) is the start end of the floor: `center` is its middle from here on.
+	var hub_edge: PackedFloat32Array = _plan_hub(data, layout, seed_value, rng)
 	var no_dig := PackedByteArray()
 	no_dig.resize(layout.size.x * layout.size.y)
 	no_dig.fill(0)
@@ -96,10 +116,14 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	var clock: int = Time.get_ticks_usec()
 	var arena: Dictionary = _plan_boss_arena(data, layout, rng, shape)
 	var near_walls := PackedByteArray()
+	# 1 = inside the hub's ring (cells later given to the hub by _fix_strip are outside it).
+	var hub_inside := PackedByteArray()
+	hub_inside.resize(layout.size.x * layout.size.y)
 	var strip: PackedInt32Array = _assign_zones(data, layout, sectors, hub_edge, no_dig, seed_value, arena, near_walls,
-		shape)
+		shape, hub_inside)
 	_mark_boss_arena(data, layout, arena, no_dig)
 	_fix_strip(layout, strip, near_walls)
+	_seal_outside_bits(layout, hub_inside, no_dig)
 	var gate_plan: Array[Dictionary] = []
 	for sector in sectors:
 		for angle in _gate_angles(data, layout, sector, hub_edge, rng):
@@ -118,7 +142,7 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 	for builder in builders:
 		builder.plan()
 	clock = _lap("plan", clock)
-	_paint(data, layout, builders, no_dig, seed_value, shape)
+	_paint(data, layout, builders, no_dig, seed_value, shape, _mouths(data, layout, hub_edge), hub_inside)
 	clock = _lap("paint", clock)
 
 	for gate in gate_plan:
@@ -172,20 +196,154 @@ static func _plan_sectors(data: FloorData, open_slots: Array[int], rng: RandomNu
 	return sectors
 
 
-## Hub radius per angle (HUB_EDGE_SAMPLES samples), wobbling smoothly all the way around.
-static func _hub_edge(data: FloorData, layout: FloorLayout, seed_value: int) -> PackedFloat32Array:
-	var noise := FastNoiseLite.new()
-	noise.seed = seed_value
-	noise.frequency = 0.02
-	var base: float = minf(layout.size.x, layout.size.y) * 0.5 * data.hub_radius
-	var edge := PackedFloat32Array()
-	edge.resize(HUB_EDGE_SAMPLES)
-	for i in HUB_EDGE_SAMPLES:
-		var a: float = TAU * i / HUB_EDGE_SAMPLES
-		# Sampling noise on a circle keeps the edge seamless where the angle wraps around.
-		var n: float = noise.get_noise_2d(cos(a) * 60.0, sin(a) * 60.0)
-		edge[i] = base * (1.0 + clampf(n * 1.6, -1.0, 1.0) * data.hub_radius_variation)
-	return edge
+## The hub (start cave): the start end of the floor, up to a wavy line across it, so it takes a random share of the
+## land (FloorData.hub_share). Sets layout.center (the hub's middle, the origin of its edge), layout.start_cell
+## (toward the start end) and layout.hub_open (edge samples without a ring, where the hub blends into the open
+## zone). Returns the hub's radius per angle (HUB_EDGE_SAMPLES samples), measured from its middle: the hub is
+## what each ray from the middle crosses before it leaves the land or passes the line.
+static func _plan_hub(data: FloorData, layout: FloorLayout, seed_value: int, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var w: int = layout.size.x
+	var start := Vector2(layout.shape_tips[0]) + Vector2(0.5, 0.5)
+	var far := Vector2(layout.shape_tips[1]) + Vector2(0.5, 0.5)
+	var along: Vector2 = (far - start).normalized()
+	var side: Vector2 = along.orthogonal()
+	var wobble := FastNoiseLite.new()
+	wobble.seed = seed_value + 31
+	wobble.frequency = HUB_BORDER_FREQUENCY
+	# How far along the floor a point is, with the hub's border line wandering back and forth.
+	var progress := func(p: Vector2) -> float:
+		return (p - start).dot(along) + wobble.get_noise_1d((p - start).dot(side)) * data.hub_border_wobble
+
+	# The line that leaves the wanted share of the land on the start side (sampled every HUB_SAMPLE_STEP cells).
+	var values := PackedFloat32Array()
+	var points: Array[Vector2] = []
+	for y in range(0, layout.size.y, HUB_SAMPLE_STEP):
+		for x in range(0, w, HUB_SAMPLE_STEP):
+			if layout.is_land_index(y * w + x):
+				var p := Vector2(x + 0.5, y + 0.5)
+				values.append(progress.call(p))
+				points.append(p)
+	var sorted: PackedFloat32Array = values.duplicate()
+	sorted.sort()
+	var target: float = rng.randf_range(data.hub_share.x, data.hub_share.y)
+	var share: float = target * HUB_SHARE_COMPENSATION
+	var smooth := PackedFloat32Array()
+	var faces_open := PackedByteArray()
+	var center := Vector2.ZERO
+	# The ring, the smoothing and the slope limit take some land: measured and corrected a few times.
+	for correction in HUB_SHARE_PASSES:
+		var line: float = sorted[mini(int(share * sorted.size()), sorted.size() - 1)]
+		# Its middle: the average of the land on the start side.
+		var middle := Vector2.ZERO
+		var count: int = 0
+		for k in points.size():
+			if values[k] < line:
+				middle += points[k]
+				count += 1
+		middle /= maxf(count, 1.0)
+		layout.center = Vector2i(middle.floor())
+		center = Vector2(layout.center) + Vector2(0.5, 0.5)
+	
+		# Each ray stops where it leaves the land (border) or crosses the line (the open zone starts there).
+		var exit := PackedFloat32Array()
+		exit.resize(HUB_EDGE_SAMPLES)
+		faces_open = PackedByteArray()
+		faces_open.resize(HUB_EDGE_SAMPLES)
+		for k in HUB_EDGE_SAMPLES:
+			var direction := Vector2.from_angle(TAU * k / HUB_EDGE_SAMPLES)
+			var r: float = 0.0
+			while true:
+				r += HUB_RAY_STEP
+				var p: Vector2 = center + direction * r
+				var cell := Vector2i(p.floor())
+				if not layout.in_bounds(cell.x, cell.y) or not layout.is_land_index(cell.y * w + cell.x):
+					break
+				if progress.call(p) >= line:
+					faces_open[k] = 1
+					break
+			exit[k] = r
+		# The ring goes just inside that, and the edge is smoothed: no thin spikes, no notches.
+		var edge := PackedFloat32Array()
+		edge.resize(HUB_EDGE_SAMPLES)
+		for k in HUB_EDGE_SAMPLES:
+			var lowest: float = INF
+			for d in range(-HUB_EDGE_MIN_WINDOW, HUB_EDGE_MIN_WINDOW + 1):
+				lowest = minf(lowest, exit[posmod(k + d, HUB_EDGE_SAMPLES)])
+			edge[k] = lowest
+		smooth = PackedFloat32Array()
+		smooth.resize(HUB_EDGE_SAMPLES)
+		for k in HUB_EDGE_SAMPLES:
+			var total: float = 0.0
+			for d in range(-HUB_EDGE_SMOOTH_WINDOW, HUB_EDGE_SMOOTH_WINDOW + 1):
+				total += edge[posmod(k + d, HUB_EDGE_SAMPLES)]
+			smooth[k] = maxf(total / (HUB_EDGE_SMOOTH_WINDOW * 2 + 1) - data.hub_ring - HUB_EDGE_INSET, HUB_MIN_RADIUS)
+		# No steep steps from one angle to the next: there the ring would run along the ray and be thin sideways. The
+		# radius may change by at most HUB_EDGE_SLOPE tiles per tile of arc (only lowered, so it stays on the land).
+		var arc: float = TAU / HUB_EDGE_SAMPLES * HUB_EDGE_SLOPE
+		for sweep in HUB_EDGE_SLOPE_SWEEPS:
+			var changed: bool = false
+			for step in HUB_EDGE_SAMPLES * 2:
+				var k: int = step % HUB_EDGE_SAMPLES if sweep % 2 == 0 else HUB_EDGE_SAMPLES - 1 - step % HUB_EDGE_SAMPLES
+				var previous: int = posmod(k - 1 if sweep % 2 == 0 else k + 1, HUB_EDGE_SAMPLES)
+				var limit: float = smooth[previous] + (smooth[previous] + data.hub_ring) * arc
+				if smooth[k] > limit:
+					smooth[k] = limit
+					changed = true
+			if not changed and sweep > 0:
+				break
+		var inside: int = 0
+		for k in points.size():
+			var offset: Vector2 = points[k] - center
+			if offset.length() < hub_radius(smooth, offset.angle()):
+				inside += 1
+		var actual: float = float(inside) / maxf(points.size(), 1.0)
+		if absf(actual - target) < HUB_SHARE_TOLERANCE:
+			break
+		share = clampf(share * target / maxf(actual, 0.01), 0.05, 0.95)
+
+	# A few stretches of the edge facing the open zone have no ring: the cave opens into the forest there.
+	layout.hub_open = PackedByteArray()
+	layout.hub_open.resize(HUB_EDGE_SAMPLES)
+	var candidates: Array[int] = []
+	for k in HUB_EDGE_SAMPLES:
+		if faces_open[k] == 1:
+			candidates.append(k)
+	var wanted: int = rng.randi_range(data.hub_open_edges.x, data.hub_open_edges.y)
+	var opened: Array[int] = []
+	for attempt in 60:
+		if opened.size() >= wanted or candidates.is_empty():
+			break
+		var k0: int = candidates[rng.randi() % candidates.size()]
+		var radius: float = smooth[k0]
+		var half: int = ceili(rng.randf_range(data.hub_open_edge_width.x, data.hub_open_edge_width.y) / 2.0 / radius
+			/ (TAU / HUB_EDGE_SAMPLES))
+		var spacing: int = ceili(HUB_OPEN_SPACING / radius / (TAU / HUB_EDGE_SAMPLES))
+		if opened.any(func(other: int) -> bool: return absi(angle_difference_samples(other, k0)) < spacing + half):
+			continue
+		opened.append(k0)
+		# One unbroken stretch (a bit of it may face the border: that is never dug anyway).
+		for d in range(-half, half + 1):
+			layout.hub_open[posmod(k0 + d, HUB_EDGE_SAMPLES)] = 1
+
+	# The player starts toward the start end, inside the cave.
+	var to_start: Vector2 = start - center
+	var start_angle: float = to_start.angle()
+	var reach: float = minf(to_start.length(), hub_radius(smooth, start_angle)) * HUB_START_DEPTH
+	layout.start_cell = Vector2i((center + to_start.normalized() * reach).floor())
+	return smooth
+
+
+## Samples between two edge samples, the short way around (signed).
+static func angle_difference_samples(a: int, b: int) -> int:
+	var d: int = posmod(b - a, HUB_EDGE_SAMPLES)
+	return d - HUB_EDGE_SAMPLES if d > HUB_EDGE_SAMPLES / 2 else d
+
+
+## The hub has no ring at this angle (it blends into the open zone there).
+static func hub_open_at(layout: FloorLayout, angle: float) -> bool:
+	if layout.hub_open.is_empty():
+		return false
+	return layout.hub_open[posmod(roundi(angle / TAU * HUB_EDGE_SAMPLES), HUB_EDGE_SAMPLES)] == 1
 
 
 ## Interpolated between samples, so the ring has no notches.
@@ -200,7 +358,7 @@ static func hub_radius(hub_edge: PackedFloat32Array, angle: float) -> float:
 @warning_ignore("integer_division")
 static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[Dictionary],
 		hub_edge: PackedFloat32Array, no_dig: PackedByteArray, seed_value: int, arena: Dictionary,
-		near_walls: PackedByteArray, shape: FloorShape) -> PackedInt32Array:
+		near_walls: PackedByteArray, shape: FloorShape, hub_inside: PackedByteArray) -> PackedInt32Array:
 	var w: int = layout.size.x
 	var h: int = layout.size.y
 	var bw: int = ceili(float(w) / ZONE_BLOCK)
@@ -229,20 +387,37 @@ static func _assign_zones(data: FloorData, layout: FloorLayout, sectors: Array[D
 			var distance_squared: float = dx * dx + dy * dy
 			if distance_squared < surely_inside:
 				slots[i] = hub_slot
+				hub_inside[i] = 1
 				continue
 			if distance_squared < surely_outside:
 				var distance: float = sqrt(distance_squared)
-				var hub_r: float = hub_radius(hub_edge, atan2(dy, dx))
+				var angle: float = atan2(dy, dx)
+				var hub_r: float = hub_radius(hub_edge, angle)
 				if distance < hub_r + data.hub_ring:
 					slots[i] = hub_slot
-					if distance >= hub_r - 1.0:
-						no_dig[i] = 1  # the ring that closes the hub
+					# The ring that closes the hub, except where it opens into the open zone.
+					if distance >= hub_r - 1.0 and not hub_open_at(layout, angle):
+						no_dig[i] = 1
+					else:
+						# Inside the ring, or in a mouth (no ring there).
+						hub_inside[i] = 1
 					continue
 			var block: int = block_row + x / ZONE_BLOCK
 			slots[i] = open_slots[block]
 			if near_walls[block] == 1:
 				strip.append(i)
 	return strip
+
+
+## Bits of land outside the hub's ring that ended up in the hub (cut off by its uneven edge) become part of the
+## ring: solid rock that is never dug, so no passage between two open-zone pockets runs through the hub.
+static func _seal_outside_bits(layout: FloorLayout, hub_inside: PackedByteArray, no_dig: PackedByteArray) -> void:
+	var slots: PackedByteArray = layout.slots_raw()
+	var i: int = slots.find(layout.hub_slot)
+	while i >= 0:
+		if hub_inside[i] == 0:
+			no_dig[i] = 1
+		i = slots.find(layout.hub_slot, i + 1)
 
 
 ## Blocks away from the hub and the arena are already clean (islands merged on the block grid, and whole
@@ -426,7 +601,7 @@ static func noise_bytes(noise_seed: int, frequency: float, w: int, h: int,
 ## The hub and the arena never blend (they are walled); outside the floor's shape is the border (FloorShape).
 @warning_ignore("integer_division")
 static func _paint(data: FloorData, layout: FloorLayout, builders: Array[ZoneBuilder], no_dig: PackedByteArray,
-		seed_value: int, shape: FloorShape) -> void:
+		seed_value: int, shape: FloorShape, mouths: PackedByteArray, hub_inside: PackedByteArray) -> void:
 	var w: int = layout.size.x
 	var h: int = layout.size.y
 	var slots: PackedByteArray = layout.slots_raw()
@@ -453,18 +628,46 @@ static func _paint(data: FloorData, layout: FloorLayout, builders: Array[ZoneBui
 				# The impassable border around the floor: patches of chasm, dense forest and rock.
 				type = Terrain.Type.CHASM if border_kind[i] < chasm_below \
 					else Terrain.Type.THICKET if border_kind[i] < thicket_below else Terrain.Type.ROCK
-			elif slot == hub_slot:
+			elif slot == hub_slot and mouths[i] == 0 and (no_dig[i] == 1 or hub_inside[i] == 0):
+				# The ring (and bits of land outside it given to the hub) stay rock, even where a cave or a tunnel would
+				# reach through: the hub is closed except at its gates (carved later) and mouths.
+				type = Terrain.Type.ROCK
+			elif slot == hub_slot and mouths[i] == 0:
 				type = builders[slot].paint(x, y, i)
 			else:
-				var sx: int = clampi(x + int((shift_x[i] / 255.0 - 0.5) * 2.0 * BLEND_REACH), 0, w - 1)
-				var sy: int = clampi(y + int((shift_y[i] / 255.0 - 0.5) * 2.0 * BLEND_REACH), 0, h - 1)
+				# Where the hub opens into the open zone (a mouth), cave and forest mix over a wider band.
+				var reach: float = MOUTH_BLEND_REACH if mouths[i] == 1 else BLEND_REACH
+				var sx: int = clampi(x + int((shift_x[i] / 255.0 - 0.5) * 2.0 * reach), 0, w - 1)
+				var sy: int = clampi(y + int((shift_y[i] / 255.0 - 0.5) * 2.0 * reach), 0, h - 1)
 				var painter: int = slots[sy * w + sx]
-				if painter == hub_slot or painter == boss_slot:
+				if painter == boss_slot or (painter == hub_slot and mouths[i] == 0):
 					painter = slot
 				type = builders[painter].paint(x, y, i)
 			terrain[i] = type
 			cells[i] = walkable[type]
 	layout.set_cells_raw(cells)
+
+
+## 1 = a cell near a stretch of the hub's edge without a ring (both sides of it): cave and open zone mix there.
+static func _mouths(data: FloorData, layout: FloorLayout, hub_edge: PackedFloat32Array) -> PackedByteArray:
+	var mouths := PackedByteArray()
+	mouths.resize(layout.size.x * layout.size.y)
+	var center := Vector2(layout.center) + Vector2(0.5, 0.5)
+	for k in HUB_EDGE_SAMPLES:
+		if layout.hub_open.is_empty() or layout.hub_open[k] == 0:
+			continue
+		var direction := Vector2.from_angle(TAU * k / HUB_EDGE_SAMPLES)
+		var edge: float = hub_edge[k]
+		var distance: float = edge - MOUTH_DEPTH
+		while distance <= edge + data.hub_ring + MOUTH_DEPTH:
+			var at: Vector2 = center + direction * distance
+			for dy in range(-3, 4):
+				for dx in range(-3, 4):
+					var cell := Vector2i(at.floor()) + Vector2i(dx, dy)
+					if layout.in_bounds(cell.x, cell.y):
+						mouths[cell.y * layout.size.x + cell.x] = 1
+			distance += 2.0
+	return mouths
 
 
 ## Paints a disc of terrain (walkability follows the terrain). `protect` keeps props and digging away.
@@ -578,18 +781,6 @@ static func _plan_boss_arena(data: FloorData, layout: FloorLayout, rng: RandomNu
 		arena_center = arena_center.move_toward(hub, ARENA_PULL_STEP)
 	layout.boss_center = Vector2i(arena_center.floor())
 	return {"center": arena_center, "direction": direction}
-
-
-## Middle of the hub: from the start end of the capsule, moved toward the far end until the whole hub, its ring
-## and some ground around it fit inside the floor's shape.
-static func _place_hub(data: FloorData, layout: FloorLayout, shape: FloorShape, hub_edge: PackedFloat32Array) -> Vector2i:
-	var start := Vector2(layout.shape_tips[0]) + Vector2(0.5, 0.5)
-	var far := Vector2(layout.shape_tips[1]) + Vector2(0.5, 0.5)
-	var reach: float = Array(hub_edge).max() + data.hub_ring + HUB_SHAPE_MARGIN
-	var at: Vector2 = start
-	while not _ellipse_inside(shape, layout.size, at, Vector2(reach, reach)) and at.distance_to(far) > ARENA_PULL_STEP:
-		at = at.move_toward(far, ARENA_PULL_STEP)
-	return Vector2i(at.floor())
 
 
 ## 32 points around an ellipse (and its center) are all inside the shape.

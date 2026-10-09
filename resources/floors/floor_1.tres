@@ -1,14 +1,10 @@
-[gd_resource type="Resource" script_class="FloorData" format=3]
+[gd_resource type="Resource" script_class="FloorData" format=3 uid="uid://c5lbhi770w662"]
 
-[ext_resource type="Script" path="res://scripts/resources/floor_data.gd" id="1_floor"]
-[ext_resource type="Script" path="res://scripts/resources/region_data.gd" id="2_region"]
+[ext_resource type="Script" uid="uid://eyfrp8l77gyu" path="res://scripts/resources/floor_data.gd" id="1_floor"]
+[ext_resource type="Script" uid="uid://85gmk0ryjt0w" path="res://scripts/resources/region_data.gd" id="2_region"]
 [ext_resource type="Resource" path="res://resources/regions/goblin_galleries.tres" id="3_galleries"]
-[ext_resource type="Resource" path="res://resources/regions/forest.tres" id="4_forest"]
+[ext_resource type="Resource" uid="uid://bx0ghnwluqe8f" path="res://resources/regions/forest.tres" id="4_forest"]
 
 [resource]
 script = ExtResource("1_floor")
-floor_number = 1
-display_name = "Floor 1"
-map_size = Vector2i(900, 900)
 regions = Array[ExtResource("2_region")]([ExtResource("3_galleries"), ExtResource("4_forest")])
-hub_radius = 0.24

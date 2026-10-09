@@ -1,7 +1,8 @@
 class_name FloorShape
 extends RefCounted
 ## The outline of a floor: a long organic capsule stretched from one corner of the map to the opposite one
-## (which diagonal is random). Slow noise bends and swells it, fast noise roughens its edge, and a wavy border
+## (which diagonal is random). Its middle line bends into a C or an S, its width swells and narrows, slow noise
+## pushes it around, fast noise roughens its edge, and a wavy border
 ## along the map's edge keeps it from ever touching the map's sides in a straight line. Its width is chosen so the
 ## land covers a random share of the map (FloorData.shape_coverage). Cells outside are impassable border.
 ## Pure data, seeded: same seed => same shape.
@@ -10,6 +11,11 @@ extends RefCounted
 const WARP_FREQUENCY: float = 0.004
 const ROUGH_FREQUENCY: float = 0.03
 const EDGE_FREQUENCY: float = 0.007
+## How fast the width changes along the floor, and the chance of a C bend (else an S).
+const WIDTH_FREQUENCY: float = 0.004
+const BEND_C_CHANCE: float = 0.6
+## > 1 = low land shares are picked more often than high ones.
+const COVERAGE_BIAS: float = 1.8
 
 ## 1 = land, 0 = border; one byte per cell.
 var inside: PackedByteArray
@@ -24,15 +30,28 @@ static func build(data: FloorData, size: Vector2i, seed_value: int, rng: RandomN
 	var shape := FloorShape.new()
 	var w: int = size.x
 	var h: int = size.y
-	shape.target_coverage = rng.randf_range(data.shape_coverage.x, data.shape_coverage.y)
+	# Lower shares come more often: they leave room for really different shapes (near the top every floor fills
+	# almost the whole rectangle).
+	shape.target_coverage = lerpf(data.shape_coverage.x, data.shape_coverage.y, pow(rng.randf(), COVERAGE_BIAS))
 	var corners: Array[Vector2] = [Vector2(0, 0), Vector2(w, h)]
 	if rng.randf() < 0.5:
 		corners = [Vector2(w, 0), Vector2(0, h)]
-	var tip_a: Vector2 = corners[0].lerp(corners[1], data.shape_tip_inset)
-	var tip_b: Vector2 = corners[1].lerp(corners[0], data.shape_tip_inset)
+	# Every floor gets its own look: how far the tips stop from the corners, how much the middle line bends (a C or
+	# an S), how the width swells and narrows along it, and how strongly slow noise pushes it around.
+	var inset: float = rng.randf_range(data.shape_tip_inset.x, data.shape_tip_inset.y)
+	var tip_a: Vector2 = corners[0].lerp(corners[1], inset)
+	var tip_b: Vector2 = corners[1].lerp(corners[0], inset)
 	shape.tips = [Vector2i(tip_a.floor()), Vector2i(tip_b.floor())]
 	var axis: Vector2 = tip_b - tip_a
-	var axis_length_squared: float = axis.length_squared()
+	var axis_length: float = axis.length()
+	var along: Vector2 = axis / axis_length
+	var side: Vector2 = along.orthogonal()
+	var bend: float = rng.randf_range(-1.0, 1.0) * data.shape_bend * axis_length
+	var bend_waves: float = 1.0 if rng.randf() < BEND_C_CHANCE else 2.0
+	var width_noise := FastNoiseLite.new()
+	width_noise.seed = seed_value + 25
+	width_noise.frequency = WIDTH_FREQUENCY
+	var width_change: float = data.shape_width_variation
 
 	# The slow parts (bends, bays) on a half-size grid; the small bumps per cell.
 	var w2: int = ceili(w / 2.0)
@@ -41,7 +60,7 @@ static func build(data: FloorData, size: Vector2i, seed_value: int, rng: RandomN
 	var warp_y: PackedByteArray = FloorGenerator.noise_bytes(seed_value + 22, WARP_FREQUENCY * 2.0, w2, h2)
 	var edge: PackedByteArray = FloorGenerator.noise_bytes(seed_value + 24, EDGE_FREQUENCY * 2.0, w2, h2)
 	var rough: PackedByteArray = FloorGenerator.noise_bytes(seed_value + 23, ROUGH_FREQUENCY, w, h)
-	var warp_scale: float = data.shape_warp * 2.0 / 255.0
+	var warp_scale: float = rng.randf_range(data.shape_warp.x, data.shape_warp.y) * 2.0 / 255.0
 	var rough_scale: float = data.shape_roughness * 2.0 / 255.0
 	var edge_min: float = data.shape_edge_depth.x
 	var edge_range: float = data.shape_edge_depth.y - data.shape_edge_depth.x
@@ -60,8 +79,14 @@ static func build(data: FloorData, size: Vector2i, seed_value: int, rng: RandomN
 			var e: float = edge[j] / 255.0
 			depth[j] = edge_min + e * e * e * edge_range
 			var p := Vector2(x2 * 2 + 1 + (warp_x[j] - 127.5) * warp_scale, y2 * 2 + 1 + (warp_y[j] - 127.5) * warp_scale)
-			var t: float = clampf((p - tip_a).dot(axis) / axis_length_squared, 0.0, 1.0)
-			distance[j] = p.distance_to(tip_a + axis * t)
+			# Position along the middle line (0..1) and across it; beyond the tips, the round caps.
+			var offset: Vector2 = p - tip_a
+			var t: float = offset.dot(along) / axis_length
+			var t_inside: float = clampf(t, 0.0, 1.0)
+			var beyond: float = (t - t_inside) * axis_length
+			var across: float = offset.dot(side) - bend * sin(PI * bend_waves * t_inside)
+			var width_factor: float = 1.0 + width_change * width_noise.get_noise_1d(t_inside * 1000.0)
+			distance[j] = sqrt(beyond * beyond + across * across) / width_factor
 			# One sample per half-size cell, at its top-left cell, with that cell's bumps.
 			var x: int = x2 * 2
 			var y: int = y2 * 2

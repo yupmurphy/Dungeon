@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="MonsterData" format=3]
+[gd_resource type="Resource" script_class="MonsterData" format=3 uid="uid://bnfh2xdp4cm6l"]
 
-[ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://dcxuu28y8tas8" path="res://scripts/resources/monster_data.gd" id="1_data"]
 [ext_resource type="Resource" path="res://resources/stats/slime_stats.tres" id="2_stats"]
-[ext_resource type="SpriteFrames" path="res://resources/sprites/slime_frames.tres" id="3_frames"]
+[ext_resource type="SpriteFrames" uid="uid://dmx88s6ldmrfr" path="res://resources/sprites/slime_frames.tres" id="3_frames"]
 
 [resource]
 script = ExtResource("1_data")

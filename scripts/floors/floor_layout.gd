@@ -53,6 +53,8 @@ var shape_coverage: float = 1.0
 var shape_tips: Array[Vector2i] = []
 ## 1 = inside the floor's shape (land), 0 = the impassable border around it. Empty = everything is land.
 var land: PackedByteArray
+## Per hub edge sample (FloorGenerator.HUB_EDGE_SAMPLES): 1 = no rock ring there, the hub blends into the open zone.
+var hub_open: PackedByteArray
 var boss_center: Vector2i
 ## Bounding box of the arena (walls included).
 var boss_rect: Rect2i

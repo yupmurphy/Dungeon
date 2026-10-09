@@ -103,10 +103,17 @@ built in stages.
   Outside = impassable border, never dug: patches of ROCK, `CHASM` (see-through) and `THICKET` (dense forest, full
   collision, some crowns), new Terrain types at the end of the enum. `FloorLayout.land` (mask), `shape_tips`,
   `shape_coverage`; `is_land_index()`.
-  Stage 2 DONE (v0.1.19): floor 1 = Goblin Galleries + Forest only (swamp / desert regions and builders stay in
-  the code for later floors). `shape_tips[0]` = start end (random), `[1]` = far end. The hub (galleries, closed,
-  `hub_radius` 0.24) sits in the start end (`_place_hub`: moved from the tip until it fits in the shape);
-  `layout.center` = the HUB's middle (not the map's), start = there. Gates (2-3) only where land goes on. Boss arena +
+  Stage 2 DONE (v0.1.19, reworked v0.1.20): floor 1 = Goblin Galleries + Forest only (swamp / desert regions and
+  builders stay in the code for later floors). `shape_tips[0]` = start end (random), `[1]` = far end.
+  Galleries (user: ~40% of the land, blending with the forest in places) = `_plan_hub`: the start end of the land up
+  to a wavy line across it (`hub_share` 36-44%, `hub_border_wobble`), measured and corrected a few passes; polar edge
+  (radius per angle from its middle) by ray marching, smoothed, slope-limited (`HUB_EDGE_SLOPE`, else the ring gets
+  thin sideways). `layout.center` = the HUB's middle (not the map's), `start_cell` toward the start end.
+  `layout.hub_open` (per edge sample): 2-4 stretches without a ring (`hub_open_edges`, `hub_open_edge_width`) =
+  mouths: cave carved through, cave and forest painted into each other (`_mouths`, `MOUTH_BLEND_REACH`). Hub bits
+  outside the ring are sealed rock (`_seal_outside_bits`). Shapes vary (user: too alike): C or S bend
+  (`shape_bend`), width swelling (`shape_width_variation`), random warp / tip inset; land share default 65-88%,
+  biased low (above ~88% every shape is a square with cut corners). Gates (2-3) only where land goes on. Boss arena +
   portal at a random spot around the far end (`BOSS_SIDE_JITTER`, `BOSS_BACK_JITTER`), pulled in to fit. Forest:
   a river ACROSS the capsule between start and portal (`RIVER_AT` share of the way, 2-4 bridges/fords), THICKET
   patches inside (density > 0.8, dig cost 2), 1-3 marshes (mud, reeds, pools; feature `marsh`) home to slimes:
