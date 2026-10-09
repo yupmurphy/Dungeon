@@ -8,6 +8,8 @@ extends Node2D
 var map_texture: ImageTexture
 ## [{name, color}] shown next to the big map.
 var legend: Array[Dictionary] = []
+## Optional: drawn under map_texture on the big map, same size (e.g. the outline of the whole floor, faint).
+var outline_texture: ImageTexture
 
 
 func _enter_tree() -> void:
@@ -22,3 +24,8 @@ func map_size() -> Vector2i:
 ## Extra lines under the legend (e.g. "Explored: 12%").
 func status_lines() -> PackedStringArray:
 	return PackedStringArray()
+
+
+## Places always marked on the big map, explored or not: [{cell: Vector2i, color: Color, label: String}].
+func markers() -> Array[Dictionary]:
+	return []

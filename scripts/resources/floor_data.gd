@@ -18,14 +18,14 @@ extends Resource
 ## How far (tiles, along the floor) the line between the hub and the open zones wanders.
 @export var hub_border_wobble: float = 110.0
 ## Places where the hub has no rock ring and blends into the open zone next to it: how many, and how wide (tiles).
-@export var hub_open_edges: Vector2i = Vector2i(2, 4)
+@export var hub_open_edges: Vector2i = Vector2i(3, 5)
 @export var hub_open_edge_width: Vector2i = Vector2i(50, 120)
 ## Thickness of the rock ring that closes the hub (crossed only by the gates).
 @export var hub_ring: int = 6
 ## Width of the gate passages through the ring.
 @export var gate_width: int = 5
 ## How many gates lead from the hub into each open zone (random between x and y).
-@export var gates_per_zone: Vector2i = Vector2i(2, 3)
+@export var gates_per_zone: Vector2i = Vector2i(4, 6)
 ## Minimum distance in tiles between two gates into the same zone (fewer gates if the zone's edge is short).
 @export var gate_spacing: int = 45
 ## Open zones get between these shares of the circle before normalizing (bigger gap = more uneven zones).

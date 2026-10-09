@@ -11,6 +11,9 @@ const ROCK_DARKEN: float = 0.72
 const PORTAL_MAP_COLOR: Color = Color(0.8, 0.4, 1.0)
 ## Gates of the closed zone and the boss arena entrance.
 const GATE_MAP_COLOR: Color = Color(1.0, 0.95, 0.55)
+## The start (marked on the big map) and the faint outline of the floor's land, shown even where not explored.
+const START_MAP_COLOR: Color = Color(0.45, 1.0, 0.55)
+const OUTLINE_COLOR: Color = Color(1.0, 1.0, 1.0, 0.12)
 
 var layout: FloorLayout
 ## Tiles revealed around the player; FloorLevel sets it from Perception (Stats.get_reveal_radius).
@@ -38,6 +41,7 @@ func setup(new_layout: FloorLayout, slot_colors: Array[Color], new_legend: Array
 	layout = new_layout
 	_slot_colors = slot_colors
 	legend = new_legend.duplicate()
+	legend.append({"name": "Start", "color": START_MAP_COLOR})
 	legend.append({"name": "Portal", "color": PORTAL_MAP_COLOR})
 	legend.append({"name": "Gates", "color": GATE_MAP_COLOR})
 	var w: int = layout.size.x
@@ -51,6 +55,7 @@ func setup(new_layout: FloorLayout, slot_colors: Array[Color], new_legend: Array
 	_map_image.fill(Color.TRANSPARENT)
 	_fog_texture = ImageTexture.create_from_image(_fog_image)
 	map_texture = ImageTexture.create_from_image(_map_image)
+	outline_texture = ImageTexture.create_from_image(_outline_image())
 	_fog.texture = _fog_texture
 	_fog.centered = false
 	_fog.scale = Vector2(GameScale.TILE_SIZE, GameScale.TILE_SIZE)
@@ -139,3 +144,27 @@ func _commit() -> void:
 	_fog_texture.update(_fog_image)
 	map_texture.update(_map_image)
 	revealed.emit()
+
+
+## The floor's land (its shape), faint, for the big map: the whole outline shows before it is explored.
+func _outline_image() -> Image:
+	var w: int = layout.size.x
+	var h: int = layout.size.y
+	var data := PackedByteArray()
+	data.resize(w * h * 4)
+	var fill: PackedByteArray = [roundi(OUTLINE_COLOR.r * 255), roundi(OUTLINE_COLOR.g * 255),
+		roundi(OUTLINE_COLOR.b * 255), roundi(OUTLINE_COLOR.a * 255)]
+	for i in w * h:
+		if layout.is_land_index(i):
+			data[i * 4] = fill[0]
+			data[i * 4 + 1] = fill[1]
+			data[i * 4 + 2] = fill[2]
+			data[i * 4 + 3] = fill[3]
+	return Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
+
+
+func markers() -> Array[Dictionary]:
+	if layout == null:
+		return []
+	return [{"cell": layout.start_cell, "color": START_MAP_COLOR, "label": "Start"},
+		{"cell": layout.portal_cell, "color": PORTAL_MAP_COLOR, "label": "Portal"}]

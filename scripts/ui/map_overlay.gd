@@ -1,12 +1,15 @@
 class_name MapOverlay
 extends Control
-## Full map (key M): everything explored so far, player position, region legend.
+## Full map (key M): the floor's outline (faint), everything explored so far, the start and the portal (always
+## marked), player position, region legend.
 
 const BACKGROUND: Color = Color(0.02, 0.02, 0.04, 0.92)
 const FONT_SIZE: int = 10
 const MAP_TOP: float = 24.0
 ## Room kept on the right for the legend.
 const LEGEND_WIDTH: float = 150.0
+## Start and portal dots on the map.
+const MARKER_RADIUS: float = 3.5
 
 var exploration: MapSource
 var player: Node2D
@@ -34,7 +37,15 @@ func _draw() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if scale_factor >= 1.0 else CanvasItem.TEXTURE_FILTER_LINEAR
 	var map_rect := Rect2(Vector2(16.0, MAP_TOP), map_size * scale_factor)
 	draw_rect(map_rect.grow(1.0), Color(1, 1, 1, 0.25), false, 1.0)
+	if exploration.outline_texture != null:
+		draw_texture_rect(exploration.outline_texture, map_rect, false)
 	draw_texture_rect(exploration.map_texture, map_rect, false)
+	for marker in exploration.markers():
+		var at: Vector2 = map_rect.position + (Vector2(marker["cell"]) + Vector2(0.5, 0.5)) * scale_factor
+		draw_circle(at, MARKER_RADIUS, marker["color"])
+		draw_arc(at, MARKER_RADIUS + 2.0, 0.0, TAU, 16, Color(0, 0, 0, 0.8), 1.0)
+		draw_string(font, at + Vector2(MARKER_RADIUS + 3.0, 4.0), marker["label"], HORIZONTAL_ALIGNMENT_LEFT, -1,
+			FONT_SIZE, marker["color"])
 
 	if player != null and fmod(_blink, 0.8) < 0.55:
 		var dot: Vector2 = map_rect.position + player.global_position / GameScale.TILE_SIZE * scale_factor

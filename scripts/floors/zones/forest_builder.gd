@@ -21,6 +21,10 @@ const SPARSE_TREE_CHANCE: float = 0.3
 const CLEARING_TREE_CHANCE: float = 0.03
 const NEST_COUNT: Vector2i = Vector2i(5, 8)
 const NEST_CLEARING: float = 4.5
+## Random cells tried per nest (thick woods are a small part of the forest).
+const NEST_TRIES: int = 2000
+## Nests sit where the forest is at least this dense.
+const NEST_DENSITY: float = 0.55
 const OLD_TREES_PER_10K: float = 3.0
 ## The river crosses the line from the start cave's edge to the far end this far along it (share), and goes this many steps
 ## into the border on both sides.
@@ -107,7 +111,9 @@ func shape() -> void:
 	var count: int = rng.randi_range(NEST_COUNT.x, NEST_COUNT.y)
 	for k in count:
 		var cell: Vector2i = random_zone_cell(func(c: Vector2i) -> bool:
-			if _density[c.y * layout.size.x + c.x] / 255.0 < DENSE or _river[c.y * layout.size.x + c.x] > 0:
+			var i: int = c.y * layout.size.x + c.x
+			# In thick woods on the land (never in the border around the floor), away from the river.
+			if not layout.is_land_index(i) or _density[i] / 255.0 < NEST_DENSITY or _river[i] > 0:
 				return false
 			var edge: int = mini(mini(c.x, c.y), mini(layout.size.x - 1 - c.x, layout.size.y - 1 - c.y))
 			if edge < data.border_max + 12:
@@ -115,7 +121,7 @@ func shape() -> void:
 			for other in _nests:
 				if Vector2(other).distance_to(Vector2(c)) < 40.0:
 					return false
-			return distance_to_gates(c) > 30.0)
+			return distance_to_gates(c) > 30.0, NEST_TRIES)
 		if cell.x < 0:
 			continue
 		_nests.append(cell)

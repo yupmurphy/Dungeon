@@ -32,7 +32,7 @@ const GENERATOR_CHECKS: Array[String] = [
 	"start is floor, in the closed zone",
 	"every floor tile reachable from start",
 	"each zone is one connected block",
-	"2-3 gates per open zone, spaced apart, each leads into its zone",
+	"gates per open zone (FloorData.gates_per_zone), spaced apart, each leads into its zone",
 	"closed zone is sealed except at its gates and mouths",
 	"open zones blend into each other (walkable borders)",
 	"portal is floor, inside the boss arena",
@@ -393,15 +393,15 @@ func _generator_problems(layout: FloorLayout) -> Array[String]:
 		gates_by_slot[gate.slot].append(gate)
 		if not layout.is_floor(gate.cell.x, gate.cell.y) or not layout.is_floor(gate.outside.x, gate.outside.y) \
 				or layout.slot_at(gate.outside.x, gate.outside.y) != gate.slot:
-			problems.append("2-3 gates per open zone, spaced apart, each leads into its zone")
+			problems.append("gates per open zone (FloorData.gates_per_zone), spaced apart, each leads into its zone")
 	for slot in open_slots:
 		var gates: Array = gates_by_slot.get(slot, [])
 		if gates.size() < FLOOR_DATA.gates_per_zone.x or gates.size() > FLOOR_DATA.gates_per_zone.y:
-			problems.append("2-3 gates per open zone, spaced apart, each leads into its zone")
+			problems.append("gates per open zone (FloorData.gates_per_zone), spaced apart, each leads into its zone")
 		for i in gates.size():
 			for j in range(i + 1, gates.size()):
 				if Vector2(gates[i].cell).distance_to(Vector2(gates[j].cell)) < FLOOR_DATA.gate_spacing * 0.75:
-					problems.append("2-3 gates per open zone, spaced apart, each leads into its zone")
+					problems.append("gates per open zone (FloorData.gates_per_zone), spaced apart, each leads into its zone")
 
 	# Floor contacts between different zones.
 	var leaks: int = 0
@@ -472,6 +472,10 @@ func _check_scene() -> void:
 	var layout: FloorLayout = floor_level.layout
 	var player := get_tree().get_first_node_in_group("player") as Player
 	var exploration := get_tree().get_first_node_in_group("exploration") as ExplorationMap
+	var marked: Array = exploration.markers().map(func(m: Dictionary) -> String: return m["label"])
+	_check(marked == ["Start", "Portal"] and exploration.markers()[1]["cell"] == layout.portal_cell
+		and exploration.outline_texture != null and exploration.outline_texture.get_size() == Vector2(layout.size),
+		"the big map (M) shows the floor's outline, the start and the portal before they are explored")
 	var activator := floor_level.get_node("EnemyActivator") as EnemyActivator
 
 	_check(player.global_position.distance_to((Vector2(layout.start_cell) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE) < 1.0,

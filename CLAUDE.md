@@ -113,12 +113,15 @@ built in stages.
   mouths: cave carved through, cave and forest painted into each other (`_mouths`, `MOUTH_BLEND_REACH`). Hub bits
   outside the ring are sealed rock (`_seal_outside_bits`). Shapes vary (user: too alike): C or S bend
   (`shape_bend`), width swelling (`shape_width_variation`), random warp / tip inset; land share default 65-88%,
-  biased low (above ~88% every shape is a square with cut corners). Gates (2-3) only where land goes on. Boss arena +
+  biased low (above ~88% every shape is a square with cut corners). Gates (4-6) only where land goes on. Boss arena +
   portal at a random spot around the far end (`BOSS_SIDE_JITTER`, `BOSS_BACK_JITTER`), pulled in to fit. Forest:
   a river ACROSS the capsule between start and portal (`RIVER_AT` share of the way, 2-4 bridges/fords), THICKET
   patches inside (density > 0.8, dig cost 2), 1-3 marshes (mud, reeds, pools; feature `marsh`) home to slimes:
   `RegionData.home_monsters` live ONLY at their home feature (slime: home_feature marsh, groups of 5-8).
   `FloorGenerator.portal_reachable()` is checked after every generation (push_error) and by --floor-test.
+  v0.1.21: galleries caves x1.25 (`GalleriesBuilder.CHAMBER_SCALE`), 4-6 gates, 3-5 mouths; spider nests only on land.
+  Stage 3 DONE (v0.1.21): the big map (M) always shows the floor's faint outline (`MapSource.outline_texture`)
+  and the Start / Portal markers (`MapSource.markers()`), explored or not.
 - `FloorGenerator` (pure code, seeded) -> `FloorLayout` (rock/floor grid + a zone slot per cell, no empty space).
   900 x 900 tiles (`FloorData.map_size`, the one setting for floor size; ~1.3-2 s to generate, a loading
   screen will hide it later - don't over-optimize). Zones are computed per 4x4 block (islands merged there),

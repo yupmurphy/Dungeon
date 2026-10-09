@@ -5,6 +5,9 @@ extends ZoneBuilder
 ## barrels) and the chieftain's hall (throne, banners, bones; the mini-boss comes in a later stage).
 ## Always dark: only torches and the camp fire give light (no glowing crystals: user decision).
 
+## Every cave (start, halls, chambers, the caves behind gates and mouths) is this much bigger than its radius below
+## (user: +20-30%).
+const CHAMBER_SCALE: float = 1.25
 const START_RADIUS: float = 9.0
 const HALL_RADIUS: Vector2 = Vector2(28.0, 34.0)
 ## Most chambers are big; a few small ones stay here and there.
@@ -79,7 +82,7 @@ func decorate(used: Dictionary) -> void:
 
 func _place_chambers() -> void:
 	var c: Vector2 = center()
-	chambers.append(_chamber(Vector2(layout.start_cell) + Vector2(0.5, 0.5), START_RADIUS, &"start"))
+	chambers.append(_chamber(Vector2(layout.start_cell) + Vector2(0.5, 0.5), START_RADIUS * CHAMBER_SCALE, &"start"))
 	# The three halls: chieftain deep inside (far from the start), camp and mine at middle distance,
 	# in different directions.
 	var base_angle: float = rng.randf() * TAU
@@ -87,7 +90,7 @@ func _place_chambers() -> void:
 	for k in roles.size():
 		var angle: float = base_angle + TAU * k / roles.size() + rng.randf_range(-0.4, 0.4)
 		var edge: float = FloorGenerator.hub_radius(hub_edge, angle) - RING_MARGIN
-		var radius: float = rng.randf_range(HALL_RADIUS.x, HALL_RADIUS.y)
+		var radius: float = rng.randf_range(HALL_RADIUS.x, HALL_RADIUS.y) * CHAMBER_SCALE
 		var share: float = rng.randf_range(0.62, 0.72) if roles[k] == &"chieftain" else rng.randf_range(0.4, 0.55)
 		var distance: float = minf(edge * share + radius * 0.3, edge - radius)
 		chambers.append(_chamber(c + Vector2.from_angle(angle) * distance, radius, roles[k]))
@@ -96,12 +99,12 @@ func _place_chambers() -> void:
 		var angle: float = gate["angle"]
 		var at: Vector2 = c + Vector2.from_angle(angle) * (FloorGenerator.hub_radius(hub_edge, angle)
 			- FloorGenerator.GATE_INNER_DEPTH - 4.0)
-		chambers.append(_chamber(at, 6.0, &"gate"))
+		chambers.append(_chamber(at, 6.0 * CHAMBER_SCALE, &"gate"))
 	# A cave at the inner end of every mouth (a stretch of the edge without a ring), so the mouth opens into a cave.
 	for k in _mouth_middles():
 		var angle: float = TAU * k / FloorGenerator.HUB_EDGE_SAMPLES
 		var at: Vector2 = c + Vector2.from_angle(angle) * (FloorGenerator.hub_radius(hub_edge, angle) - MOUTH_CAVE_DEPTH)
-		chambers.append(_chamber(at, MOUTH_CAVE_RADIUS, &"gate"))
+		chambers.append(_chamber(at, MOUTH_CAVE_RADIUS * CHAMBER_SCALE, &"gate"))
 	# Ordinary chambers fill the rest (more tries for a bigger hub).
 	var area: float = 0.0
 	for r in hub_edge:
@@ -116,7 +119,7 @@ func _place_chambers() -> void:
 			size_range = SMALL_CHAMBER_RADIUS
 		elif size_roll < SMALL_CHAMBER_CHANCE + LARGE_CHAMBER_CHANCE:
 			size_range = LARGE_CHAMBER_RADIUS
-		var radius: float = rng.randf_range(size_range.x, size_range.y)
+		var radius: float = rng.randf_range(size_range.x, size_range.y) * CHAMBER_SCALE
 		if distance + radius > edge:
 			continue
 		var at: Vector2 = c + Vector2.from_angle(angle) * distance
