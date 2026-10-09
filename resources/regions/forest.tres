@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/resources/monster_data.gd" id="2_monster"]
 [ext_resource type="Resource" path="res://resources/monsters/goblin_archer.tres" id="3_archer"]
 [ext_resource type="Resource" path="res://resources/monsters/goblin_grown.tres" id="4_grown"]
+[ext_resource type="Resource" path="res://resources/monsters/slime.tres" id="5_slime"]
 
 [resource]
 script = ExtResource("1_region")
@@ -14,3 +15,4 @@ biome = 1
 tile_tint = Color(1, 1, 1, 1)
 map_color = Color(0.3, 0.7, 0.28, 1)
 monsters = Array[ExtResource("2_monster")]([ExtResource("3_archer"), ExtResource("3_archer"), ExtResource("4_grown")])
+home_monsters = Array[ExtResource("2_monster")]([ExtResource("5_slime")])

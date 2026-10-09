@@ -48,6 +48,10 @@ const GENERATOR_CHECKS: Array[String] = [
 	"shape: stretched from one corner to the opposite one",
 	"shape: the land never touches the map's edge",
 	"shape: no straight edges",
+	"start: in the cave at one end of the floor",
+	"portal: near the other end",
+	"portal: can be walked to from the start",
+	"forest: a river with 2+ crossings lies between the start and the portal",
 ]
 
 
@@ -66,6 +70,7 @@ func _check_generator() -> void:
 	var sample: FloorLayout = null
 	var phase_ms: Dictionary = {}
 	var coverages: Array[float] = []
+	var marsh_counts: Dictionary = {}
 	for seed_value in range(_first_seed, _first_seed + _seed_count):
 		var started: int = Time.get_ticks_msec()
 		var layout: FloorLayout = FloorGenerator.generate(FLOOR_DATA, seed_value)
@@ -77,7 +82,8 @@ func _check_generator() -> void:
 		smallest_share = minf(smallest_share, float(layout.floor_cell_count()) / (layout.size.x * layout.size.y))
 		var shares: Dictionary = _terrain_shares(layout)
 		coverages.append(layout.shape_coverage)
-		for label in _generator_problems(layout) + _ecology_problems(layout, shares) + _shape_problems(layout):
+		for label in _generator_problems(layout) + _ecology_problems(layout, shares) + _shape_problems(layout) \
+				+ _structure_problems(layout):
 			if not problems.has(label):
 				problems[label] = seed_value
 		if seed_value == _first_seed:
@@ -85,6 +91,7 @@ func _check_generator() -> void:
 		if seed_value < _first_seed + DETERMINISM_SEEDS and FloorGenerator.generate(FLOOR_DATA, seed_value).fingerprint() != layout.fingerprint():
 			problems["same seed gives the same map"] = seed_value
 		arrangements[_arrangement(layout)] = true
+		marsh_counts[layout.features.filter(func(f: FloorLayout.Feature) -> bool: return f.kind == &"marsh").size()] = true
 	var phases: Array[String] = []
 	for phase: String in phase_ms:
 		phases.append("%s %.0f" % [phase, phase_ms[phase]])
@@ -93,8 +100,10 @@ func _check_generator() -> void:
 
 	for label in GENERATOR_CHECKS:
 		_check(not problems.has(label), label + ("" if not problems.has(label) else " (seed %d)" % problems[label]))
-	_check(arrangements.size() >= _seed_count * 0.6,
-		"zone order, rotation and boss zone change with the seed (%d different of %d)" % [arrangements.size(), _seed_count])
+	_check(arrangements.size() >= mini(3, _seed_count),
+		"the start corner changes with the seed (%s)" % ", ".join(arrangements.keys()))
+	_check(marsh_counts.keys().all(func(c: int) -> bool: return c >= 1 and c <= 3) and marsh_counts.size() >= mini(2, _seed_count),
+		"1-3 marshes per floor, the number changes with the seed (%s)" % ", ".join(marsh_counts.keys()))
 	_check(smallest_share > 0.4, "most of the map is walkable (smallest: %.0f%% floor)" % (smallest_share * 100.0))
 	var average: float = float(total_ms) / _seed_count
 	# Generous on purpose: a loading screen will hide generation time later.
@@ -148,8 +157,42 @@ func _check_generator() -> void:
 	var forest: Dictionary = by_zone.get(&"forest", {})
 	var archers: int = forest.get("Goblin Archer", 0)
 	var grown: int = forest.get("Grown Goblin", 0)
-	_check(archers >= 20 and grown > 0 and grown < archers and forest.size() == 2,
-		"the Forest holds goblin archers and grown goblins (%s)" % forest)
+	var slimes: int = forest.get("Slime", 0)
+	_check(archers >= 20 and grown > 0 and grown < archers and forest.size() == 3,
+		"the Forest holds goblin archers, grown goblins and the slimes of its marshes (%s)" % forest)
+	var marshes: int = sample.features.filter(func(f: FloorLayout.Feature) -> bool: return f.kind == &"marsh").size()
+	_check(marshes >= 1 and marshes <= 3 and slimes >= marshes * 5 and slimes <= marshes * 8,
+		"1-3 marshes in the forest, 5-8 slimes in each (%d marshes, %d slimes)" % [marshes, slimes])
+
+
+## Labels of the floor 1 structure rules this layout breaks: start cave in one end of the capsule, portal near the
+## other end and reachable, a river with 2+ crossings between them.
+func _structure_problems(layout: FloorLayout) -> Array[String]:
+	var problems: Array[String] = []
+	var start := Vector2(layout.start_cell)
+	var portal := Vector2(layout.portal_cell)
+	var tips: Array[Vector2i] = layout.shape_tips
+	var length: float = Vector2(tips[0]).distance_to(Vector2(tips[1]))
+	if layout.slot_at(layout.start_cell.x, layout.start_cell.y) != layout.hub_slot \
+			or start.distance_to(Vector2(tips[0])) > length * 0.3:
+		problems.append("start: in the cave at one end of the floor")
+	if portal.distance_to(Vector2(tips[1])) > length * 0.25 or portal.distance_to(start) < length * 0.5:
+		problems.append("portal: near the other end")
+	if not FloorGenerator.portal_reachable(layout):
+		problems.append("portal: can be walked to from the start")
+	# The straight line from the start to the portal meets the river (deep water, a bridge or a ford).
+	var meets_river: bool = false
+	var steps: int = int(start.distance_to(portal))
+	for k in steps:
+		var cell := Vector2i(start.lerp(portal, float(k) / steps).floor())
+		var type: int = layout.terrain_at(cell.x, cell.y)
+		if layout.slot_at(cell.x, cell.y) != layout.hub_slot and type in [Terrain.Type.WATER_DEEP, Terrain.Type.BRIDGE]:
+			meets_river = true
+			break
+	var crossings: int = layout.features.filter(func(f: FloorLayout.Feature) -> bool: return f.kind in [&"bridge", &"ford"]).size()
+	if not meets_river or crossings < 2:
+		problems.append("forest: a river with 2+ crossings lies between the start and the portal")
+	return problems
 
 
 ## Labels of the shape rules (FloorShape) this layout breaks.
@@ -364,13 +407,10 @@ func _generator_problems(layout: FloorLayout) -> Array[String]:
 
 
 ## Zone order around the hub (starting from the east), plus the boss zone: should change with the seed.
+## Which corner of the map the start cave is in (NW, NE, SW, SE).
 func _arrangement(layout: FloorLayout) -> String:
-	var gates: Array[FloorLayout.Gate] = layout.gates.duplicate()
-	gates.sort_custom(func(a: FloorLayout.Gate, b: FloorLayout.Gate) -> bool:
-		return fposmod(Vector2(a.cell - layout.center).angle(), TAU) < fposmod(Vector2(b.cell - layout.center).angle(), TAU))
-	var order: Array = gates.map(func(g: FloorLayout.Gate) -> int: return g.slot)
-	var first_angle: int = roundi(fposmod(Vector2(gates[0].cell - layout.center).angle(), TAU) / (TAU / 8.0))
-	return "%s/%d/%d" % [order, first_angle, layout.boss_zone]
+	var start: Vector2i = layout.shape_tips[0]
+	return ("N" if start.y < layout.size.y / 2 else "S") + ("W" if start.x < layout.size.x / 2 else "E")
 
 
 func _check_scene() -> void:
@@ -391,13 +431,13 @@ func _check_scene() -> void:
 	_check(floor_level.get_node("Tiles").get_child_count() == layout.slot_count + 1,
 		"one tinted tile layer per zone (%d zones + boss arena) and one nature layer" % layout.region_count)
 	var shallow: int = layout.terrain_raw().find(Terrain.Type.WATER_SHALLOW)
-	var quicksand: int = layout.terrain_raw().find(Terrain.Type.QUICKSAND)
+	var mud: int = layout.terrain_raw().find(Terrain.Type.REEDS)
 	var w: int = layout.size.x
 	var shallow_at: Vector2 = (Vector2(shallow % w, shallow / w) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
-	var quicksand_at: Vector2 = (Vector2(quicksand % w, quicksand / w) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
-	_check(FloorLayout.speed_factor_at(shallow_at) < 1.0 and FloorLayout.speed_factor_at(quicksand_at) < 0.5
+	var reeds_at: Vector2 = (Vector2(mud % w, mud / w) + Vector2(0.5, 0.5)) * GameScale.TILE_SIZE
+	_check(FloorLayout.speed_factor_at(shallow_at) < 1.0 and FloorLayout.speed_factor_at(reeds_at) < 1.0
 		and FloorLayout.speed_factor_at(player.global_position) == 1.0,
-		"shallow water and quicksand slow movement, cave floor doesn't")
+		"shallow water and reeds slow movement, cave floor doesn't")
 	var start_layer: TileMapLayer = floor_level.chunks._layers[layout.hub_slot]
 	var near_start: Array[Vector2i] = start_layer.get_used_cells().filter(func(c: Vector2i) -> bool:
 		return Vector2(c).distance_to(Vector2(layout.start_cell)) < 20.0)

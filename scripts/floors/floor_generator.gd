@@ -2,20 +2,23 @@ class_name FloorGenerator
 extends RefCounted
 ## Builds a FloorLayout from FloorData + seed. Same seed => same floor.
 ##
-## 1. Zones. The first CLOSED region (the hub, Goblin Galleries) is a wobbly disc in the middle of the map,
-##    closed by a rock ring. The OPEN regions share the rest as angular sectors around it; their order,
-##    sizes and rotation change with the seed, and the borders between them meander (noise), so open
-##    zones blend into each other without walls. Every cell belongs to a zone, there is no empty space.
-## 2. Boss arena (planned first, so zones are cleaned up around it): an enclosed ellipse at the outer
-##    edge of a random open zone, one entrance facing the middle, the portal at the far end.
-## 3. Gates: 2-3 passages through the hub's ring into every open zone.
+## 0. Shape (FloorShape): the land is an organic capsule from one corner of the map to the opposite one; the rest
+##    is impassable border (rock, chasms, dense forest).
+## 1. Zones. The first CLOSED region (the hub, Goblin Galleries, where the player starts) is a wobbly disc in one
+##    end of the capsule (which end is random), closed by a rock ring. The OPEN regions share the rest as angular
+##    sectors around it (floor 1: only the forest); their order, sizes and rotation change with the seed, and the
+##    borders between them meander (noise), so open zones blend into each other without walls. Every cell belongs
+##    to a zone, there is no empty space.
+## 2. Boss arena (planned first, so zones are cleaned up around it): an enclosed ellipse near the other end of the
+##    capsule, one entrance facing the start, the portal at its far end.
+## 3. Gates: 2-3 passages through the hub's ring into every open zone, where the land goes on.
 ## 4. Terrain. Every zone has its own builder (scripts/floors/zones/): caves and themed halls for the
-##    galleries, river and woods for the forest, lakes for the swamp, dunes and an oasis for the desert.
-##    Near zone borders the builders mix (a cell may be painted by the neighbor's builder), so the
-##    landscape changes gradually. The map's edge is a band of rock.
+##    galleries, a river across the floor, woods, thickets, clearings and small marshes for the forest (the swamp
+##    and desert builders are kept for later floors). Near zone borders the builders mix (a cell may be painted by
+##    the neighbor's builder), so the landscape changes gradually.
 ## 5. Accessibility. Tiny pockets are filled; every other pocket is joined to the start by the cheapest
 ##    passage (cutting trees < wading water < digging rock), never through the hub ring, the arena walls
-##    or the map edge. Each zone decides what a passage looks like (tunnel, ford, cleared path).
+##    or the border. Each zone decides what a passage looks like (tunnel, ford, cleared path).
 ## 6. Decoration: zone builders place their props and notable places, FloorPopulator the monsters.
 
 ## Floor pockets smaller than this are filled instead of getting a passage.
@@ -32,8 +35,11 @@ const GATE_ZONE_CHECK_DEPTH: float = 25.0
 const ENTRANCE_HALF_WIDTH: int = 2
 ## Boss arena: the portal sits this far in front of the back wall.
 const PORTAL_WALL_DISTANCE: float = 4.0
-## The arena may drift this share of its zone's width away from the zone's middle.
-const BOSS_ANGLE_JITTER: float = 0.15
+## The arena goes up to this far (tiles) to the side of the far end of the capsule, and up to this far back from it.
+const BOSS_SIDE_JITTER: float = 60.0
+const BOSS_BACK_JITTER: float = 50.0
+## The hub keeps this much ground around its ring inside the floor's shape.
+const HUB_SHAPE_MARGIN: float = 10.0
 ## The arena keeps this much floor around its walls inside the floor's shape; it is moved in by this step.
 const ARENA_SHAPE_MARGIN: float = 12.0
 const ARENA_PULL_STEP: float = 3.0
@@ -67,23 +73,28 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 			hub_slot = slot
 	assert(hub_slot >= 0 and not open_slots.is_empty(), "A floor needs one CLOSED and at least one OPEN region")
 	layout.hub_slot = hub_slot
-	layout.start_cell = layout.center
 	timings.clear()
 	var shape_clock: int = Time.get_ticks_usec()
 	var shape: FloorShape = FloorShape.build(data, layout.size, seed_value, rng)
 	layout.shape_coverage = shape.coverage
-	layout.shape_tips = shape.tips
 	layout.land = shape.inside
+	# Which end of the capsule is the start: shape_tips[0] = start end, [1] = the far end (portal).
+	layout.shape_tips = shape.tips.duplicate()
+	if rng.randf() < 0.5:
+		layout.shape_tips.reverse()
 	_lap("shape", shape_clock)
 
 	var sectors: Array[Dictionary] = _plan_sectors(data, open_slots, rng)
 	var hub_edge: PackedFloat32Array = _hub_edge(data, layout, seed_value)
+	# The hub (start cave) sits in the start end of the capsule: `center` is its middle from here on.
+	layout.center = _place_hub(data, layout, shape, hub_edge)
+	layout.start_cell = layout.center
 	var no_dig := PackedByteArray()
 	no_dig.resize(layout.size.x * layout.size.y)
 	no_dig.fill(0)
 
 	var clock: int = Time.get_ticks_usec()
-	var arena: Dictionary = _plan_boss_arena(data, layout, sectors, rng, shape)
+	var arena: Dictionary = _plan_boss_arena(data, layout, rng, shape)
 	var near_walls := PackedByteArray()
 	var strip: PackedInt32Array = _assign_zones(data, layout, sectors, hub_edge, no_dig, seed_value, arena, near_walls,
 		shape)
@@ -119,6 +130,8 @@ static func generate(data: FloorData, seed_value: int) -> FloorLayout:
 		builder.shape()
 	clock = _lap("gates+arena+shape", clock)
 	_connect_everything(layout, builders, no_dig)
+	if not portal_reachable(layout):
+		push_error("Floor seed %d: the portal can't be reached from the start" % seed_value)
 	clock = _lap("connect", clock)
 	var used: Dictionary = {}
 	for builder in builders:
@@ -483,13 +496,22 @@ static func _gate_angles(data: FloorData, layout: FloorLayout, sector: Dictionar
 	var best_from: float = sector["mid"]
 	var best_span: float = 0.0
 	var run_from: float = -1.0
-	var angle: float = sector["from"]
-	while angle <= sector["to"] + GATE_SCAN_STEP:
+	var from: float = sector["from"]
+	var to: float = sector["to"]
+	if to - from >= TAU - 0.001 and layout.shape_tips.size() == 2:
+		# The zone is all around the hub: start the scan at the back (toward the start end of the capsule, the border),
+		# so the run that faces the rest of the floor is not cut in two.
+		from = (center - Vector2(layout.shape_tips[1])).angle()
+		to = from + TAU
+	var angle: float = from
+	while angle <= to + GATE_SCAN_STEP:
 		var outer: float = hub_radius(hub_edge, angle) + data.hub_ring
-		var ok: bool = angle <= sector["to"]
+		var ok: bool = angle <= to
 		for depth: float in [CLEARING_RADIUS, GATE_ZONE_CHECK_DEPTH]:
 			var probe := Vector2i((center + Vector2.from_angle(angle) * (outer + depth)).floor())
-			ok = ok and layout.slot_at(probe.x, probe.y) == slot
+			# Into the zone, on land (not into the border around the floor).
+			ok = ok and layout.slot_at(probe.x, probe.y) == slot and layout.in_bounds(probe.x, probe.y) \
+				and layout.is_land_index(probe.y * layout.size.x + probe.x)
 		if ok and run_from < 0.0:
 			run_from = angle
 		elif not ok and run_from >= 0.0:
@@ -540,34 +562,42 @@ static func _carve_gate(data: FloorData, layout: FloorLayout, builders: Array[Zo
 
 ## Where the arena goes: {center: Vector2, direction: Vector2 (from the map's middle outwards)}.
 ## Planned before the zones are drawn, so the zones can be cleaned up around it.
-static func _plan_boss_arena(data: FloorData, layout: FloorLayout, sectors: Array[Dictionary],
-		rng: RandomNumberGenerator, shape: FloorShape) -> Dictionary:
-	var sector: Dictionary = sectors[rng.randi() % sectors.size()]
-	var width: float = sector["to"] - sector["from"]
-	var angle: float = sector["mid"] + rng.randf_range(-BOSS_ANGLE_JITTER, BOSS_ANGLE_JITTER) * width
-	var direction := Vector2.from_angle(angle)
+static func _plan_boss_arena(data: FloorData, layout: FloorLayout, rng: RandomNumberGenerator,
+		shape: FloorShape) -> Dictionary:
+	var hub := Vector2(layout.center) + Vector2(0.5, 0.5)
+	var far := Vector2(layout.shape_tips[1]) + Vector2(0.5, 0.5)
+	# Pointing from the start toward the far end: the entrance faces back toward the start.
+	var direction: Vector2 = (far - hub).normalized()
 	var outer_radii := Vector2(data.boss_arena_radii) + Vector2(data.boss_arena_wall, data.boss_arena_wall)
-	# As far out as possible: the arena's outer wall just inside the map-edge rock.
-	var half := Vector2(layout.size) / 2.0
-	var margin: Vector2 = outer_radii + Vector2(data.border_max + 2, data.border_max + 2)
-	var reach_x: float = (half.x - margin.x) / maxf(absf(direction.x), 0.001)
-	var reach_y: float = (half.y - margin.y) / maxf(absf(direction.y), 0.001)
-	var arena_center: Vector2 = Vector2(layout.center) + Vector2(0.5, 0.5) + direction * minf(reach_x, reach_y)
-	# Pulled toward the middle until the whole arena (and some ground around it) is inside the floor's shape.
+	# A random spot around the far end of the capsule.
+	var arena_center: Vector2 = far + direction.orthogonal() * rng.randf_range(-1.0, 1.0) * BOSS_SIDE_JITTER \
+		- direction * rng.randf_range(0.0, BOSS_BACK_JITTER)
+	# Pulled toward the start until the whole arena (and some ground around it) is inside the floor's shape.
 	var around: Vector2 = outer_radii + Vector2(ARENA_SHAPE_MARGIN, ARENA_SHAPE_MARGIN)
-	while not _ellipse_inside(shape, layout.size, arena_center, around) \
-			and arena_center.distance_to(Vector2(layout.center)) > ARENA_PULL_STEP:
-		arena_center -= direction * ARENA_PULL_STEP
+	while not _ellipse_inside(shape, layout.size, arena_center, around) and arena_center.distance_to(hub) > ARENA_PULL_STEP:
+		arena_center = arena_center.move_toward(hub, ARENA_PULL_STEP)
 	layout.boss_center = Vector2i(arena_center.floor())
 	return {"center": arena_center, "direction": direction}
 
 
-## 16 points around an ellipse (and its center) are all inside the shape.
+## Middle of the hub: from the start end of the capsule, moved toward the far end until the whole hub, its ring
+## and some ground around it fit inside the floor's shape.
+static func _place_hub(data: FloorData, layout: FloorLayout, shape: FloorShape, hub_edge: PackedFloat32Array) -> Vector2i:
+	var start := Vector2(layout.shape_tips[0]) + Vector2(0.5, 0.5)
+	var far := Vector2(layout.shape_tips[1]) + Vector2(0.5, 0.5)
+	var reach: float = Array(hub_edge).max() + data.hub_ring + HUB_SHAPE_MARGIN
+	var at: Vector2 = start
+	while not _ellipse_inside(shape, layout.size, at, Vector2(reach, reach)) and at.distance_to(far) > ARENA_PULL_STEP:
+		at = at.move_toward(far, ARENA_PULL_STEP)
+	return Vector2i(at.floor())
+
+
+## 32 points around an ellipse (and its center) are all inside the shape.
 static func _ellipse_inside(shape: FloorShape, size: Vector2i, center: Vector2, radii: Vector2) -> bool:
 	if not shape.is_inside(size, Vector2i(center.floor())):
 		return false
-	for k in 16:
-		var point: Vector2 = center + Vector2.from_angle(TAU * k / 16.0) * radii
+	for k in 32:
+		var point: Vector2 = center + Vector2.from_angle(TAU * k / 32.0) * radii
 		if not shape.is_inside(size, Vector2i(point.floor())):
 			return false
 	return true
@@ -773,6 +803,15 @@ static func _fill_pocket(layout: FloorLayout, builders: Array[ZoneBuilder], pock
 
 ## Connected floor pockets (4-neighborhood), found row by row as horizontal runs joined with union-find.
 ## Much faster than a cell-by-cell flood fill on big maps (runs are found with native searches).
+## The portal can be walked to from the start (same connected floor pocket). Checked after every generation.
+static func portal_reachable(layout: FloorLayout) -> bool:
+	var w: int = layout.size.x
+	var pockets := Pockets.new(layout.cells_raw(), w)
+	var start: int = layout.start_cell.y * w + layout.start_cell.x
+	var portal: int = layout.portal_cell.y * w + layout.portal_cell.x
+	return layout.is_floor(layout.portal_cell.x, layout.portal_cell.y) and pockets.root_of(start) == pockets.root_of(portal)
+
+
 class Pockets:
 	## Absolute index of each run's first cell and one past its last cell (sorted).
 	var run_from := PackedInt32Array()

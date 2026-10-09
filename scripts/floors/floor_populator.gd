@@ -149,9 +149,9 @@ static func _wall_decor_kind(layout: FloorLayout, slot: int, cell: Vector2i, rng
 
 static func _add_monsters(layout: FloorLayout, data: FloorData, region: RegionData, slot: int,
 		floors: PackedInt32Array, used: Dictionary, rng: RandomNumberGenerator) -> void:
-	if region.monsters.is_empty() or floors.is_empty():
+	if floors.is_empty():
 		return
-	var count: int = roundi(floors.size() * region.monsters_per_100_tiles / 100.0)
+	var count: int = 0 if region.monsters.is_empty() else roundi(floors.size() * region.monsters_per_100_tiles / 100.0)
 	var safe: float = data.safe_start_radius
 	for n in count:
 		for attempt in 20:
@@ -162,8 +162,8 @@ static func _add_monsters(layout: FloorLayout, data: FloorData, region: RegionDa
 				continue
 			_spawn_group(layout, data, region.monsters[rng.randi() % region.monsters.size()], cell, slot, used, rng)
 			break
-	# Monsters that live somewhere (goblins in their camps) also gather there.
-	for monster in region.monsters:
+	# Monsters that live somewhere (goblins in their camps) also gather there; home monsters live only there.
+	for monster in region.monsters + region.home_monsters:
 		if monster.home_feature == &"" or monster.groups_per_home <= 0:
 			continue
 		for feature in layout.features:

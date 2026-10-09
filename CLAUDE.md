@@ -102,7 +102,16 @@ built in stages.
   random `FloorData.shape_coverage` (70-95%; the edge border caps it near 92%). Settings in FloorData "Shape" group.
   Outside = impassable border, never dug: patches of ROCK, `CHASM` (see-through) and `THICKET` (dense forest, full
   collision, some crowns), new Terrain types at the end of the enum. `FloorLayout.land` (mask), `shape_tips`,
-  `shape_coverage`; `is_land_index()`. The boss arena is pulled inward until it fits inside the shape.
+  `shape_coverage`; `is_land_index()`.
+  Stage 2 DONE (v0.1.19): floor 1 = Goblin Galleries + Forest only (swamp / desert regions and builders stay in
+  the code for later floors). `shape_tips[0]` = start end (random), `[1]` = far end. The hub (galleries, closed,
+  `hub_radius` 0.24) sits in the start end (`_place_hub`: moved from the tip until it fits in the shape);
+  `layout.center` = the HUB's middle (not the map's), start = there. Gates (2-3) only where land goes on. Boss arena +
+  portal at a random spot around the far end (`BOSS_SIDE_JITTER`, `BOSS_BACK_JITTER`), pulled in to fit. Forest:
+  a river ACROSS the capsule between start and portal (`RIVER_AT` share of the way, 2-4 bridges/fords), THICKET
+  patches inside (density > 0.8, dig cost 2), 1-3 marshes (mud, reeds, pools; feature `marsh`) home to slimes:
+  `RegionData.home_monsters` live ONLY at their home feature (slime: home_feature marsh, groups of 5-8).
+  `FloorGenerator.portal_reachable()` is checked after every generation (push_error) and by --floor-test.
 - `FloorGenerator` (pure code, seeded) -> `FloorLayout` (rock/floor grid + a zone slot per cell, no empty space).
   900 x 900 tiles (`FloorData.map_size`, the one setting for floor size; ~1.3-2 s to generate, a loading
   screen will hide it later - don't over-optimize). Zones are computed per 4x4 block (islands merged there),

@@ -94,6 +94,8 @@ func open_cost(type: int) -> int:
 	match type:
 		Terrain.Type.TREE:
 			return 1
+		Terrain.Type.THICKET:
+			return 2
 		Terrain.Type.WATER_DEEP:
 			return 2
 		Terrain.Type.ROCK:

@@ -16,6 +16,9 @@ enum Kind { CLOSED, OPEN }
 @export var map_color: Color = Color.WHITE
 ## Monsters that can spawn in this zone (picked at random).
 @export var monsters: Array[MonsterData] = []
+## Monsters that live ONLY at their home places (MonsterData.home_feature, e.g. slimes in the forest's marshes),
+## never spread over the zone.
+@export var home_monsters: Array[MonsterData] = []
 ## Spawned in the zone's main lair (stage 3).
 @export var mini_boss: MonsterData
 ## Density: how many monsters per 100 floor tiles.

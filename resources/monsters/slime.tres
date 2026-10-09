@@ -15,3 +15,6 @@ windup_time = 0.6
 lunge_speed = 140.0
 attack_damage = 17.0
 knockback_resistance = 0.4
+group_size = Vector2i(5, 8)
+home_feature = &"marsh"
+groups_per_home = 1
